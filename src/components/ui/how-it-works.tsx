@@ -60,7 +60,7 @@ export function HowItWorks() {
                 <span className="absolute right-6 top-6 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   {String(index + 1).padStart(2, '0')}
                 </span>
-                <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-background/85 text-primary shadow-inner">
+                <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-background/85 text-primary shadow-inner">
                   <Icon className="h-6 w-6" aria-hidden />
                 </span>
                 <h3 className="mt-6 text-xl font-semibold">{step.title}</h3>

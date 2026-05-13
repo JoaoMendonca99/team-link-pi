@@ -35,7 +35,7 @@ export function CategoriesShowcase() {
                 transition={{ duration: 0.3, delay: index * 0.04, ease: 'easeOut' }}
                 className="mx-auto flex w-full max-w-md flex-col gap-4 rounded-[1.65rem] border border-border bg-card p-6 shadow-sm md:mx-0 md:max-w-none"
               >
-                <Icon className="h-9 w-9 text-[#2563EB]" aria-hidden />
+                <Icon className="mx-auto h-9 w-9 text-[#2563EB]" aria-hidden />
                 <CategoryBadge label={category} className="w-fit bg-secondary/70" />
                 <p className="text-sm text-muted-foreground">
                   Veja os projetos abertos nesta área e descubra equipes para colaborar.
