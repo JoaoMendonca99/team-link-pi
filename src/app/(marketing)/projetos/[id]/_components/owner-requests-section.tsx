@@ -120,10 +120,10 @@ export function OwnerRequestsSection({
   return (
     <section className="space-y-6 rounded-[1.85rem] border border-border bg-card p-8 shadow-sm">
       <div>
-        <p className="text-xs font-semibold uppercase tracking-[0.26em] text-primary">Painel do dono</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.26em] text-primary">Gerenciar pedidos</p>
         <h3 className="text-2xl font-bold">Solicitações de participação</h3>
         <p className="text-sm text-muted-foreground">
-          Aprovar adiciona o solicitante como membro ativo do projeto automaticamente.
+          Ao aprovar uma solicitação, a pessoa entra automaticamente na equipe do projeto.
         </p>
       </div>
 

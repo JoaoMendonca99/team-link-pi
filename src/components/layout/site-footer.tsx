@@ -35,8 +35,8 @@ export function SiteFooter() {
   return (
     <footer className="border-t border-border bg-muted/30 pb-10 pt-14 text-foreground dark:border-border dark:bg-card/50">
       <Container>
-        <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-4">
-          <div className="space-y-4">
+        <div className="grid gap-12 text-center md:grid-cols-2 md:text-left lg:grid-cols-4">
+          <div className="flex flex-col items-center space-y-4 md:items-start">
             <div className="flex items-center gap-2 text-lg font-bold">
               <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary/15 text-primary">
                 <Link2 className="h-5 w-5" aria-hidden />
@@ -44,11 +44,11 @@ export function SiteFooter() {
               Team Link
             </div>
             <p className="max-w-sm text-sm text-muted-foreground">
-              Marketplace acadêmico para publicar ideias, formar equipes e acompanhar projetos colaborativos.
+              Plataforma para publicar projetos, encontrar colaboradores e formar equipes.
             </p>
             <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-muted-foreground">
               <Sparkles className="h-3.5 w-3.5 text-primary" aria-hidden />
-              Projetos acadêmicos colaborativos
+              Conecte ideias a pessoas
             </div>
           </div>
 
@@ -73,9 +73,9 @@ export function SiteFooter() {
           ))}
         </div>
 
-        <div className="mt-12 flex flex-col gap-2 border-t border-border/80 pt-8 text-sm text-muted-foreground md:flex-row md:items-center md:justify-between">
+        <div className="mt-12 flex flex-col items-center gap-2 border-t border-border/80 pt-8 text-center text-sm text-muted-foreground md:flex-row md:items-center md:justify-between md:text-left">
           <p>&copy; {new Date().getFullYear()} Team Link. Todos os direitos reservados.</p>
-          <p className="text-xs md:text-sm">Desenvolvido como projeto acadêmico.</p>
+          <p className="text-xs md:text-sm">Conectando ideias, pessoas e projetos.</p>
         </div>
       </Container>
     </footer>

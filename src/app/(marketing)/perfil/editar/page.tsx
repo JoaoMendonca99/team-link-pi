@@ -69,7 +69,7 @@ export default function EditProfilePage() {
         <Container className="py-24">
           <PageHeader
             title="Acesso necessário"
-            description="Entre com sua conta Team Link para editar seu perfil."
+            description="Entre com sua conta para editar seu perfil."
           />
           <div className="mt-6 flex flex-wrap gap-3">
             <Button asChild className="rounded-2xl font-semibold">
@@ -89,7 +89,7 @@ export default function EditProfilePage() {
     setErrorMessage(null)
 
     if (envMissing) {
-      setErrorMessage('Conexão com o Supabase ainda não configurada neste ambiente.')
+      setErrorMessage('Não foi possível conectar ao serviço de dados. Tente novamente em instantes.')
       return
     }
 
@@ -134,16 +134,16 @@ export default function EditProfilePage() {
             </Link>
           </Button>
           <PageHeader
-            eyebrow="Formulário de perfil"
-            title="Editar perfil acadêmico"
-            description="Estas informações ficam salvas com segurança em sua conta Team Link no Supabase."
+            eyebrow="Seu perfil"
+            title="Editar perfil"
+            description="Atualize seus dados, habilidades e interesses. As alterações são salvas com segurança na sua conta."
           />
         </Container>
       </div>
 
       <Container size="article" className="space-y-8 py-12">
         <form className="space-y-8" onSubmit={handleSubmit}>
-          <FormSection title="Identidade básica">
+          <FormSection title="Informações básicas">
             <div className="space-y-3">
               <Label htmlFor="nome">Nome completo</Label>
               <Input
@@ -155,12 +155,12 @@ export default function EditProfilePage() {
               />
             </div>
             <div className="space-y-3">
-              <Label htmlFor="curso">Curso / Área principal</Label>
+              <Label htmlFor="curso">Curso ou área principal</Label>
               <Input
                 id="curso"
                 value={course}
                 onChange={(event) => setCourse(event.target.value)}
-                placeholder="Engenharia da Computação..."
+                placeholder="Ex.: Engenharia, Design, Administração..."
                 className="rounded-2xl"
               />
             </div>
@@ -185,12 +185,12 @@ export default function EditProfilePage() {
                 className="rounded-2xl"
               />
               <p className="text-xs text-muted-foreground">
-                Upload direto de imagem será adicionado em uma etapa futura.
+                Cole o link de uma imagem para usar como avatar. O upload direto chega em breve.
               </p>
             </div>
           </FormSection>
 
-          <FormSection title="Habilidades & interesses">
+          <FormSection title="Habilidades e interesses">
             <ChipInput
               label="Habilidades"
               value={skills}
@@ -223,7 +223,7 @@ export default function EditProfilePage() {
               role="status"
               className="rounded-2xl border border-amber-400/40 bg-amber-100/60 px-4 py-3 text-sm font-medium text-amber-900 dark:bg-amber-500/10 dark:text-amber-200"
             >
-              Configure as variáveis NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY em .env.local para habilitar a edição.
+              Não foi possível conectar ao serviço de dados. Tente novamente em instantes.
             </div>
           ) : null}
 

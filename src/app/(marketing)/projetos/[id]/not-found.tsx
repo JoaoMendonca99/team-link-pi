@@ -12,7 +12,7 @@ export default function ProjectNotFound() {
           <p className="text-sm font-semibold uppercase tracking-[0.3em] text-primary">404</p>
           <h1 className="mt-3 text-balance text-4xl font-bold">Projeto não encontrado</h1>
           <p className="mt-4 max-w-xl text-muted-foreground">
-            Não há publicação disponível neste caminho ou o recurso não foi pré-exportado nesta build.
+            O endereço acessado não corresponde a um projeto público. Talvez ele tenha sido removido ou esteja com visibilidade privada.
           </p>
         </div>
         <div className="flex flex-wrap justify-center gap-4">

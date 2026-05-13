@@ -78,8 +78,8 @@ const team = [
   },
   {
     name: 'Pedro Henrique Bianco',
-    role: 'Protótipos e validação',
-    focus: 'Protótipos, validação e apoio ao desenvolvimento.',
+    role: 'Qualidade e validação',
+    focus: 'Validação de fluxos, qualidade e apoio ao desenvolvimento.',
   },
 ] as const
 
@@ -120,7 +120,7 @@ export default function SobrePage() {
             return (
               <article
                 key={pillar.title}
-                className="rounded-[1.9rem] border border-border bg-card p-8 shadow-xl"
+                className="mx-auto w-full max-w-md rounded-[1.9rem] border border-border bg-card p-8 shadow-xl md:mx-0 md:max-w-none"
               >
                 <Icon className="h-10 w-10 text-primary" aria-hidden />
                 <h2 className="mt-6 text-2xl font-bold">{pillar.title}</h2>
@@ -148,7 +148,7 @@ export default function SobrePage() {
               return (
                 <li
                   key={step.title}
-                  className="flex h-full flex-col gap-4 rounded-[1.75rem] border border-border bg-card p-6 shadow-lg"
+                  className="mx-auto flex h-full w-full max-w-md flex-col gap-4 rounded-[1.75rem] border border-border bg-card p-6 shadow-lg md:mx-0 md:max-w-none"
                 >
                   <div className="flex items-center gap-3">
                     <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary">
@@ -167,7 +167,7 @@ export default function SobrePage() {
 
       <section className="border-y border-border bg-background py-24">
         <Container className="space-y-12">
-          <div className="max-w-2xl space-y-4">
+          <div className="mx-auto max-w-2xl space-y-4 text-center md:mx-0 md:text-left">
             <p className="text-xs font-semibold uppercase tracking-[0.32em] text-primary">Equipe</p>
             <h2 className="text-balance text-4xl font-bold">Quem está construindo o Team Link</h2>
             <p className="text-muted-foreground md:text-lg">
@@ -179,7 +179,7 @@ export default function SobrePage() {
             {team.map((member) => (
               <article
                 key={member.name}
-                className="rounded-[1.75rem] border border-border bg-card p-6 shadow-lg"
+                className="mx-auto w-full max-w-md rounded-[1.75rem] border border-border bg-card p-6 shadow-lg md:mx-0 md:max-w-none"
               >
                 <div className="flex items-start gap-3">
                   <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/15 text-xl font-semibold text-primary">
@@ -206,7 +206,7 @@ export default function SobrePage() {
 
       <section className="bg-muted/30 py-24">
         <Container className="grid gap-10 md:grid-cols-[2fr_minmax(0,1fr)] md:items-center">
-          <div className="space-y-5">
+          <div className="space-y-5 text-center md:text-left">
             <p className="text-xs font-semibold uppercase tracking-[0.32em] text-primary">
               Pronto para começar
             </p>
@@ -215,7 +215,7 @@ export default function SobrePage() {
               Publique seu projeto no Team Link e encontre pessoas com habilidades complementares para
               construir junto.
             </p>
-            <div className="flex flex-wrap gap-3 pt-2">
+            <div className="flex flex-wrap justify-center gap-3 pt-2 md:justify-start">
               <Button asChild className="rounded-2xl px-6 py-5 text-base font-semibold">
                 <Link href="/nova-ideia">Criar ideia</Link>
               </Button>
@@ -228,7 +228,7 @@ export default function SobrePage() {
               </Button>
             </div>
           </div>
-          <div className="rounded-[1.8rem] border border-border bg-card p-8 text-center shadow-xl">
+          <div className="mx-auto w-full max-w-md rounded-[1.8rem] border border-border bg-card p-8 text-center shadow-xl md:mx-0 md:max-w-none">
             <Sparkles className="mx-auto h-10 w-10 text-primary" aria-hidden />
             <p className="mt-4 text-sm text-muted-foreground">
               Cada projeto começa com uma ideia. Quanto antes você compartilhar, mais cedo as pessoas

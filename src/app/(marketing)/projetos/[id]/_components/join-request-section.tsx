@@ -130,7 +130,7 @@ export function JoinRequestSection({
         <div className="mt-3 h-12 animate-pulse rounded-2xl bg-card" />
       ) : state.kind === 'owner' ? (
         <p className="mt-2 text-sm text-muted-foreground">
-          Você é o dono deste projeto. Solicitações de outros usuários aparecem no painel mais acima.
+          Você é o dono deste projeto. As solicitações de outras pessoas aparecem no painel acima.
         </p>
       ) : state.kind === 'member' ? (
         <p className="mt-2 text-sm text-muted-foreground">Você já participa deste projeto.</p>

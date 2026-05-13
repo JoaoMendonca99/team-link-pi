@@ -71,9 +71,9 @@ export default function MeusProjetosPage() {
       <div className="border-b border-border bg-gradient-to-b from-muted/50 to-transparent">
         <Container className="space-y-10 py-14">
           <PageHeader
-            eyebrow="Gestão colaborativa"
+            eyebrow="Suas publicações"
             title="Meus projetos"
-            description="Projetos publicados por você no Team Link. Esta lista vem direto da tabela projects no Supabase."
+            description="Projetos que você publicou no Team Link."
             actions={
               <Button asChild className="rounded-2xl font-semibold shadow-lg shadow-primary/25">
                 <Link href="/nova-ideia" className="inline-flex items-center gap-2">
@@ -90,7 +90,10 @@ export default function MeusProjetosPage() {
         {sessionLoading ? (
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 3 }).map((_, index) => (
-              <div key={index} className="h-64 animate-pulse rounded-[1.65rem] bg-muted" />
+              <div
+                key={index}
+                className="mx-auto h-64 w-full max-w-md animate-pulse rounded-[1.65rem] bg-muted md:mx-0 md:max-w-none"
+              />
             ))}
           </div>
         ) : !isAuthenticated ? (
@@ -98,9 +101,10 @@ export default function MeusProjetosPage() {
             <EmptyState
               icon={PenSquare}
               title="Entre para ver seus projetos"
-              description="Você precisa estar conectado para listar projetos vinculados à sua conta."
+              description="Você precisa estar conectado para ver os projetos da sua conta."
               actionLabel="Ir para login"
               href="/login"
+              className="mx-auto w-full max-w-md md:max-w-none"
             />
             <div className="flex justify-center">
               <Button asChild variant="outline" className="rounded-2xl font-semibold">
@@ -111,18 +115,21 @@ export default function MeusProjetosPage() {
         ) : envMissing ? (
           <div
             role="status"
-            className="rounded-2xl border border-amber-400/40 bg-amber-100/60 px-4 py-3 text-sm font-medium text-amber-900 dark:bg-amber-500/10 dark:text-amber-200"
+            className="mx-auto w-full max-w-md rounded-2xl border border-amber-400/40 bg-amber-100/60 px-4 py-3 text-center text-sm font-medium text-amber-900 dark:bg-amber-500/10 dark:text-amber-200 md:mx-0 md:max-w-none md:text-left"
           >
-            Configure NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY em .env.local para carregar seus projetos.
+            Não foi possível carregar seus projetos no momento. Tente novamente em instantes.
           </div>
         ) : loading ? (
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 3 }).map((_, index) => (
-              <div key={index} className="h-64 animate-pulse rounded-[1.65rem] bg-muted" />
+              <div
+                key={index}
+                className="mx-auto h-64 w-full max-w-md animate-pulse rounded-[1.65rem] bg-muted md:mx-0 md:max-w-none"
+              />
             ))}
           </div>
         ) : fetchError ? (
-          <div className="rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-6 text-center">
+          <div className="mx-auto w-full max-w-md rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-6 text-center md:max-w-none">
             <p className="text-sm font-semibold text-destructive">Não foi possível carregar seus projetos.</p>
             <p className="mt-2 text-xs text-destructive/80">{fetchError}</p>
             <Button onClick={() => void loadProjects()} className="mt-4 rounded-2xl font-semibold">
@@ -132,15 +139,19 @@ export default function MeusProjetosPage() {
         ) : projects.length === 0 ? (
           <EmptyState
             icon={PenSquare}
-            title="Você ainda não publicou projetos"
-            description="Use a página Nova Ideia para criar seu primeiro projeto. Ele aparecerá imediatamente nesta lista."
-            actionLabel="Criar ideia"
+            title="Nenhum projeto publicado ainda"
+            description="Quando você publicar um projeto, ele aparecerá aqui."
+            actionLabel="Publicar projeto"
             href="/nova-ideia"
+            className="mx-auto w-full max-w-md md:max-w-none"
           />
         ) : (
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             {projects.map((project) => (
-              <div key={project.id} className="space-y-4">
+              <div
+                key={project.id}
+                className="mx-auto w-full max-w-md space-y-4 md:mx-0 md:max-w-none"
+              >
                 <ProjectCard project={project} />
                 <div className="flex flex-wrap gap-3">
                   <Button asChild variant="outline" className="flex-1 rounded-2xl font-semibold">

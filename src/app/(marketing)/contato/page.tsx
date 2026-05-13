@@ -5,7 +5,7 @@ import { ContatoContent } from './contato-content'
 export const metadata: Metadata = {
   title: 'Contato',
   description:
-    'Canal institucional até definição de e-mail público oficial para contato pelo projeto Team Link acadêmico.',
+    'Fale com a equipe do Team Link: tire dúvidas, envie sugestões ou proponha parcerias.',
 }
 
 export default function ContatoPage() {

@@ -9,25 +9,25 @@ const steps = [
   {
     icon: ClipboardList,
     title: 'Publique sua ideia',
-    description: 'Conte o problema, o impacto e o que já validou em laboratório ou pesquisa.',
+    description: 'Conte o problema, o objetivo do projeto e as habilidades que você procura.',
     accent: 'from-primary/15 to-indigo-500/10',
   },
   {
     icon: Search,
     title: 'Encontre colaboradores',
-    description: 'Explore habilidades, tags e vagas abertas com contexto acadêmico transparente.',
+    description: 'Encontre pessoas com habilidades compatíveis e objetivos em comum.',
     accent: 'from-indigo-500/15 to-teal-500/10',
   },
   {
     icon: Layers3,
     title: 'Monte sua equipe',
-    description: 'Combine papéis, combine microciclos de entrega e defina combinados públicos.',
+    description: 'Defina funções, organize responsabilidades e alinhe os próximos passos da equipe.',
     accent: 'from-teal-500/15 to-primary/15',
   },
   {
     icon: LineChart,
-    title: 'Evolua o projeto',
-    description: 'Registre aprendizados visíveis, documentação e próximos passos para próximos integrantes.',
+    title: 'Acompanhe o projeto',
+    description: 'Mantenha o projeto organizado para que novos participantes entendam o andamento.',
     accent: 'from-amber-500/12 to-primary/14',
   },
 ] as const
@@ -37,10 +37,10 @@ export function HowItWorks() {
     <section id="como-funciona" className="border-b border-border bg-card py-20">
       <Container className="space-y-12">
         <div className="mx-auto max-w-3xl text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">Fluxo guiado</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">Passo a passo</p>
           <h2 className="mt-4 text-balance text-4xl font-bold">Como o Team Link funciona</h2>
           <p className="mt-4 text-lg text-muted-foreground">
-            Um método enxuto para transformar ideias em squads acadêmicos com governança leve e descoberta clara.
+            Em poucos passos, você sai de uma ideia solta para um projeto com pessoas envolvidas.
           </p>
         </div>
 
@@ -55,7 +55,7 @@ export function HowItWorks() {
                 transition={{ duration: 0.35, delay: index * 0.05, ease: 'easeOut' }}
                 viewport={{ once: true, margin: '-40px' }}
                 whileHover={{ y: -3, scale: 1.01 }}
-                className={`relative rounded-[1.75rem] border border-border bg-gradient-to-br ${step.accent} p-6 shadow-sm`}
+                className={`relative mx-auto w-full max-w-md rounded-[1.75rem] border border-border bg-gradient-to-br ${step.accent} p-6 shadow-sm md:mx-0 md:max-w-none`}
               >
                 <span className="absolute right-6 top-6 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   {String(index + 1).padStart(2, '0')}

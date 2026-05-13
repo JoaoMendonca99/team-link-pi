@@ -10,40 +10,78 @@ import { Button } from '@/components/ui/button'
 import { motion } from 'framer-motion'
 const HELP_SECTIONS = [
   {
+    id: 'cadastro',
+    title: 'Como criar uma conta?',
+    bullets: [
+      'Acesse "Cadastro" no menu superior ou na home.',
+      'Informe nome, e-mail, senha e seu curso ou área principal.',
+      'Confirme seu e-mail pelo link enviado e faça login para começar.',
+    ],
+  },
+  {
     id: 'publicar',
-    title: 'Como publicar uma ideia?',
-    bullets: ['Abra Nova Ideia e preencha contexto técnico e acadêmico.', 'Liste habilidades reais esperadas pela equipe.', 'Use tags para aumentar recuperação futura.'],
+    title: 'Como publicar um projeto?',
+    bullets: [
+      'Abra "Nova ideia" e descreva o problema, o objetivo e a categoria do projeto.',
+      'Indique as habilidades que você procura e o número de vagas em aberto.',
+      'Use tags para ajudar outras pessoas a encontrarem seu projeto.',
+    ],
   },
   {
     id: 'procurar',
-    title: 'Como encontrar projetos?',
-    bullets: ['Utilize filtros combináveis ou busca textual livre.', 'Observe status e vagas para evitar esperas inconsistentes.', 'Abra fichas para entender problema e método.'],
+    title: 'Como encontrar projetos para participar?',
+    bullets: [
+      'Use "Explorar" para ver todos os projetos publicados.',
+      'Combine filtros por categoria, status, habilidade ou tema.',
+      'Abra a página de cada projeto para ler a descrição completa antes de se candidatar.',
+    ],
   },
   {
     id: 'participar',
-    title: 'Como entrar para uma equipe?',
-    bullets: ['O botão “Quero participar” guardará registros apenas após ligar servidor.', 'Informe disponibilidade e stack nos comentários quando abertos.', 'Acompanhe comunicação institucional por e-mail no futuro.'],
+    title: 'Como solicitar participação?',
+    bullets: [
+      'Na página do projeto, clique em "Solicitar participação".',
+      'Escreva uma mensagem rápida apresentando-se e indicando sua disponibilidade (opcional).',
+      'Aguarde a resposta de quem publicou o projeto. Você pode cancelar a solicitação a qualquer momento.',
+    ],
   },
   {
-    id: 'editar',
-    title: 'Como editar meu projeto?',
-    bullets: ['Acesse Meus Projetos e edição rápida ou detalhes.', 'Atualize descrições assim que permissões institucionais existirem.', 'Integração oficial substituirá armazenamento local.'],
+    id: 'editar-perfil',
+    title: 'Como editar meu perfil?',
+    bullets: [
+      'Entre na sua conta e acesse "Perfil".',
+      'Clique em "Editar perfil" para atualizar nome, bio, curso, habilidades e interesses.',
+      'As alterações ficam disponíveis imediatamente para outras pessoas que abrirem seu perfil.',
+    ],
   },
   {
-    id: 'curtidas',
-    title: 'Como funcionam curtidas/comentários?',
-    bullets: ['Curtidas e comentários refletirão engajamento real após implantar API.', 'Hoje apenas layout de formulário — sem servidor processando texto.', 'As rotas ficarão auditáveis segundo política institucional.'],
+    id: 'contato',
+    title: 'Como entrar em contato com a equipe?',
+    bullets: [
+      'Use a página "Contato" para enviar uma mensagem.',
+      'Conte o motivo do contato, sugestões ou problemas que encontrou.',
+      'Vamos responder pelo canal indicado quando o contato estiver completo.',
+    ],
   },
 ] satisfies Array<{ id: string; title: string; bullets: string[] }>
 
 export function AjudaContent() {
-  const [expanded, setExpanded] = useState<string>('publicar')
+  const [expanded, setExpanded] = useState<string>('cadastro')
 
   const faqPairs = useMemo(
     () => [
-      ['Há servidor real hospedando esses projetos?', 'Neste estágio apenas export estático. Nada vai para infraestrutura privada até validação institucional.'],
-      ['Posso anexar arquivos científicos?', 'Ainda não. Estamos projetando ingestão ligada ao storage seguro quando autenticação estiver disponível.'],
-      ['Posso remover meu perfil local?', 'Sim — apague dados do site no navegador ou use Sair para encerrar a sessão apenas neste aparelho.'],
+      [
+        'Preciso pagar alguma coisa para usar o Team Link?',
+        'Não. O Team Link é gratuito para publicar projetos, participar de equipes e usar todas as funcionalidades atuais.',
+      ],
+      [
+        'Posso sair de um projeto depois de entrar?',
+        'Sim. Entre em contato com quem publicou o projeto pelos comentários para combinar a saída.',
+      ],
+      [
+        'Posso encerrar minha sessão neste dispositivo?',
+        'Sim. Abra o menu da sua conta no canto superior e selecione "Sair" para encerrar a sessão apenas neste navegador.',
+      ],
     ],
     [],
   )
@@ -52,10 +90,10 @@ export function AjudaContent() {
     <main className="bg-muted/35 pb-20">
       <div className="border-b border-border bg-gradient-to-br from-muted/80 via-background to-background">
         <Container className="space-y-6 py-16">
-          <p className="text-xs font-semibold uppercase tracking-[0.34em] text-primary">FAQ Operacional</p>
-          <h1 className="text-4xl font-bold md:text-5xl">Centro de ajuda da Team Link</h1>
+          <p className="text-xs font-semibold uppercase tracking-[0.34em] text-primary">Central de ajuda</p>
+          <h1 className="text-4xl font-bold md:text-5xl">Como usar o Team Link</h1>
           <p className="max-w-3xl text-lg text-muted-foreground">
-            Conteúdo pensado para estudantes tecnológicos: texto direto aos fluxos publicados nesta versão exportada do aplicativo estático.
+            Respostas rápidas para os principais fluxos da plataforma: cadastro, publicação de projetos, participação em equipes e configuração de perfil.
           </p>
         </Container>
       </div>
@@ -96,8 +134,8 @@ export function AjudaContent() {
 
         <aside className="space-y-6 rounded-[1.85rem] border border-border bg-card p-8 shadow-xl">
           <div>
-            <h2 className="text-2xl font-bold text-foreground">Dúvidas frequentes rápidas</h2>
-            <p className="text-sm text-muted-foreground">Respostas compactas até abrir chamado formal com professores-coordenadores.</p>
+            <h2 className="text-2xl font-bold text-foreground">Perguntas frequentes</h2>
+            <p className="text-sm text-muted-foreground">Respostas rápidas para as dúvidas mais comuns sobre o Team Link.</p>
           </div>
           <ul className="space-y-4 text-sm leading-relaxed text-muted-foreground">
             {faqPairs.map(([question, answer]) => (
@@ -120,15 +158,15 @@ export function AjudaContent() {
         <div className="rounded-[2.5rem] border border-primary/30 bg-[#081021] p-12 text-white shadow-xl">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.32em] text-white/65">Fluxo rápido</p>
-              <h2 className="mt-4 text-3xl font-bold">Pronto para colocar suas ideias no radar institucional?</h2>
+              <p className="text-xs font-semibold uppercase tracking-[0.32em] text-white/65">Pronto para começar</p>
+              <h2 className="mt-4 text-3xl font-bold">Que tal publicar a sua próxima ideia?</h2>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
               <Button asChild className="rounded-2xl px-10 font-semibold shadow-lg shadow-white/35">
-                <Link href="/explorar">Explorar</Link>
+                <Link href="/explorar">Explorar projetos</Link>
               </Button>
               <Button asChild variant="outline" className="rounded-2xl border-white/55 bg-transparent text-white hover:bg-white/15">
-                <Link href="/nova-ideia">Nova ideia</Link>
+                <Link href="/nova-ideia">Publicar projeto</Link>
               </Button>
             </div>
           </div>

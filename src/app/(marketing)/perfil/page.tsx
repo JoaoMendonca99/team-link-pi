@@ -180,9 +180,10 @@ export default function ProfilePage() {
           <EmptyState
             icon={Layers}
             title="Você precisa estar conectado para ver o perfil"
-            description="Entre com sua conta para visualizar e editar seus dados acadêmicos."
+            description="Entre com sua conta para visualizar e editar suas informações."
             actionLabel="Ir para login"
             href="/login"
+            className="mx-auto w-full max-w-md md:max-w-none"
           />
           <div className="mt-6 text-center">
             <Button asChild variant="outline" className="rounded-2xl font-semibold">
@@ -215,20 +216,20 @@ export default function ProfilePage() {
           <div className="absolute right-[-20%] top-[-35%] h-[28rem] w-[28rem] rounded-full bg-[radial-gradient(circle,#2563EB_0%,transparent_70%)] blur-3xl opacity-95" />
           <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(8,16,39,0.95),rgba(79,70,229,0.35))]" />
         </div>
-        <Container className="relative flex flex-col gap-10 text-center md:flex-row md:items-end md:text-left">
+        <Container className="relative flex flex-col items-center gap-10 text-center md:flex-row md:items-end md:text-left">
           <UserAvatar name={fullName} imageUrl={avatarUrl} ring sizeClassName="h-24 w-24" />
           <div className="space-y-3">
-            <p className="text-xs uppercase tracking-[0.3em] text-white/65">Perfil acadêmico</p>
-            <div className="flex flex-wrap items-center gap-3">
+            <p className="text-xs uppercase tracking-[0.3em] text-white/65">Seu perfil</p>
+            <div className="flex flex-wrap items-center justify-center gap-3 md:justify-start">
               <h1 className="text-4xl font-bold">{fullName}</h1>
               <span className="rounded-full border border-white/25 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em]">
                 {course}
               </span>
             </div>
-            <p className="max-w-2xl text-white/85">{bio}</p>
+            <p className="mx-auto max-w-2xl text-white/85 md:mx-0">{bio}</p>
             {email ? <p className="text-sm text-white/70">{email}</p> : null}
             {joinedAt ? <p className="text-sm text-white/60">Perfil criado em {joinedAt}</p> : null}
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap justify-center gap-3 md:justify-start">
               <Button asChild className="rounded-2xl font-semibold shadow-lg shadow-primary/30">
                 <Link href="/perfil/editar">Editar perfil</Link>
               </Button>
@@ -245,7 +246,7 @@ export default function ProfilePage() {
       </div>
 
       <Container className="space-y-14 py-14">
-        <div className="grid gap-4 md:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
           <StatCard icon={Layers} label="Projetos publicados" value={stats.projectsPublished} />
           <StatCard icon={Heart} label="Curtidas recebidas" value={stats.likesReceived} />
           <StatCard icon={Users} label="Participações" value={stats.participationsCount} />
@@ -259,14 +260,14 @@ export default function ProfilePage() {
         {envMissing ? (
           <div
             role="status"
-            className="rounded-2xl border border-amber-400/40 bg-amber-100/60 px-4 py-3 text-sm font-medium text-amber-900 dark:bg-amber-500/10 dark:text-amber-200"
+            className="mx-auto w-full max-w-md rounded-2xl border border-amber-400/40 bg-amber-100/60 px-4 py-3 text-center text-sm font-medium text-amber-900 dark:bg-amber-500/10 dark:text-amber-200 md:mx-0 md:max-w-none md:text-left"
           >
             Não foi possível conectar ao serviço de dados. Tente novamente em instantes.
           </div>
         ) : null}
 
         {fetchError ? (
-          <div className="rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-6 text-center">
+          <div className="mx-auto w-full max-w-md rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-6 text-center md:max-w-none">
             <p className="text-sm font-semibold text-destructive">
               Não foi possível carregar seus projetos no momento.
             </p>
@@ -303,15 +304,15 @@ export default function ProfilePage() {
         ) : null}
 
         <section className="space-y-6">
-          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-            <div>
+          <div className="flex flex-col gap-4 text-center md:flex-row md:items-center md:justify-between md:text-left">
+            <div className="space-y-1">
               <p className="text-xs uppercase tracking-[0.3em] text-primary">Suas publicações</p>
               <h2 className="text-3xl font-bold">Projetos publicados</h2>
               <p className="text-sm text-muted-foreground">
                 Ideias que você criou no Team Link.
               </p>
             </div>
-            <Button asChild className="rounded-2xl font-semibold shadow-lg shadow-primary/25">
+            <Button asChild className="mx-auto rounded-2xl font-semibold shadow-lg shadow-primary/25 md:mx-0">
               <Link href="/nova-ideia" className="inline-flex items-center gap-2">
                 <PlusCircle className="h-4 w-4" />
                 Nova ideia
@@ -322,7 +323,10 @@ export default function ProfilePage() {
           {showOwnSkeleton ? (
             <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
               {Array.from({ length: 3 }).map((_, index) => (
-                <div key={index} className="h-64 animate-pulse rounded-[1.65rem] bg-muted" />
+                <div
+                  key={index}
+                  className="mx-auto h-64 w-full max-w-md animate-pulse rounded-[1.65rem] bg-muted md:mx-0 md:max-w-none"
+                />
               ))}
             </div>
           ) : ownProjects.length === 0 ? (
@@ -332,11 +336,15 @@ export default function ProfilePage() {
               description="Quando você criar uma ideia, ela aparecerá aqui."
               actionLabel="Criar nova ideia"
               href="/nova-ideia"
+              className="mx-auto w-full max-w-md md:max-w-none"
             />
           ) : (
             <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
               {ownProjects.map((project) => (
-                <div key={project.id} className="space-y-4">
+                <div
+                  key={project.id}
+                  className="mx-auto w-full max-w-md space-y-4 md:mx-0 md:max-w-none"
+                >
                   <ProjectCard project={project} />
                   <div className="flex flex-wrap gap-3">
                     <Button
@@ -357,7 +365,7 @@ export default function ProfilePage() {
         </section>
 
         <section className="space-y-6">
-          <div>
+          <div className="space-y-1 text-center md:text-left">
             <p className="text-xs uppercase tracking-[0.3em] text-primary">Equipes</p>
             <h2 className="text-3xl font-bold">Participações em projetos</h2>
             <p className="text-sm text-muted-foreground">
@@ -368,7 +376,10 @@ export default function ProfilePage() {
           {showParticipationSkeleton ? (
             <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
               {Array.from({ length: 2 }).map((_, index) => (
-                <div key={index} className="h-64 animate-pulse rounded-[1.65rem] bg-muted" />
+                <div
+                  key={index}
+                  className="mx-auto h-64 w-full max-w-md animate-pulse rounded-[1.65rem] bg-muted md:mx-0 md:max-w-none"
+                />
               ))}
             </div>
           ) : participations.length === 0 ? (
@@ -376,13 +387,17 @@ export default function ProfilePage() {
               icon={Users}
               title="Sem participações registradas"
               description="Quando você entrar em um projeto de outra pessoa, ele aparecerá aqui."
+              className="mx-auto w-full max-w-md md:max-w-none"
             />
           ) : (
             <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
               {participations.map((participation) => {
                 const joinedLabel = formatDate(participation.joinedAt)
                 return (
-                  <div key={participation.membershipId} className="space-y-4">
+                  <div
+                    key={participation.membershipId}
+                    className="mx-auto w-full max-w-md space-y-4 md:mx-0 md:max-w-none"
+                  >
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
                         {roleLabel(participation.role)}

@@ -48,7 +48,7 @@ export default function LoginPage() {
     }
 
     if (envMissing) {
-      setErrorMessage('Conexão com o Supabase ainda não configurada neste ambiente.')
+      setErrorMessage('Não foi possível conectar ao serviço de dados. Tente novamente em instantes.')
       return
     }
 
@@ -83,27 +83,27 @@ export default function LoginPage() {
 
       <Container className="relative z-10 grid gap-12 md:grid-cols-2">
         <div className="space-y-6 text-balance rounded-[2rem] border border-white/60 bg-background/85 p-8 shadow-xl backdrop-blur-xl dark:bg-card/85">
-          <p className="text-xs font-semibold uppercase tracking-[0.34em] text-primary">Acesso institucional</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.34em] text-primary">Acesso</p>
           <h1 className="text-4xl font-bold md:text-[2.85rem]">Entre na sua conta Team Link.</h1>
           <ul className="space-y-3 text-muted-foreground">
-            <li>• Acompanhe e gerencie seus projetos publicados.</li>
-            <li>• Forme equipes com filtros alinhados às suas habilidades.</li>
-            <li>• Mantenha histórico transparente voltado para bancas e laboratório.</li>
+            <li>• Acompanhe e gerencie os projetos que você publicou.</li>
+            <li>• Solicite participação em projetos compatíveis com suas habilidades.</li>
+            <li>• Mantenha curtidas, comentários e participações organizados em um só lugar.</li>
           </ul>
           <div className="rounded-3xl bg-muted/40 px-6 py-4 text-sm text-muted-foreground">
-            Sua sessão é mantida com segurança no Supabase enquanto este navegador estiver autorizado.
+            Sua sessão fica ativa neste navegador até você sair da conta.
           </div>
           <Link href="/explorar" className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline">
-            Voltar para explorar sem login
+            Explorar projetos sem entrar
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
 
         <AuthCard
-          eyebrow="Conta acadêmica"
+          eyebrow="Entrar"
           title="Faça login"
           description="Use o e-mail e a senha cadastrados no Team Link."
-          footer={<p className="text-xs text-muted-foreground">Esqueceu a senha? O fluxo de recuperação será adicionado em breve.</p>}
+          footer={<p className="text-xs text-muted-foreground">Esqueceu a senha? Em breve você poderá recuperar o acesso por e-mail.</p>}
         >
           <form className="space-y-5 text-left" onSubmit={handleSubmit} noValidate>
             <div className="space-y-3">
@@ -147,7 +147,7 @@ export default function LoginPage() {
                 role="status"
                 className="rounded-2xl border border-amber-400/40 bg-amber-100/60 px-4 py-3 text-sm font-medium text-amber-900 dark:bg-amber-500/10 dark:text-amber-200"
               >
-                Configure as variáveis NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY em .env.local para habilitar o login.
+                Não foi possível conectar ao serviço de dados. Tente novamente em instantes.
               </div>
             ) : null}
 

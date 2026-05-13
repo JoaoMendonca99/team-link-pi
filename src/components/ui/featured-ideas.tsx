@@ -60,14 +60,17 @@ export function FeaturedIdeas() {
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">Projetos recentes</p>
           <h2 className="text-balance text-3xl font-bold sm:text-4xl">O que a comunidade está publicando</h2>
           <p className="mx-auto max-w-3xl text-base text-muted-foreground">
-            Veja os projetos mais recentes da Team Link e descubra equipes para colaborar.
+            Veja os projetos mais recentes do Team Link e descubra equipes para colaborar.
           </p>
         </div>
 
         {loading ? (
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: FEATURED_LIMIT }).map((_, index) => (
-              <div key={index} className="h-64 animate-pulse rounded-[1.65rem] bg-card" />
+              <div
+                key={index}
+                className="mx-auto h-64 w-full max-w-md animate-pulse rounded-[1.65rem] bg-card md:mx-0 md:max-w-none"
+              />
             ))}
           </div>
         ) : envMissing || projects.length === 0 ? (
@@ -76,17 +79,19 @@ export function FeaturedIdeas() {
             title="Nenhum projeto publicado ainda"
             description={
               envMissing
-                ? 'Configure as variáveis do Supabase para listar projetos reais.'
+                ? 'Não foi possível carregar os projetos no momento. Tente novamente em instantes.'
                 : 'Seja o primeiro a publicar uma ideia. Em segundos ela aparecerá nesta vitrine.'
             }
             actionLabel="Criar primeira ideia"
             href="/nova-ideia"
-            className="border-border bg-card shadow-sm dark:bg-card"
+            className="mx-auto w-full max-w-md border-border bg-card shadow-sm dark:bg-card md:max-w-none"
           />
         ) : (
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             {projects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
+              <div key={project.id} className="mx-auto w-full max-w-md md:mx-0 md:max-w-none">
+                <ProjectCard project={project} />
+              </div>
             ))}
           </div>
         )}

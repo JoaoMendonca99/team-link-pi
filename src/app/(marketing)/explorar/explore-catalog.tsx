@@ -164,7 +164,7 @@ export function ExploreCatalog() {
           <PageHeader
             eyebrow="Descoberta"
             title="Explore projetos"
-            description="Projetos publicados pela comunidade Team Link, carregados em tempo real do Supabase."
+            description="Projetos publicados pela comunidade do Team Link."
             className="flex-col gap-8 pb-8 md:flex-row md:items-end md:justify-between md:gap-10"
             actions={
               <Button asChild className="rounded-2xl font-semibold shadow-md shadow-primary/25">
@@ -200,18 +200,21 @@ export function ExploreCatalog() {
             role="status"
             className="rounded-2xl border border-amber-400/40 bg-amber-100/60 px-4 py-3 text-sm font-medium text-amber-900 dark:bg-amber-500/10 dark:text-amber-200"
           >
-            Configure NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY em .env.local para carregar projetos.
+            Não foi possível carregar os projetos no momento. Tente novamente em instantes.
           </div>
         ) : null}
 
         {loading ? (
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 6 }).map((_, index) => (
-              <div key={index} className="h-64 animate-pulse rounded-[1.65rem] bg-muted" />
+              <div
+                key={index}
+                className="mx-auto h-64 w-full max-w-md animate-pulse rounded-[1.65rem] bg-muted md:mx-0 md:max-w-none"
+              />
             ))}
           </div>
         ) : fetchError ? (
-          <div className="rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-6 text-center">
+          <div className="mx-auto w-full max-w-md rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-6 text-center md:max-w-none">
             <p className="text-sm font-semibold text-destructive">Não foi possível carregar os projetos.</p>
             <p className="mt-2 text-xs text-destructive/80">{fetchError}</p>
             <Button onClick={() => void loadProjects()} className="mt-4 rounded-2xl font-semibold">
@@ -221,12 +224,12 @@ export function ExploreCatalog() {
         ) : (
           <>
             {!catalogIsEmpty ? (
-              <div className="flex flex-col gap-2 text-sm md:flex-row md:items-center md:justify-between">
+              <div className="flex flex-col gap-2 text-center text-sm md:flex-row md:items-center md:justify-between md:text-left">
                 <p className="font-semibold text-foreground">
                   {filtered.length} resultado{filtered.length === 1 ? '' : 's'}
                 </p>
-                <p className="max-w-xl text-muted-foreground">
-                  Lista atualizada a partir da view project_public_cards.
+                <p className="mx-auto max-w-xl text-muted-foreground md:mx-0">
+                  Use os filtros para refinar por categoria, status ou habilidade.
                 </p>
               </div>
             ) : null}
@@ -234,7 +237,9 @@ export function ExploreCatalog() {
             {filtered.length > 0 ? (
               <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                 {filtered.map((project) => (
-                  <ProjectCard key={project.id} project={project} />
+                  <div key={project.id} className="mx-auto w-full max-w-md md:mx-0 md:max-w-none">
+                    <ProjectCard project={project} />
+                  </div>
                 ))}
               </div>
             ) : (
@@ -244,10 +249,11 @@ export function ExploreCatalog() {
                 description={
                   catalogIsEmpty
                     ? 'Seja o primeiro a publicar uma ideia. Ela aparecerá aqui imediatamente.'
-                    : 'Ajuste ou limpe os filtros para ampliar a busca, ou publique uma nova ideia.'
+                    : 'Tente ajustar os filtros ou publicar uma nova ideia.'
                 }
-                actionLabel={catalogIsEmpty ? 'Criar primeira ideia' : 'Nova ideia'}
+                actionLabel={catalogIsEmpty ? 'Publicar projeto' : 'Publicar projeto'}
                 href="/nova-ideia"
+                className="mx-auto w-full max-w-md md:max-w-none"
               />
             )}
           </>

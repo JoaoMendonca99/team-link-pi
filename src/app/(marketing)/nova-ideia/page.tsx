@@ -59,10 +59,10 @@ export default function NovaIdeiaPage() {
     return {
       id: 'preview-local',
       slug: generatedSlug || 'pre-visualizacao',
-      title: title.trim() || 'Nova ideia em construção',
+      title: title.trim() || 'Seu projeto aparecerá aqui',
       shortDescription:
         shortDescription.trim() ||
-        'Resumo curto aparece aqui. Explique problema, contexto universitário e por que faz sentido agora.',
+        'Resumo curto aparece aqui. Explique o problema, o objetivo e por que vale a pena agora.',
       description: fullDescription.trim() || null,
       category: category || null,
       status: 'open',
@@ -70,7 +70,7 @@ export default function NovaIdeiaPage() {
       openSpots: Number.isFinite(parsedSpots) && parsedSpots > 0 ? parsedSpots : 2,
       desiredProfile:
         profileSeek.trim() ||
-        'Explique ritmo de trabalho esperado — laboratório, remoto ou híbrido — e responsabilidades iniciais.',
+        'Descreva o ritmo de trabalho esperado, formato (remoto, presencial, híbrido) e responsabilidades iniciais.',
       createdAt: today(),
       updatedAt: today(),
       ownerId: authorId,
@@ -129,7 +129,7 @@ export default function NovaIdeiaPage() {
     if (!isValid) return
 
     if (envMissing) {
-      setErrorMessage('Conexão com o Supabase ainda não configurada neste ambiente.')
+      setErrorMessage('Não foi possível conectar ao serviço de dados. Tente novamente em instantes.')
       return
     }
 
@@ -201,9 +201,9 @@ export default function NovaIdeiaPage() {
       <main className="bg-background">
         <Container className="py-24">
           <PageHeader
-            eyebrow="Publicação acadêmica"
+            eyebrow="Publicar projeto"
             title="Entre para publicar uma ideia"
-            description="Para criar um projeto e formar equipe, você precisa estar conectado com sua conta Team Link."
+            description="Para criar um projeto e formar equipe, você precisa estar conectado com sua conta."
           />
           <div className="mt-8 flex flex-wrap gap-3">
             <Button asChild className="rounded-2xl font-semibold">
@@ -229,9 +229,9 @@ export default function NovaIdeiaPage() {
               </Link>
             </Button>
             <PageHeader
-              eyebrow="Publicação acadêmica"
-              title="Publique uma nova ideia"
-              description="Ao enviar, o projeto será criado no Supabase com você como owner e ficará disponível em /explorar."
+              eyebrow="Publicar projeto"
+              title="Descreva sua ideia"
+              description="Ao publicar, seu projeto fica visível para outras pessoas no Team Link."
               className="min-w-0 flex-1 border-none pb-0"
             />
           </div>
@@ -240,7 +240,7 @@ export default function NovaIdeiaPage() {
             <div className="min-w-0 space-y-8">
               <FormSection
                 title="Informações básicas"
-                description="Esses campos vão direto para a tabela projects no banco de dados."
+                description="Conte o que é o projeto, qual o objetivo e em que área ele se encaixa."
               >
                 <div className="space-y-3">
                   <Label htmlFor="titulo">Título</Label>
@@ -248,14 +248,14 @@ export default function NovaIdeiaPage() {
                     id="titulo"
                     value={title}
                     onChange={(event) => setTitle(event.target.value)}
-                    placeholder="Nome curto memorável para o projeto"
+                    placeholder="Um nome curto e fácil de lembrar para o projeto"
                     maxLength={120}
                     required
                     className="rounded-2xl"
                   />
                   {generatedSlug ? (
                     <p className="text-xs text-muted-foreground">
-                      URL pública: <span className="font-mono">/projetos/{generatedSlug}</span>
+                      Endereço público: <span className="font-mono">/projetos/{generatedSlug}</span>
                     </p>
                   ) : null}
                 </div>
@@ -264,7 +264,7 @@ export default function NovaIdeiaPage() {
                   <Label>Categoria</Label>
                   <Select value={category} onValueChange={setCategory} required>
                     <SelectTrigger className="rounded-2xl">
-                      <SelectValue placeholder="Área predominante do trabalho" />
+                      <SelectValue placeholder="Área principal do projeto" />
                     </SelectTrigger>
                     <SelectContent>
                       {projectCategories.map((item) => (
@@ -283,7 +283,7 @@ export default function NovaIdeiaPage() {
                     rows={5}
                     value={shortDescription}
                     onChange={(event) => setShortDescription(event.target.value)}
-                    placeholder="Contexto rápido, público beneficiado e o que já foi validado em laboratório/pesquisa."
+                    placeholder="Resumo direto: o problema, para quem é e o que o projeto pretende entregar."
                     required
                     className="rounded-2xl"
                   />
@@ -296,7 +296,7 @@ export default function NovaIdeiaPage() {
                     rows={8}
                     value={fullDescription}
                     onChange={(event) => setFullDescription(event.target.value)}
-                    placeholder="Liste marcos esperados para o próximo semestre, riscos e dependências institucionais."
+                    placeholder="Detalhe contexto, etapas previstas, recursos necessários e o que você espera construir junto."
                     required
                     className="rounded-2xl"
                   />
@@ -304,11 +304,11 @@ export default function NovaIdeiaPage() {
               </FormSection>
 
               <FormSection
-                title="Equipe necessária"
-                description="Ajuda quem navega pelo explorar entender rápido o que você procura."
+                title="Equipe e vagas"
+                description="Indique quantas vagas estão em aberto e que perfil você procura."
               >
                 <div className="space-y-4">
-                  <Label htmlFor="vagas">Quantidade de vagas</Label>
+                  <Label htmlFor="vagas">Vagas disponíveis</Label>
                   <Input
                     id="vagas"
                     min={1}
@@ -324,14 +324,14 @@ export default function NovaIdeiaPage() {
                     rows={6}
                     value={profileSeek}
                     onChange={(event) => setProfileSeek(event.target.value)}
-                    placeholder="Inclua horários de encontros, tecnologias alvo e se há vínculos com professores-orientadores."
+                    placeholder="Descreva disponibilidade esperada, ritmo de trabalho, tecnologias envolvidas e responsabilidades."
                     required
                     className="rounded-2xl"
                   />
                 </div>
 
                 <div className="space-y-4">
-                  <Label>Habilidades ou papéis</Label>
+                  <Label>Habilidades desejadas</Label>
                   <div className="flex flex-wrap gap-2 rounded-3xl border border-dashed border-border p-4">
                     {skills.map((skill) => (
                       <button
@@ -355,7 +355,7 @@ export default function NovaIdeiaPage() {
                           setSkillsInput('')
                         }
                       }}
-                      placeholder="Firmware, QA, comunicação..."
+                      placeholder="Ex.: React, design, comunicação..."
                       className="rounded-2xl"
                     />
                     <Button
@@ -375,7 +375,7 @@ export default function NovaIdeiaPage() {
 
               <FormSection
                 title="Tags"
-                description="Ajuda humanos e futuros filtros semânticos a encontrarem o projeto."
+                description="Ajuda outras pessoas a encontrarem seu projeto pelos temas certos."
               >
                 <div className="flex flex-wrap gap-2 rounded-3xl border border-border bg-muted/40 p-4">
                   {tags.map((chip) => (
@@ -392,7 +392,7 @@ export default function NovaIdeiaPage() {
 
                 <div className="flex flex-col gap-3 sm:flex-row">
                   <Input
-                    placeholder="arduino, prisma, astrofísica aplicada..."
+                    placeholder="Ex.: educação, sustentabilidade, robótica..."
                     value={tagInput}
                     className="rounded-2xl"
                     onChange={(event) => setTagInput(event.target.value)}
@@ -436,13 +436,13 @@ export default function NovaIdeiaPage() {
                   role="status"
                   className="rounded-2xl border border-amber-400/40 bg-amber-100/60 px-4 py-3 text-sm font-medium text-amber-900 dark:bg-amber-500/10 dark:text-amber-200"
                 >
-                  Configure NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY em .env.local para publicar.
+                  Não foi possível conectar ao serviço de dados. Tente novamente em instantes.
                 </div>
               ) : null}
 
               <div className="flex flex-wrap gap-4">
                 <Button type="submit" disabled={!isValid || submitting} className="rounded-2xl px-8 font-semibold">
-                  {submitting ? 'Publicando...' : 'Publicar ideia'}
+                  {submitting ? 'Publicando...' : 'Publicar projeto'}
                 </Button>
                 <Button asChild type="button" variant="outline" className="rounded-2xl font-semibold">
                   <Link href="/explorar">Cancelar</Link>
@@ -451,7 +451,7 @@ export default function NovaIdeiaPage() {
             </div>
 
             <div className="min-w-0 space-y-4 lg:sticky lg:top-[96px]">
-              <p className="text-sm font-semibold text-muted-foreground">Preview contínuo</p>
+              <p className="text-sm font-semibold text-muted-foreground">Pré-visualização</p>
               <ProjectCard project={previewProject} disableLink className="opacity-95" />
             </div>
           </form>

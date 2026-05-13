@@ -8,21 +8,21 @@ import { Container } from '@/components/layout/container'
 const benefits = [
   {
     icon: Sparkles,
-    title: 'Portfólio com narrativa técnica',
+    title: 'Portfólio com contexto real',
     description:
-      'Cada projeto explica problema real, método e tecnologias — pronto para bancas e processos seletivos da indústria.',
+      'Cada projeto explica o problema, o objetivo e as habilidades envolvidas — útil para mostrar sua trajetória.',
   },
   {
     icon: Layers,
-    title: 'Squads multidisciplinares',
+    title: 'Equipes multidisciplinares',
     description:
-      'Encontre vagas declaradas, stacks e necessidades antes de gastar tempo em conversas desalinhadas.',
+      'Veja vagas, habilidades e perfis procurados antes de gastar tempo em conversas desalinhadas.',
   },
   {
     icon: Award,
-    title: 'Ambiente universitário confiável',
+    title: 'Ambiente focado e direto',
     description:
-      'Visual limpo, focado em reputação estudantil, sem ruídos típicos de rede social ampla.',
+      'Interface limpa, voltada para colaboração em projetos, sem ruídos típicos de redes sociais abertas.',
   },
 ] as const
 
@@ -31,8 +31,8 @@ export function StudentBenefitsSection() {
     <section className="border-b border-border bg-muted/20 py-20 dark:bg-muted/15">
       <Container className="space-y-12">
         <div className="mx-auto max-w-3xl text-center">
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">Valor para estudantes</p>
-          <h2 className="mt-4 text-balance text-4xl font-bold">Benefícios para quem está na graduação</h2>
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">Por que usar</p>
+          <h2 className="mt-4 text-balance text-4xl font-bold">O que o Team Link entrega</h2>
         </div>
 
         <div className="grid gap-6 md:grid-cols-3">
@@ -46,7 +46,7 @@ export function StudentBenefitsSection() {
                 viewport={{ once: true, margin: '-40px' }}
                 transition={{ duration: 0.3, delay: index * 0.05, ease: 'easeOut' }}
                 whileHover={{ y: -4, scale: 1.01 }}
-                className="rounded-[1.85rem] border border-border bg-card p-8 shadow-sm"
+                className="mx-auto w-full max-w-md rounded-[1.85rem] border border-border bg-card p-8 shadow-sm md:mx-0 md:max-w-none"
               >
                 <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                   <Icon className="h-6 w-6" aria-hidden />

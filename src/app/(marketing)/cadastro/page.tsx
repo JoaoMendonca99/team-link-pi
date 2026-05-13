@@ -68,7 +68,7 @@ export default function CadastroPage() {
     }
 
     if (envMissing) {
-      setErrorMessage('Conexão com o Supabase ainda não configurada neste ambiente.')
+      setErrorMessage('Não foi possível conectar ao serviço de dados. Tente novamente em instantes.')
       return
     }
 
@@ -136,7 +136,7 @@ export default function CadastroPage() {
           <p className="text-xs font-semibold uppercase tracking-[0.34em] text-primary">Comece agora</p>
           <h1 className="text-4xl font-bold md:text-[2.7rem]">Crie seu perfil no Team Link</h1>
           <p className="text-base text-muted-foreground">
-            Publique ideias, encontre colaboradores e participe de projetos acadêmicos em um só lugar.
+            Publique ideias, encontre colaboradores e participe de projetos em um só lugar.
           </p>
           <ul className="space-y-3 text-muted-foreground">
             <li>Com seu perfil, você poderá criar projetos, solicitar participação em equipes e acompanhar suas interações.</li>
@@ -254,7 +254,7 @@ export default function CadastroPage() {
                 value={course}
                 required
                 onChange={(event) => setCourse(event.target.value)}
-                placeholder="Engenharia da Computação..."
+                placeholder="Ex.: Engenharia, Design, Administração..."
                 className="rounded-2xl"
               />
             </div>
@@ -291,7 +291,7 @@ export default function CadastroPage() {
                 role="status"
                 className="rounded-2xl border border-amber-400/40 bg-amber-100/60 px-4 py-3 text-sm font-medium text-amber-900 dark:bg-amber-500/10 dark:text-amber-200"
               >
-                Configure as variáveis NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY em .env.local para habilitar o cadastro.
+                Não foi possível conectar ao serviço de dados. Tente novamente em instantes.
               </div>
             ) : null}
 

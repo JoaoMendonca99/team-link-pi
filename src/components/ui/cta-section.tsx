@@ -2,10 +2,28 @@
 
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { Compass, Rocket } from 'lucide-react'
+import { Compass, MessageSquare, Rocket, Sparkles, Users2 } from 'lucide-react'
 
 import { Container } from '@/components/layout/container'
 import { Button } from '@/components/ui/button'
+
+const highlights = [
+  {
+    icon: Sparkles,
+    title: 'Publique sua ideia',
+    description: 'Conte o problema, o objetivo e as habilidades que você procura.',
+  },
+  {
+    icon: Users2,
+    title: 'Forme sua equipe',
+    description: 'Receba solicitações e escolha quem entra no projeto.',
+  },
+  {
+    icon: MessageSquare,
+    title: 'Acompanhe interações',
+    description: 'Curtidas, comentários e participações ficam reunidos no projeto.',
+  },
+] as const
 
 export function CTASection() {
   return (
@@ -27,9 +45,9 @@ export function CTASection() {
           <span className="inline-flex rounded-full border border-white/40 bg-white/10 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.32em] text-white/85">
             Próximo passo
           </span>
-          <h2 className="text-balance text-4xl font-bold md:text-5xl">Pronto para orquestrar sua equipe?</h2>
+          <h2 className="text-balance text-4xl font-bold md:text-5xl">Pronto para tirar sua ideia do papel?</h2>
           <p className="text-lg text-white/80 md:text-xl">
-            Publique com clareza, convide talentos próximos e mantenha o histórico do projeto sempre visível para a banca ou para mentores externos.
+            Publique seu projeto, encontre pessoas com habilidades complementares e mantenha tudo organizado em um só lugar.
           </p>
         </motion.div>
 
@@ -58,24 +76,31 @@ export function CTASection() {
           >
             <Link href="/explorar" className="inline-flex items-center gap-2">
               <Compass className="h-4 w-4" aria-hidden />
-              Voltar ao explorar
+              Explorar projetos
             </Link>
           </Button>
         </motion.div>
 
-        <div className="grid gap-6 border-t border-white/15 pt-10 text-white/85 sm:grid-cols-3">
-          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.25 }}>
-            <div className="text-4xl font-bold tabular-nums text-white">—</div>
-            <div className="text-sm uppercase tracking-[0.2em] text-white/65">Projetos publicados (após backend)</div>
-          </motion.div>
-          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.25, delay: 0.05 }}>
-            <div className="text-4xl font-bold tabular-nums text-white">—</div>
-            <div className="text-sm uppercase tracking-[0.2em] text-white/65">Equipes registradas na plataforma</div>
-          </motion.div>
-          <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} transition={{ duration: 0.25, delay: 0.1 }}>
-            <div className="text-4xl font-bold tabular-nums text-white">—</div>
-            <div className="text-sm uppercase tracking-[0.2em] text-white/65">Indicadores de engajamento reais</div>
-          </motion.div>
+        <div className="grid gap-6 border-t border-white/15 pt-10 text-left text-white/85 sm:grid-cols-3">
+          {highlights.map((item) => {
+            const Icon = item.icon
+            return (
+              <motion.div
+                key={item.title}
+                initial={{ opacity: 0, y: 10 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.3 }}
+                className="mx-auto w-full max-w-md rounded-2xl border border-white/15 bg-white/5 p-5 backdrop-blur sm:mx-0 sm:max-w-none"
+              >
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-white">
+                  <Icon className="h-5 w-5" aria-hidden />
+                </span>
+                <h3 className="mt-4 text-lg font-semibold text-white">{item.title}</h3>
+                <p className="mt-2 text-sm text-white/75">{item.description}</p>
+              </motion.div>
+            )
+          })}
         </div>
       </Container>
     </section>

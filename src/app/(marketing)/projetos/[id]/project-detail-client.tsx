@@ -160,8 +160,8 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
         <Container className="py-24">
           <EmptyState
             icon={MessageCircle}
-            title="Conexão com Supabase ausente"
-            description="Configure NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY em .env.local para abrir este projeto."
+            title="Não foi possível carregar este projeto"
+            description="Tente novamente em instantes. Se o problema continuar, volte para o explorar."
             actionLabel="Voltar para explorar"
             href="/explorar"
           />
@@ -349,7 +349,7 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
               <p className="text-xs font-semibold uppercase tracking-[0.26em] text-primary">Equipe atual</p>
               <h3 className="text-xl font-semibold">Membros ({membersCount})</h3>
               <p className="text-sm text-muted-foreground">
-                Lista carregada da view <code className="font-mono text-xs">project_public_members</code>.
+                Pessoas que fazem parte deste projeto.
               </p>
             </div>
             <MembersList

@@ -19,7 +19,7 @@ export function CategoriesShowcase() {
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">Áreas de interesse</p>
           <h2 className="mt-4 text-balance text-4xl font-bold">Catálogo multidisciplinar</h2>
           <p className="mt-4 text-lg text-muted-foreground">
-            Estas categorias estruturam filtros e tags. Os resultados aparecerão quando houver projetos publicados pela instituição.
+            Use categorias para encontrar projetos alinhados aos seus interesses e habilidades.
           </p>
         </div>
 
@@ -33,12 +33,12 @@ export function CategoriesShowcase() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: '-40px' }}
                 transition={{ duration: 0.3, delay: index * 0.04, ease: 'easeOut' }}
-                className="flex flex-col gap-4 rounded-[1.65rem] border border-border bg-card p-6 shadow-sm"
+                className="mx-auto flex w-full max-w-md flex-col gap-4 rounded-[1.65rem] border border-border bg-card p-6 shadow-sm md:mx-0 md:max-w-none"
               >
                 <Icon className="h-9 w-9 text-[#2563EB]" aria-hidden />
                 <CategoryBadge label={category} className="w-fit bg-secondary/70" />
                 <p className="text-sm text-muted-foreground">
-                  Explore o catálogo por esta área quando os projetos reais estiverem disponíveis no sistema.
+                  Veja os projetos abertos nesta área e descubra equipes para colaborar.
                 </p>
                 <Button asChild variant="ghost" className="justify-start px-0 font-semibold text-primary">
                   <Link href={`/explorar?category=${encodeURIComponent(category)}`}>Filtrar no explorar</Link>

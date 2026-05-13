@@ -77,9 +77,9 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
         <Container className="py-24">
           <EmptyState
             icon={Construction}
-            title="Conexão com Supabase ausente"
-            description="Configure NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_ANON_KEY em .env.local para abrir esta página."
-            actionLabel="Voltar para Meus Projetos"
+            title="Não foi possível abrir este projeto"
+            description="Tente novamente em instantes. Se o problema continuar, volte para os seus projetos."
+            actionLabel="Voltar para Meus projetos"
             href="/meus-projetos"
           />
         </Container>
@@ -126,7 +126,7 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
             icon={Construction}
             title="Projeto não encontrado"
             description="O endereço acessado não corresponde a um projeto público ou foi removido."
-            actionLabel="Voltar para Meus Projetos"
+            actionLabel="Voltar para Meus projetos"
             href="/meus-projetos"
           />
         </Container>
@@ -148,12 +148,12 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
           </Button>
 
           <PageHeader
-            eyebrow="Edição de projeto"
+            eyebrow="Editar projeto"
             title={project.title}
             description={
               isOwner
-                ? 'A edição completa será habilitada na próxima etapa. Por enquanto, você pode visualizar os dados atuais do projeto.'
-                : 'Apenas o owner do projeto pode editá-lo. Você pode visualizar os dados atuais, mas o formulário de edição está restrito.'
+                ? 'Visualize os dados atuais do projeto. A edição completa chega em breve.'
+                : 'Apenas quem publicou este projeto pode editá-lo. Você pode visualizar os dados atuais.'
             }
           />
 
@@ -162,7 +162,7 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
               role="status"
               className="rounded-2xl border border-amber-400/40 bg-amber-100/60 px-4 py-3 text-sm font-medium text-amber-900 dark:bg-amber-500/10 dark:text-amber-200"
             >
-              Esta página requer que você seja o owner do projeto (RLS no banco também bloqueia atualizações de outros usuários).
+              Apenas quem publicou este projeto pode editá-lo.
             </div>
           ) : null}
         </Container>
@@ -173,8 +173,8 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
           <h2 className="text-xl font-semibold">Dados atuais</h2>
           <dl className="mt-4 grid gap-4 text-sm md:grid-cols-2">
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Slug</dt>
-              <dd className="mt-1 font-mono text-sm">{project.slug}</dd>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Endereço da página</dt>
+              <dd className="mt-1 font-mono text-sm">/projetos/{project.slug}</dd>
             </div>
             <div>
               <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Status</dt>
@@ -185,7 +185,7 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
               <dd className="mt-1">{project.visibility}</dd>
             </div>
             <div>
-              <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Vagas abertas</dt>
+              <dt className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Vagas em aberto</dt>
               <dd className="mt-1">{project.openSpots}</dd>
             </div>
             <div className="md:col-span-2">
@@ -218,7 +218,7 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
             <Link href={`/projetos/${project.slug}`}>Ver projeto público</Link>
           </Button>
           <Button asChild variant="outline" className="rounded-2xl font-semibold">
-            <Link href="/meus-projetos">Voltar para Meus Projetos</Link>
+            <Link href="/meus-projetos">Voltar para Meus projetos</Link>
           </Button>
         </div>
       </Container>
