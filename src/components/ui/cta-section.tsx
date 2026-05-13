@@ -81,7 +81,7 @@ export function CTASection() {
           </Button>
         </motion.div>
 
-        <div className="grid gap-6 border-t border-white/15 pt-10 text-left text-white/85 sm:grid-cols-3">
+        <div className="grid gap-6 border-t border-white/15 pt-10 text-center text-white/85 sm:grid-cols-3">
           {highlights.map((item) => {
             const Icon = item.icon
             return (
@@ -91,9 +91,9 @@ export function CTASection() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.3 }}
-                className="mx-auto w-full max-w-md rounded-2xl border border-white/15 bg-white/5 p-5 backdrop-blur sm:mx-0 sm:max-w-none"
+                className="mx-auto flex w-full max-w-md flex-col items-center rounded-2xl border border-white/15 bg-white/5 p-5 backdrop-blur sm:mx-0 sm:max-w-none"
               >
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-white">
+                <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-white">
                   <Icon className="h-5 w-5" aria-hidden />
                 </span>
                 <h3 className="mt-4 text-lg font-semibold text-white">{item.title}</h3>

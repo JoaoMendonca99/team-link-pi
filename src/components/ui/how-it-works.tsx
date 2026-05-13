@@ -55,12 +55,12 @@ export function HowItWorks() {
                 transition={{ duration: 0.35, delay: index * 0.05, ease: 'easeOut' }}
                 viewport={{ once: true, margin: '-40px' }}
                 whileHover={{ y: -3, scale: 1.01 }}
-                className={`relative mx-auto w-full max-w-md rounded-[1.75rem] border border-border bg-gradient-to-br ${step.accent} p-6 shadow-sm md:mx-0 md:max-w-none`}
+                className={`relative mx-auto flex w-full max-w-md flex-col items-center rounded-[1.75rem] border border-border bg-gradient-to-br ${step.accent} p-6 text-center shadow-sm md:mx-0 md:max-w-none`}
               >
                 <span className="absolute right-6 top-6 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   {String(index + 1).padStart(2, '0')}
                 </span>
-                <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-background/85 text-primary shadow-inner">
+                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-background/85 text-primary shadow-inner">
                   <Icon className="h-6 w-6" aria-hidden />
                 </span>
                 <h3 className="mt-6 text-xl font-semibold">{step.title}</h3>

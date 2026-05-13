@@ -79,8 +79,9 @@ export function SiteHeader() {
   }
 
   return (
-    <header className="sticky top-0 z-[60] w-full border-b border-border/70 bg-background/85 backdrop-blur-xl supports-[backdrop-filter]:bg-background/75">
-      <Container className="flex h-[72px] items-center justify-between gap-3">
+    <>
+      <header className="sticky top-0 z-[60] w-full border-b border-border/70 bg-background/85 backdrop-blur-xl supports-[backdrop-filter]:bg-background/75">
+        <Container className="flex h-[72px] items-center justify-between gap-3">
         <Link href="/" className="flex min-w-0 shrink items-center gap-2 font-bold tracking-tight text-foreground">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary">
             <Link2 className="h-5 w-5" aria-hidden />
@@ -190,7 +191,8 @@ export function SiteHeader() {
             <Menu className="h-5 w-5" aria-hidden />
           </Button>
         </div>
-      </Container>
+        </Container>
+      </header>
 
       {mobileOpen ? (
         <div
@@ -301,6 +303,6 @@ export function SiteHeader() {
           </div>
         </div>
       ) : null}
-    </header>
+    </>
   )
 }

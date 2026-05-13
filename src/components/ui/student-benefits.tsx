@@ -46,9 +46,9 @@ export function StudentBenefitsSection() {
                 viewport={{ once: true, margin: '-40px' }}
                 transition={{ duration: 0.3, delay: index * 0.05, ease: 'easeOut' }}
                 whileHover={{ y: -4, scale: 1.01 }}
-                className="mx-auto w-full max-w-md rounded-[1.85rem] border border-border bg-card p-8 shadow-sm md:mx-0 md:max-w-none"
+                className="mx-auto flex w-full max-w-md flex-col items-center rounded-[1.85rem] border border-border bg-card p-8 text-center shadow-sm md:mx-0 md:max-w-none"
               >
-                <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+                <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/10 text-primary">
                   <Icon className="h-6 w-6" aria-hidden />
                 </span>
                 <h3 className="mt-6 text-xl font-semibold">{benefit.title}</h3>
