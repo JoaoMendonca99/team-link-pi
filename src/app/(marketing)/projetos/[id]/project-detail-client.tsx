@@ -355,6 +355,8 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
             <MembersList
               ref={membersRef}
               projectId={project.id}
+              projectOwnerId={project.ownerId}
+              currentUserId={user?.id ?? null}
               onCountChange={setMembersCount}
             />
           </section>

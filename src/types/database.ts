@@ -16,9 +16,22 @@ export type ProjectStatusValue =
 
 export type ProjectVisibility = "public" | "private"
 
-export type ProjectMemberRoleValue = "owner" | "member" | "mentor"
+export type ProjectMemberRoleValue = "owner" | "admin" | "member" | "mentor"
 
 export type ProjectMemberStatusValue = "active" | "invited" | "removed" | "left"
+
+export type MemberBadgeColor =
+  | "blue"
+  | "green"
+  | "emerald"
+  | "cyan"
+  | "violet"
+  | "purple"
+  | "amber"
+  | "orange"
+  | "rose"
+  | "red"
+  | "slate"
 
 export type ProjectCommentStatus = "visible" | "hidden" | "removed"
 
@@ -131,6 +144,8 @@ export interface ProjectMemberRow {
   role: ProjectMemberRoleValue
   status: ProjectMemberStatusValue
   joined_at: string
+  display_role?: string | null
+  badge_color?: MemberBadgeColor | null
 }
 
 // ============================================================================
@@ -215,6 +230,15 @@ export interface ProjectPublicMemberRow {
   full_name: string | null
   course: string | null
   avatar_url: string | null
+  /**
+   * Texto livre exibido no selo (até 30 caracteres). Quando ausente ou nulo,
+   * a UI deve cair no rótulo padrão derivado de `role`.
+   */
+  display_role?: string | null
+  /**
+   * Cor do selo. Quando ausente ou nula, a UI cai na cor padrão de `role`.
+   */
+  badge_color?: MemberBadgeColor | null
 }
 
 /** View `public.project_public_comments`. */
@@ -280,6 +304,30 @@ export interface CreateProjectGroupConversationArgs {
 
 export interface DeleteProjectGroupConversationArgs {
   p_conversation_id: string
+}
+
+// ============================================================================
+// RPC: update_project_member_visual_role
+// ============================================================================
+
+export interface UpdateProjectMemberVisualRoleArgs {
+  p_project_id: string
+  p_user_id: string
+  p_display_role: string | null
+  p_badge_color: MemberBadgeColor | null
+}
+
+/**
+ * Linha retornada pela RPC `public.update_project_member_visual_role`.
+ * Reflete o registro de `project_members` recém-atualizado.
+ */
+export interface UpdateProjectMemberVisualRoleResult {
+  member_id: string
+  project_id: string
+  user_id: string
+  role: ProjectMemberRoleValue
+  display_role: string | null
+  badge_color: MemberBadgeColor | null
 }
 
 export interface ProjectConversationMemberRow {
