@@ -3,6 +3,10 @@
 import * as React from "react"
 import { createPortal } from "react-dom"
 import {
+  REALTIME_LISTEN_TYPES,
+  REALTIME_POSTGRES_CHANGES_LISTEN_EVENT,
+} from "@supabase/supabase-js"
+import {
   ArrowLeft,
   Loader2,
   MessageCircle,
@@ -336,6 +340,115 @@ export function ProjectChatWidget() {
     if (!selectedConversation) return
     void loadMessages(selectedConversation.id)
   }, [loadMessages, selectedConversation, view])
+
+  // Mantém uma referência sempre fresca de `messages` para o handler do
+  // Realtime checar duplicidade sem precisar entrar nas dependências do effect
+  // de inscrição (o que reinscreveria o canal a cada mensagem nova).
+  const messagesRef = React.useRef<ChatMessage[]>([])
+  React.useEffect(() => {
+    messagesRef.current = messages
+  }, [messages])
+
+  // Recebe uma row crua vinda do Realtime e a adiciona ao estado da conversa
+  // aberta. Garante dedupe por id, enriquece com o perfil do remetente e
+  // mantém a ordem cronológica.
+  const handleRealtimeInsert = React.useCallback(
+    async (row: ProjectMessageRow, expectedConversationId: string) => {
+      if (!row || row.conversation_id !== expectedConversationId) return
+      if (row.status !== "visible") return
+      if (messagesRef.current.some((existing) => existing.id === row.id)) return
+
+      let author: ProfileRow | null = null
+      if (user && row.sender_id === user.id && profile) {
+        author = profile
+      } else {
+        const existingAuthor = messagesRef.current.find(
+          (msg) => msg.sender_id === row.sender_id && msg.author,
+        )?.author
+        if (existingAuthor) {
+          author = existingAuthor
+        } else if (supabaseReady) {
+          try {
+            const client = getSupabaseClient()
+            const profileResult = await client
+              .from("profiles")
+              .select(
+                "id, full_name, email, course, bio, avatar_url, skills, interests, created_at, updated_at",
+              )
+              .eq("id", row.sender_id)
+              .maybeSingle()
+            if (!profileResult.error && profileResult.data) {
+              author = profileResult.data as ProfileRow
+            }
+          } catch {
+            // Sem perfil disponível, a mensagem ainda aparece com fallback "Membro do projeto".
+          }
+        }
+      }
+
+      setMessages((prev) => {
+        if (prev.some((existing) => existing.id === row.id)) return prev
+        const next: ChatMessage = { ...row, author }
+        const merged = [...prev, next]
+        merged.sort((a, b) => {
+          if (a.created_at === b.created_at) return a.id < b.id ? -1 : 1
+          return a.created_at < b.created_at ? -1 : 1
+        })
+        return merged
+      })
+    },
+    [profile, supabaseReady, user],
+  )
+
+  // Subscription do Supabase Realtime para a conversa aberta.
+  //
+  // Só roda quando o painel está aberto, na view de thread, com conversa
+  // selecionada e usuário autenticado. O cleanup remove o canal sempre que
+  // qualquer uma dessas condições mudar, evitando inscrições duplicadas.
+  React.useEffect(() => {
+    if (!open) return
+    if (view !== "thread") return
+    if (!isAuthenticated) return
+    if (!supabaseReady) return
+    if (!selectedConversation) return
+
+    const conversationId = selectedConversation.id
+    const client = getSupabaseClient()
+
+    const channel = client.channel(`project_messages:${conversationId}`)
+
+    channel.on(
+      REALTIME_LISTEN_TYPES.POSTGRES_CHANGES,
+      {
+        event: REALTIME_POSTGRES_CHANGES_LISTEN_EVENT.INSERT,
+        schema: "public",
+        table: "project_messages",
+        filter: `conversation_id=eq.${conversationId}`,
+      },
+      (payload) => {
+        const row = payload.new as ProjectMessageRow | null
+        if (!row) return
+        void handleRealtimeInsert(row, conversationId)
+      },
+    )
+
+    channel.subscribe()
+
+    return () => {
+      try {
+        void client.removeChannel(channel)
+      } catch {
+        // Silencioso: se já foi removido por outro caminho, ignoramos.
+      }
+    }
+  }, [
+    handleRealtimeInsert,
+    isAuthenticated,
+    open,
+    selectedConversation,
+    supabaseReady,
+    view,
+  ])
 
   React.useEffect(() => {
     if (view !== "thread") return
