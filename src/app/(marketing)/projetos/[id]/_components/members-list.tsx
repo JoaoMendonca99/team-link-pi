@@ -106,24 +106,70 @@ export const MembersList = forwardRef<MembersListHandle, MembersListProps>(
         if (!editingMember) {
           return { ok: false as const, message: 'Não foi possível salvar o cargo agora.' }
         }
-        const client = getSupabaseClient()
-        const { error } = await client.rpc('update_project_member_visual_role', {
-          p_project_id: projectId,
-          p_user_id: editingMember.user_id,
+
+        // Captura local — elimina qualquer dúvida de closure stale se o
+        // estado mudar enquanto a RPC está em voo.
+        const targetUserId = editingMember.user_id
+        const targetProjectId = projectId
+        const payload = {
+          p_project_id: targetProjectId,
+          p_user_id: targetUserId,
           p_display_role: displayRole,
           p_badge_color: badgeColor,
-        })
+        }
+
+        const client = getSupabaseClient()
+        const { data, error } = await client.rpc(
+          'update_project_member_visual_role',
+          payload,
+        )
+
         if (error) {
+          // Diagnóstico técnico no console (visível só para devs). A UI
+          // continua mostrando a mensagem amigável.
+          if (typeof window !== 'undefined') {
+            console.error('[update_project_member_visual_role]', {
+              payload,
+              message: error.message,
+              details: error.details,
+              hint: error.hint,
+              code: error.code,
+              raw: error,
+            })
+          }
           return { ok: false as const, message: 'Não foi possível salvar o cargo agora.' }
         }
-        // Atualiza localmente para refletir sem refetch.
+
+        // Fonte de verdade: o que o banco efetivamente persistiu.
+        // A RPC retorna TABLE(member_id, project_id, user_id, role,
+        // display_role, badge_color). Se vier vazia, caímos no payload
+        // local como fallback (mesma intenção do usuário).
+        type RpcRow = {
+          member_id?: string | null
+          project_id?: string | null
+          user_id: string
+          role?: string | null
+          display_role: string | null
+          badge_color: string | null
+        }
+        const rpcRows: RpcRow[] = Array.isArray(data) ? (data as RpcRow[]) : []
+        const persisted = rpcRows.find((row) => row.user_id === targetUserId) ?? null
+
+        const nextDisplayRole = persisted?.display_role ?? displayRole
+        const nextBadgeColorRaw = persisted?.badge_color ?? badgeColor
+        const nextBadgeColor: MemberBadgeColor | null = isValidBadgeColor(
+          nextBadgeColorRaw ?? null,
+        )
+          ? (nextBadgeColorRaw as MemberBadgeColor)
+          : null
+
         setMembers((prev) =>
           prev.map((m) =>
-            m.user_id === editingMember.user_id
+            m.user_id === targetUserId
               ? {
                   ...m,
-                  display_role: displayRole,
-                  badge_color: badgeColor,
+                  display_role: nextDisplayRole,
+                  badge_color: nextBadgeColor,
                 }
               : m,
           ),
