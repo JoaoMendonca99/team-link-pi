@@ -59,6 +59,13 @@ export const PROJECT_STATUS_OPTIONS: ProjectStatusValue[] = [
   "archived",
 ]
 
+export const PROJECT_VISIBILITY_LABEL: Record<ProjectVisibility, string> = {
+  public: "Público",
+  private: "Privado",
+}
+
+export const PROJECT_VISIBILITY_OPTIONS: ProjectVisibility[] = ["public", "private"]
+
 // ----------------------------------------------------------------------------
 // Mappers
 // ----------------------------------------------------------------------------
