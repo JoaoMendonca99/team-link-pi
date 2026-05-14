@@ -244,3 +244,46 @@ export interface CreateProjectWithDetailsArgs {
   p_tags: string[]
   p_required_skills: string[]
 }
+
+// ============================================================================
+// Chat (Fase 1)
+// ============================================================================
+
+export type ProjectConversationKind = "general" | "direct" | "group"
+
+export type ProjectMessageStatus = "visible" | "deleted" | "hidden"
+
+export interface ProjectConversationRow {
+  id: string
+  project_id: string
+  kind: ProjectConversationKind
+  title: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ProjectConversationMemberRow {
+  conversation_id: string
+  user_id: string
+  role: string
+  joined_at: string
+  last_read_at: string | null
+}
+
+export interface ProjectMessageRow {
+  id: string
+  conversation_id: string
+  sender_id: string
+  content: string
+  status: ProjectMessageStatus
+  created_at: string
+  updated_at: string
+}
+
+export interface ProjectMessageInsert {
+  conversation_id: string
+  sender_id: string
+  content: string
+  status?: ProjectMessageStatus
+}

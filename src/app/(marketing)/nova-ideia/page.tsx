@@ -20,8 +20,30 @@ import { translateAuthError } from '@/lib/supabase/auth-errors'
 import type { ProjectDisplay } from '@/lib/projects/display'
 import { slugify } from '@/lib/projects/slug'
 import { useSupabaseSession } from '@/hooks/use-supabase-session'
+import { cn } from '@/lib/utils'
 
 const today = () => new Date().toISOString()
+
+type FormErrorField =
+  | 'title'
+  | 'category'
+  | 'shortDescription'
+  | 'fullDescription'
+  | 'spots'
+  | 'profileSeek'
+  | 'tags'
+
+type FormErrors = Partial<Record<FormErrorField, string>>
+
+const FIELD_ORDER: FormErrorField[] = [
+  'title',
+  'category',
+  'shortDescription',
+  'fullDescription',
+  'spots',
+  'profileSeek',
+  'tags',
+]
 
 export default function NovaIdeiaPage() {
   const router = useRouter()
@@ -41,6 +63,7 @@ export default function NovaIdeiaPage() {
   const [submitting, setSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [envMissing, setEnvMissing] = useState(false)
+  const [formErrors, setFormErrors] = useState<FormErrors>({})
 
   useEffect(() => {
     setEnvMissing(!isSupabaseConfigured())
@@ -99,13 +122,57 @@ export default function NovaIdeiaPage() {
     title,
   ])
 
-  const isValid =
-    Boolean(title.trim()) &&
-    Boolean(shortDescription.trim()) &&
-    Boolean(fullDescription.trim()) &&
-    Boolean(category) &&
-    Boolean(profileSeek.trim()) &&
-    tags.length > 0
+  function validateForm(): FormErrors {
+    const errors: FormErrors = {}
+
+    if (!title.trim()) {
+      errors.title = 'Informe o título do projeto.'
+    }
+    if (!category) {
+      errors.category = 'Selecione uma área para o projeto.'
+    }
+    if (!shortDescription.trim()) {
+      errors.shortDescription = 'Escreva uma descrição curta do projeto.'
+    }
+    if (!fullDescription.trim()) {
+      errors.fullDescription = 'Descreva o projeto com mais detalhes.'
+    }
+
+    const parsedSpots = Number.parseInt(spots, 10)
+    if (!Number.isFinite(parsedSpots) || parsedSpots < 1) {
+      errors.spots = 'Informe pelo menos uma vaga em aberto.'
+    }
+
+    if (!profileSeek.trim()) {
+      errors.profileSeek = 'Descreva o perfil que você procura.'
+    }
+    if (tags.length === 0) {
+      errors.tags = 'Adicione pelo menos uma tag.'
+    }
+
+    return errors
+  }
+
+  function clearFieldError(field: FormErrorField) {
+    setFormErrors((prev) => {
+      if (!prev[field]) return prev
+      const next = { ...prev }
+      delete next[field]
+      return next
+    })
+  }
+
+  function focusFirstError(errors: FormErrors) {
+    const firstField = FIELD_ORDER.find((field) => Boolean(errors[field]))
+    if (!firstField) return
+    const target = document.querySelector<HTMLElement>(`[data-field="${firstField}"]`)
+    if (!target) return
+    target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    const focusable = target.querySelector<HTMLElement>(
+      'input, textarea, [role="combobox"], button',
+    )
+    focusable?.focus({ preventScroll: true })
+  }
 
   const appendUnique = (
     raw: string,
@@ -126,7 +193,14 @@ export default function NovaIdeiaPage() {
       setErrorMessage('Você precisa estar conectado para publicar uma ideia.')
       return
     }
-    if (!isValid) return
+
+    const errors = validateForm()
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors)
+      window.setTimeout(() => focusFirstError(errors), 50)
+      return
+    }
+    setFormErrors({})
 
     if (envMissing) {
       setErrorMessage('Não foi possível conectar ao serviço de dados. Tente novamente em instantes.')
@@ -138,7 +212,8 @@ export default function NovaIdeiaPage() {
 
     const baseSlug = slugify(title)
     if (!baseSlug) {
-      setErrorMessage('Informe um título válido (sem apenas símbolos).')
+      setFormErrors({ title: 'Informe um título válido (sem usar apenas símbolos).' })
+      window.setTimeout(() => focusFirstError({ title: 'invalid' }), 50)
       return
     }
 
@@ -242,28 +317,47 @@ export default function NovaIdeiaPage() {
                 title="Informações básicas"
                 description="Conte o que é o projeto, qual o objetivo e em que área ele se encaixa."
               >
-                <div className="space-y-3">
+                <div className="space-y-3" data-field="title">
                   <Label htmlFor="titulo">Título</Label>
                   <Input
                     id="titulo"
                     value={title}
-                    onChange={(event) => setTitle(event.target.value)}
+                    onChange={(event) => {
+                      setTitle(event.target.value)
+                      clearFieldError('title')
+                    }}
                     placeholder="Um nome curto e fácil de lembrar para o projeto"
                     maxLength={120}
-                    required
+                    aria-invalid={Boolean(formErrors.title)}
+                    aria-describedby={formErrors.title ? 'titulo-error' : undefined}
                     className="rounded-2xl"
                   />
-                  {generatedSlug ? (
+                  {formErrors.title ? (
+                    <p id="titulo-error" className="text-xs font-medium text-destructive">
+                      {formErrors.title}
+                    </p>
+                  ) : generatedSlug ? (
                     <p className="text-xs text-muted-foreground">
                       Endereço público: <span className="font-mono">/projetos/{generatedSlug}</span>
                     </p>
                   ) : null}
                 </div>
 
-                <div className="space-y-3">
-                  <Label>Categoria</Label>
-                  <Select value={category} onValueChange={setCategory} required>
-                    <SelectTrigger className="rounded-2xl">
+                <div className="space-y-3" data-field="category">
+                  <Label htmlFor="categoria">Categoria</Label>
+                  <Select
+                    value={category}
+                    onValueChange={(value) => {
+                      setCategory(value)
+                      clearFieldError('category')
+                    }}
+                  >
+                    <SelectTrigger
+                      id="categoria"
+                      className="rounded-2xl"
+                      aria-invalid={Boolean(formErrors.category)}
+                      aria-describedby={formErrors.category ? 'categoria-error' : undefined}
+                    >
                       <SelectValue placeholder="Área principal do projeto" />
                     </SelectTrigger>
                     <SelectContent>
@@ -274,32 +368,55 @@ export default function NovaIdeiaPage() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {formErrors.category ? (
+                    <p id="categoria-error" className="text-xs font-medium text-destructive">
+                      {formErrors.category}
+                    </p>
+                  ) : null}
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-3" data-field="shortDescription">
                   <Label htmlFor="short">Descrição curta</Label>
                   <Textarea
                     id="short"
                     rows={5}
                     value={shortDescription}
-                    onChange={(event) => setShortDescription(event.target.value)}
+                    onChange={(event) => {
+                      setShortDescription(event.target.value)
+                      clearFieldError('shortDescription')
+                    }}
                     placeholder="Resumo direto: o problema, para quem é e o que o projeto pretende entregar."
-                    required
+                    aria-invalid={Boolean(formErrors.shortDescription)}
+                    aria-describedby={formErrors.shortDescription ? 'short-error' : undefined}
                     className="rounded-2xl"
                   />
+                  {formErrors.shortDescription ? (
+                    <p id="short-error" className="text-xs font-medium text-destructive">
+                      {formErrors.shortDescription}
+                    </p>
+                  ) : null}
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-3" data-field="fullDescription">
                   <Label htmlFor="complete">Descrição completa</Label>
                   <Textarea
                     id="complete"
                     rows={8}
                     value={fullDescription}
-                    onChange={(event) => setFullDescription(event.target.value)}
+                    onChange={(event) => {
+                      setFullDescription(event.target.value)
+                      clearFieldError('fullDescription')
+                    }}
                     placeholder="Detalhe contexto, etapas previstas, recursos necessários e o que você espera construir junto."
-                    required
+                    aria-invalid={Boolean(formErrors.fullDescription)}
+                    aria-describedby={formErrors.fullDescription ? 'complete-error' : undefined}
                     className="rounded-2xl"
                   />
+                  {formErrors.fullDescription ? (
+                    <p id="complete-error" className="text-xs font-medium text-destructive">
+                      {formErrors.fullDescription}
+                    </p>
+                  ) : null}
                 </div>
               </FormSection>
 
@@ -308,26 +425,49 @@ export default function NovaIdeiaPage() {
                 description="Indique quantas vagas estão em aberto e que perfil você procura."
               >
                 <div className="space-y-4">
-                  <Label htmlFor="vagas">Vagas disponíveis</Label>
-                  <Input
-                    id="vagas"
-                    min={1}
-                    type="number"
-                    value={spots}
-                    onChange={(event) => setSpots(event.target.value)}
-                    className="rounded-2xl"
-                    required
-                  />
-                  <Label htmlFor="perfil">Perfil procurado</Label>
-                  <Textarea
-                    id="perfil"
-                    rows={6}
-                    value={profileSeek}
-                    onChange={(event) => setProfileSeek(event.target.value)}
-                    placeholder="Descreva disponibilidade esperada, ritmo de trabalho, tecnologias envolvidas e responsabilidades."
-                    required
-                    className="rounded-2xl"
-                  />
+                  <div className="space-y-3" data-field="spots">
+                    <Label htmlFor="vagas">Vagas disponíveis</Label>
+                    <Input
+                      id="vagas"
+                      min={1}
+                      type="number"
+                      value={spots}
+                      onChange={(event) => {
+                        setSpots(event.target.value)
+                        clearFieldError('spots')
+                      }}
+                      aria-invalid={Boolean(formErrors.spots)}
+                      aria-describedby={formErrors.spots ? 'vagas-error' : undefined}
+                      className="rounded-2xl"
+                    />
+                    {formErrors.spots ? (
+                      <p id="vagas-error" className="text-xs font-medium text-destructive">
+                        {formErrors.spots}
+                      </p>
+                    ) : null}
+                  </div>
+
+                  <div className="space-y-3" data-field="profileSeek">
+                    <Label htmlFor="perfil">Perfil procurado</Label>
+                    <Textarea
+                      id="perfil"
+                      rows={6}
+                      value={profileSeek}
+                      onChange={(event) => {
+                        setProfileSeek(event.target.value)
+                        clearFieldError('profileSeek')
+                      }}
+                      placeholder="Descreva disponibilidade esperada, ritmo de trabalho, tecnologias envolvidas e responsabilidades."
+                      aria-invalid={Boolean(formErrors.profileSeek)}
+                      aria-describedby={formErrors.profileSeek ? 'perfil-error' : undefined}
+                      className="rounded-2xl"
+                    />
+                    {formErrors.profileSeek ? (
+                      <p id="perfil-error" className="text-xs font-medium text-destructive">
+                        {formErrors.profileSeek}
+                      </p>
+                    ) : null}
+                  </div>
                 </div>
 
                 <div className="space-y-4">
@@ -377,48 +517,73 @@ export default function NovaIdeiaPage() {
                 title="Tags"
                 description="Ajuda outras pessoas a encontrarem seu projeto pelos temas certos."
               >
-                <div className="flex flex-wrap gap-2 rounded-3xl border border-border bg-muted/40 p-4">
-                  {tags.map((chip) => (
-                    <button
-                      key={chip}
-                      type="button"
-                      className="cursor-pointer rounded-full border border-transparent bg-background px-3 py-1 text-xs font-semibold shadow-sm transition-colors hover:bg-muted"
-                      onClick={() => setTags(tags.filter((item) => item !== chip))}
-                    >
-                      {chip}
-                    </button>
-                  ))}
-                </div>
+                <div className="space-y-3" data-field="tags">
+                  <div
+                    aria-invalid={Boolean(formErrors.tags)}
+                    aria-describedby={formErrors.tags ? 'tags-error' : undefined}
+                    className={cn(
+                      'flex flex-wrap gap-2 rounded-3xl border bg-muted/40 p-4 transition-colors',
+                      formErrors.tags
+                        ? 'border-destructive bg-destructive/5'
+                        : 'border-border',
+                    )}
+                  >
+                    {tags.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">
+                        Nenhuma tag adicionada ainda.
+                      </p>
+                    ) : (
+                      tags.map((chip) => (
+                        <button
+                          key={chip}
+                          type="button"
+                          className="cursor-pointer rounded-full border border-transparent bg-background px-3 py-1 text-xs font-semibold shadow-sm transition-colors hover:bg-muted"
+                          onClick={() => setTags(tags.filter((item) => item !== chip))}
+                        >
+                          {chip}
+                        </button>
+                      ))
+                    )}
+                  </div>
 
-                <div className="flex flex-col gap-3 sm:flex-row">
-                  <Input
-                    placeholder="Ex.: educação, sustentabilidade, robótica..."
-                    value={tagInput}
-                    className="rounded-2xl"
-                    onChange={(event) => setTagInput(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') {
-                        event.preventDefault()
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <Input
+                      placeholder="Ex.: educação, sustentabilidade, robótica..."
+                      value={tagInput}
+                      className="rounded-2xl"
+                      onChange={(event) => setTagInput(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          event.preventDefault()
+                          appendUnique(tagInput, tags, setTags, (value) =>
+                            value.trim().toLowerCase(),
+                          )
+                          setTagInput('')
+                          clearFieldError('tags')
+                        }
+                      }}
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="rounded-2xl font-semibold"
+                      onClick={() => {
                         appendUnique(tagInput, tags, setTags, (value) =>
-                          value
-                            .trim()
-                            .toLowerCase(),
+                          value.trim().toLowerCase(),
                         )
                         setTagInput('')
-                      }
-                    }}
-                  />
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="rounded-2xl font-semibold"
-                    onClick={() => {
-                      appendUnique(tagInput, tags, setTags, (value) => value.trim().toLowerCase())
-                      setTagInput('')
-                    }}
-                  >
-                    Adicionar tag
-                  </Button>
+                        clearFieldError('tags')
+                      }}
+                    >
+                      Adicionar tag
+                    </Button>
+                  </div>
+
+                  {formErrors.tags ? (
+                    <p id="tags-error" className="text-xs font-medium text-destructive">
+                      {formErrors.tags}
+                    </p>
+                  ) : null}
                 </div>
               </FormSection>
 
@@ -428,6 +593,15 @@ export default function NovaIdeiaPage() {
                   className="rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive"
                 >
                   {errorMessage}
+                </div>
+              ) : null}
+
+              {Object.keys(formErrors).length > 0 ? (
+                <div
+                  role="alert"
+                  className="rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive"
+                >
+                  Revise os campos destacados antes de publicar.
                 </div>
               ) : null}
 
@@ -441,7 +615,7 @@ export default function NovaIdeiaPage() {
               ) : null}
 
               <div className="flex flex-wrap gap-4">
-                <Button type="submit" disabled={!isValid || submitting} className="rounded-2xl px-8 font-semibold">
+                <Button type="submit" disabled={submitting} className="rounded-2xl px-8 font-semibold">
                   {submitting ? 'Publicando...' : 'Publicar projeto'}
                 </Button>
                 <Button asChild type="button" variant="outline" className="rounded-2xl font-semibold">
