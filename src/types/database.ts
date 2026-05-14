@@ -224,16 +224,20 @@ export interface ProjectPublicDetailRow extends ProjectPublicCardRow {
 /**
  * Linha pública de membro do projeto.
  *
- * Lida pelo front a partir da view `public.active_project_members`, que
- * já inclui os campos visuais `display_role` e `badge_color`.
+ * Lida pelo front a partir da view `public.project_public_members`, que
+ * agora também expõe os campos visuais `display_role` e `badge_color`.
  *
  * Observação: `role` continua sendo o papel real (autorização). Os campos
  * `display_role` e `badge_color` são puramente visuais.
  */
 export interface ProjectPublicMemberRow {
+  /** Presente quando a view propaga o `id` da tabela `project_members`. */
+  id?: string
   project_id: string
   user_id: string
   role: ProjectMemberRoleValue
+  /** Presente quando a view propaga o `status` da tabela `project_members`. */
+  status?: ProjectMemberStatusValue
   joined_at: string
   full_name: string | null
   course: string | null
