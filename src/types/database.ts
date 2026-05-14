@@ -221,7 +221,15 @@ export interface ProjectPublicDetailRow extends ProjectPublicCardRow {
   description: string | null
 }
 
-/** View `public.project_public_members`. */
+/**
+ * Linha pública de membro do projeto.
+ *
+ * Lida pelo front a partir da view `public.active_project_members`, que
+ * já inclui os campos visuais `display_role` e `badge_color`.
+ *
+ * Observação: `role` continua sendo o papel real (autorização). Os campos
+ * `display_role` e `badge_color` são puramente visuais.
+ */
 export interface ProjectPublicMemberRow {
   project_id: string
   user_id: string
@@ -231,7 +239,7 @@ export interface ProjectPublicMemberRow {
   course: string | null
   avatar_url: string | null
   /**
-   * Texto livre exibido no selo (até 30 caracteres). Quando ausente ou nulo,
+   * Texto livre exibido no selo (até 40 caracteres). Quando ausente ou nulo,
    * a UI deve cair no rótulo padrão derivado de `role`.
    */
   display_role?: string | null

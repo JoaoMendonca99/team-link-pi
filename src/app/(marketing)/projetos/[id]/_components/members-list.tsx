@@ -52,9 +52,14 @@ export const MembersList = forwardRef<MembersListHandle, MembersListProps>(
       setLoading(true)
       setErrorMessage(null)
       const client = getSupabaseClient()
+      // Lê da view `public.active_project_members`, que já expõe
+      // `display_role` e `badge_color` (a antiga `project_public_members`
+      // não tinha esses campos e era a causa do reset após F5).
       const { data, error } = await client
-        .from('project_public_members')
-        .select('*')
+        .from('active_project_members')
+        .select(
+          'project_id, user_id, role, joined_at, full_name, course, avatar_url, display_role, badge_color',
+        )
         .eq('project_id', projectId)
         .order('joined_at', { ascending: true })
 
