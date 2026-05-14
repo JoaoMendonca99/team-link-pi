@@ -251,6 +251,8 @@ export interface CreateProjectWithDetailsArgs {
 
 export type ProjectConversationKind = "general" | "direct" | "group"
 
+export type ProjectConversationStatus = "active" | "deleted"
+
 export type ProjectMessageStatus = "visible" | "deleted" | "hidden"
 
 export interface ProjectConversationRow {
@@ -259,8 +261,25 @@ export interface ProjectConversationRow {
   kind: ProjectConversationKind
   title: string | null
   created_by: string | null
+  status: ProjectConversationStatus
+  deleted_at: string | null
+  deleted_by: string | null
   created_at: string
   updated_at: string
+}
+
+// ============================================================================
+// RPCs do chat (Fase 2)
+// ============================================================================
+
+export interface CreateProjectGroupConversationArgs {
+  p_project_id: string
+  p_title: string
+  p_member_ids: string[]
+}
+
+export interface DeleteProjectGroupConversationArgs {
+  p_conversation_id: string
 }
 
 export interface ProjectConversationMemberRow {

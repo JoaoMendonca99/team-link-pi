@@ -7,11 +7,22 @@ import {
   Loader2,
   MessageCircle,
   MessagesSquare,
+  MoreVertical,
+  Plus,
   Send,
+  Trash2,
+  Users,
   X,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { UserAvatar } from "@/components/team-link/user-avatar"
 import { useSupabaseSession } from "@/hooks/use-supabase-session"
@@ -25,9 +36,10 @@ import type {
 } from "@/types/database"
 
 const MESSAGE_MAX_LENGTH = 2000
+const GROUP_TITLE_MAX_LENGTH = 80
 const STORAGE_KEY = "team-link:chat:open"
 
-type View = "projects" | "conversations" | "thread"
+type View = "projects" | "conversations" | "thread" | "create-group" | "members"
 
 interface ChatProject {
   id: string
@@ -38,14 +50,30 @@ interface ChatMessage extends ProjectMessageRow {
   author?: ProfileRow | null
 }
 
+interface ProjectMemberOption {
+  user_id: string
+  full_name: string | null
+  course: string | null
+  avatar_url: string | null
+}
+
+interface ConversationMemberView {
+  user_id: string
+  full_name: string | null
+  course: string | null
+  avatar_url: string | null
+  role: "admin" | "member" | "owner" | "mentor"
+}
+
 /**
- * Widget global de chat por projeto (Fase 1).
+ * Widget global de chat por projeto.
  *
- * - Só renderiza para usuário autenticado.
- * - Lista projetos onde o usuário é membro ativo.
- * - Mostra apenas a conversa "Geral" (kind = 'general') nesta fase.
- * - Permite enviar mensagens visíveis.
- * - Realtime ainda não implementado (a Fase 2/3 cuidará disso).
+ * Fase 2:
+ * - Lista conversa Geral + grupos personalizados (status='active').
+ * - Permite criar grupo com membros do projeto.
+ * - Mostra membros de uma conversa.
+ * - Permite excluir grupo (soft delete via RPC).
+ * - Conversa Geral nunca pode ser excluída.
  */
 export function ProjectChatWidget() {
   const { isAuthenticated, user, profile, loading: sessionLoading } = useSupabaseSession()
@@ -64,6 +92,8 @@ export function ProjectChatWidget() {
   const [conversationsLoading, setConversationsLoading] = React.useState(false)
   const [conversationsError, setConversationsError] = React.useState<string | null>(null)
 
+  const [groupMemberCounts, setGroupMemberCounts] = React.useState<Record<string, number>>({})
+
   const [selectedConversation, setSelectedConversation] =
     React.useState<ProjectConversationRow | null>(null)
 
@@ -74,6 +104,27 @@ export function ProjectChatWidget() {
   const [draft, setDraft] = React.useState("")
   const [sending, setSending] = React.useState(false)
   const [sendError, setSendError] = React.useState<string | null>(null)
+
+  // Criação de grupo
+  const [projectMembers, setProjectMembers] = React.useState<ProjectMemberOption[]>([])
+  const [projectMembersLoading, setProjectMembersLoading] = React.useState(false)
+  const [projectMembersError, setProjectMembersError] = React.useState<string | null>(null)
+  const [groupTitle, setGroupTitle] = React.useState("")
+  const [groupSelectedIds, setGroupSelectedIds] = React.useState<Set<string>>(new Set())
+  const [creatingGroup, setCreatingGroup] = React.useState(false)
+  const [createGroupError, setCreateGroupError] = React.useState<string | null>(null)
+
+  // Visualização de membros
+  const [conversationMembers, setConversationMembers] = React.useState<ConversationMemberView[]>([])
+  const [conversationMembersLoading, setConversationMembersLoading] = React.useState(false)
+  const [conversationMembersError, setConversationMembersError] = React.useState<string | null>(
+    null,
+  )
+
+  // Confirmação de exclusão
+  const [confirmDelete, setConfirmDelete] = React.useState<ProjectConversationRow | null>(null)
+  const [deletingGroup, setDeletingGroup] = React.useState(false)
+  const [deleteError, setDeleteError] = React.useState<string | null>(null)
 
   const threadScrollRef = React.useRef<HTMLDivElement | null>(null)
 
@@ -105,14 +156,25 @@ export function ProjectChatWidget() {
     setProjects([])
     setSelectedProject(null)
     setConversations([])
+    setGroupMemberCounts({})
     setSelectedConversation(null)
     setMessages([])
     setDraft("")
+    setProjectMembers([])
+    setGroupTitle("")
+    setGroupSelectedIds(new Set())
+    setCreateGroupError(null)
+    setConversationMembers([])
+    setConfirmDelete(null)
+    setDeleteError(null)
   }, [isAuthenticated])
 
   const supabaseReady = mounted && isSupabaseConfigured()
 
-  // Load list of projects (active memberships only).
+  // -------------------------------------------------------------------------
+  // Data loaders
+  // -------------------------------------------------------------------------
+
   const loadProjects = React.useCallback(async () => {
     if (!user) return
     if (!supabaseReady) {
@@ -130,7 +192,11 @@ export function ProjectChatWidget() {
         .eq("status", "active")
       if (membershipResult.error) throw membershipResult.error
       const projectIds = Array.from(
-        new Set(((membershipResult.data ?? []) as Array<{ project_id: string }>).map((row) => row.project_id)),
+        new Set(
+          ((membershipResult.data ?? []) as Array<{ project_id: string }>).map(
+            (row) => row.project_id,
+          ),
+        ),
       )
       if (projectIds.length === 0) {
         setProjects([])
@@ -156,7 +222,6 @@ export function ProjectChatWidget() {
     }
   }, [supabaseReady, user])
 
-  // Reload projects when the chat is opened (only once per open while authenticated).
   React.useEffect(() => {
     if (!open) return
     if (!isAuthenticated) return
@@ -164,7 +229,6 @@ export function ProjectChatWidget() {
     void loadProjects()
   }, [isAuthenticated, loadProjects, open, view])
 
-  // Load conversations for the selected project.
   const loadConversations = React.useCallback(
     async (projectId: string) => {
       if (!supabaseReady) {
@@ -177,15 +241,36 @@ export function ProjectChatWidget() {
         const client = getSupabaseClient()
         const result = await client
           .from("project_conversations")
-          .select("id, project_id, kind, title, created_by, created_at, updated_at")
+          .select(
+            "id, project_id, kind, title, created_by, status, deleted_at, deleted_by, created_at, updated_at",
+          )
           .eq("project_id", projectId)
+          .eq("status", "active")
           .order("kind", { ascending: true })
           .order("created_at", { ascending: true })
         if (result.error) throw result.error
         const rows = (result.data ?? []) as ProjectConversationRow[]
         setConversations(rows)
+
+        const groupIds = rows.filter((row) => row.kind === "group").map((row) => row.id)
+        if (groupIds.length === 0) {
+          setGroupMemberCounts({})
+        } else {
+          const countsResult = await client
+            .from("project_conversation_members")
+            .select("conversation_id")
+            .in("conversation_id", groupIds)
+          if (countsResult.error) throw countsResult.error
+          const counts: Record<string, number> = {}
+          const memberRows = (countsResult.data ?? []) as Array<{ conversation_id: string }>
+          for (const row of memberRows) {
+            counts[row.conversation_id] = (counts[row.conversation_id] ?? 0) + 1
+          }
+          setGroupMemberCounts(counts)
+        }
       } catch (error) {
         setConversations([])
+        setGroupMemberCounts({})
         setConversationsError(
           error instanceof Error
             ? error.message
@@ -198,7 +283,6 @@ export function ProjectChatWidget() {
     [supabaseReady],
   )
 
-  // Load messages for the selected conversation.
   const loadMessages = React.useCallback(
     async (conversationId: string) => {
       if (!supabaseReady) {
@@ -223,7 +307,9 @@ export function ProjectChatWidget() {
         if (senderIds.length > 0) {
           const profilesResult = await client
             .from("profiles")
-            .select("id, full_name, email, course, bio, avatar_url, skills, interests, created_at, updated_at")
+            .select(
+              "id, full_name, email, course, bio, avatar_url, skills, interests, created_at, updated_at",
+            )
             .in("id", senderIds)
           if (profilesResult.error) throw profilesResult.error
           const profileRows = (profilesResult.data ?? []) as ProfileRow[]
@@ -251,13 +337,202 @@ export function ProjectChatWidget() {
     void loadMessages(selectedConversation.id)
   }, [loadMessages, selectedConversation, view])
 
-  // Auto-scroll to bottom whenever messages change.
   React.useEffect(() => {
     if (view !== "thread") return
     const node = threadScrollRef.current
     if (!node) return
     node.scrollTop = node.scrollHeight
   }, [messages, view])
+
+  const loadProjectMembers = React.useCallback(
+    async (projectId: string) => {
+      if (!supabaseReady) {
+        setProjectMembersError("Não foi possível conectar ao serviço de dados.")
+        return
+      }
+      setProjectMembersLoading(true)
+      setProjectMembersError(null)
+      try {
+        const client = getSupabaseClient()
+        const membersResult = await client
+          .from("project_members")
+          .select("user_id")
+          .eq("project_id", projectId)
+          .eq("status", "active")
+        if (membersResult.error) throw membersResult.error
+        const userIds = Array.from(
+          new Set(
+            ((membersResult.data ?? []) as Array<{ user_id: string }>).map((row) => row.user_id),
+          ),
+        )
+        if (userIds.length === 0) {
+          setProjectMembers([])
+          return
+        }
+        const profilesResult = await client
+          .from("profiles")
+          .select("id, full_name, course, avatar_url")
+          .in("id", userIds)
+        if (profilesResult.error) throw profilesResult.error
+        const profileRows = (profilesResult.data ?? []) as Array<{
+          id: string
+          full_name: string | null
+          course: string | null
+          avatar_url: string | null
+        }>
+        const profilesById = new Map(profileRows.map((row) => [row.id, row]))
+        const members: ProjectMemberOption[] = userIds.map((uid) => {
+          const p = profilesById.get(uid)
+          return {
+            user_id: uid,
+            full_name: p?.full_name ?? null,
+            course: p?.course ?? null,
+            avatar_url: p?.avatar_url ?? null,
+          }
+        })
+        members.sort((a, b) =>
+          (a.full_name ?? "").localeCompare(b.full_name ?? "", "pt-BR", { sensitivity: "base" }),
+        )
+        setProjectMembers(members)
+      } catch (error) {
+        setProjectMembers([])
+        setProjectMembersError(
+          error instanceof Error
+            ? error.message
+            : "Não foi possível carregar os membros do projeto.",
+        )
+      } finally {
+        setProjectMembersLoading(false)
+      }
+    },
+    [supabaseReady],
+  )
+
+  const loadConversationMembers = React.useCallback(
+    async (conversation: ProjectConversationRow) => {
+      if (!supabaseReady) {
+        setConversationMembersError("Não foi possível conectar ao serviço de dados.")
+        return
+      }
+      setConversationMembersLoading(true)
+      setConversationMembersError(null)
+      try {
+        const client = getSupabaseClient()
+
+        if (conversation.kind === "general") {
+          // Geral = todos os membros ativos do projeto.
+          const membersResult = await client
+            .from("project_members")
+            .select("user_id, role")
+            .eq("project_id", conversation.project_id)
+            .eq("status", "active")
+          if (membersResult.error) throw membersResult.error
+          const rows = (membersResult.data ?? []) as Array<{
+            user_id: string
+            role: "owner" | "member" | "mentor"
+          }>
+          const userIds = Array.from(new Set(rows.map((row) => row.user_id)))
+          let profilesById = new Map<
+            string,
+            { id: string; full_name: string | null; course: string | null; avatar_url: string | null }
+          >()
+          if (userIds.length > 0) {
+            const profilesResult = await client
+              .from("profiles")
+              .select("id, full_name, course, avatar_url")
+              .in("id", userIds)
+            if (profilesResult.error) throw profilesResult.error
+            const profileRows = (profilesResult.data ?? []) as Array<{
+              id: string
+              full_name: string | null
+              course: string | null
+              avatar_url: string | null
+            }>
+            profilesById = new Map(profileRows.map((p) => [p.id, p]))
+          }
+          const members: ConversationMemberView[] = rows.map((row) => {
+            const p = profilesById.get(row.user_id)
+            return {
+              user_id: row.user_id,
+              full_name: p?.full_name ?? null,
+              course: p?.course ?? null,
+              avatar_url: p?.avatar_url ?? null,
+              role: row.role,
+            }
+          })
+          members.sort((a, b) =>
+            (a.full_name ?? "").localeCompare(b.full_name ?? "", "pt-BR", { sensitivity: "base" }),
+          )
+          setConversationMembers(members)
+          return
+        }
+
+        // Grupo personalizado = participantes registrados em project_conversation_members.
+        const membersResult = await client
+          .from("project_conversation_members")
+          .select("user_id, role")
+          .eq("conversation_id", conversation.id)
+        if (membersResult.error) throw membersResult.error
+        const rows = (membersResult.data ?? []) as Array<{
+          user_id: string
+          role: string
+        }>
+        const userIds = Array.from(new Set(rows.map((row) => row.user_id)))
+        let profilesById = new Map<
+          string,
+          { id: string; full_name: string | null; course: string | null; avatar_url: string | null }
+        >()
+        if (userIds.length > 0) {
+          const profilesResult = await client
+            .from("profiles")
+            .select("id, full_name, course, avatar_url")
+            .in("id", userIds)
+          if (profilesResult.error) throw profilesResult.error
+          const profileRows = (profilesResult.data ?? []) as Array<{
+            id: string
+            full_name: string | null
+            course: string | null
+            avatar_url: string | null
+          }>
+          profilesById = new Map(profileRows.map((p) => [p.id, p]))
+        }
+        const members: ConversationMemberView[] = rows.map((row) => {
+          const p = profilesById.get(row.user_id)
+          const role = row.role === "admin" ? "admin" : "member"
+          return {
+            user_id: row.user_id,
+            full_name: p?.full_name ?? null,
+            course: p?.course ?? null,
+            avatar_url: p?.avatar_url ?? null,
+            role,
+          }
+        })
+        // admin primeiro, depois nome
+        members.sort((a, b) => {
+          if (a.role === "admin" && b.role !== "admin") return -1
+          if (b.role === "admin" && a.role !== "admin") return 1
+          return (a.full_name ?? "").localeCompare(b.full_name ?? "", "pt-BR", {
+            sensitivity: "base",
+          })
+        })
+        setConversationMembers(members)
+      } catch (error) {
+        setConversationMembers([])
+        setConversationMembersError(
+          error instanceof Error
+            ? error.message
+            : "Não foi possível carregar os membros desta conversa.",
+        )
+      } finally {
+        setConversationMembersLoading(false)
+      }
+    },
+    [supabaseReady],
+  )
+
+  // -------------------------------------------------------------------------
+  // Handlers
+  // -------------------------------------------------------------------------
 
   const handleSelectProject = React.useCallback(
     async (project: ChatProject) => {
@@ -272,12 +547,134 @@ export function ProjectChatWidget() {
     [loadConversations],
   )
 
-  const handleSelectConversation = React.useCallback((conversation: ProjectConversationRow) => {
-    setSelectedConversation(conversation)
-    setSendError(null)
-    setDraft("")
-    setView("thread")
+  const handleSelectConversation = React.useCallback(
+    (conversation: ProjectConversationRow) => {
+      setSelectedConversation(conversation)
+      setSendError(null)
+      setDraft("")
+      setView("thread")
+    },
+    [],
+  )
+
+  const handleOpenCreateGroup = React.useCallback(async () => {
+    if (!selectedProject) return
+    setGroupTitle("")
+    setGroupSelectedIds(new Set())
+    setCreateGroupError(null)
+    setView("create-group")
+    await loadProjectMembers(selectedProject.id)
+  }, [loadProjectMembers, selectedProject])
+
+  const handleToggleGroupMember = React.useCallback((userId: string) => {
+    setGroupSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(userId)) {
+        next.delete(userId)
+      } else {
+        next.add(userId)
+      }
+      return next
+    })
+    setCreateGroupError(null)
   }, [])
+
+  const handleCreateGroup = React.useCallback(async () => {
+    if (!user) return
+    if (!selectedProject) return
+    if (!supabaseReady) {
+      setCreateGroupError("Não foi possível conectar ao serviço de dados.")
+      return
+    }
+    const cleanTitle = groupTitle.trim()
+    if (cleanTitle.length === 0) {
+      setCreateGroupError("Informe um nome para o grupo.")
+      return
+    }
+    if (cleanTitle.length > GROUP_TITLE_MAX_LENGTH) {
+      setCreateGroupError(`O nome deve ter no máximo ${GROUP_TITLE_MAX_LENGTH} caracteres.`)
+      return
+    }
+    const memberIds = Array.from(groupSelectedIds).filter((id) => id !== user.id)
+    if (memberIds.length === 0) {
+      setCreateGroupError("Selecione pelo menos um membro além de você.")
+      return
+    }
+    setCreatingGroup(true)
+    setCreateGroupError(null)
+    try {
+      const client = getSupabaseClient()
+      const rpcResult = await client.rpc("create_project_group_conversation", {
+        p_project_id: selectedProject.id,
+        p_title: cleanTitle,
+        p_member_ids: memberIds,
+      })
+      if (rpcResult.error) throw rpcResult.error
+      setGroupTitle("")
+      setGroupSelectedIds(new Set())
+      await loadConversations(selectedProject.id)
+      setView("conversations")
+    } catch (error) {
+      setCreateGroupError(
+        error instanceof Error ? error.message : "Não foi possível criar o grupo agora.",
+      )
+    } finally {
+      setCreatingGroup(false)
+    }
+  }, [groupSelectedIds, groupTitle, loadConversations, selectedProject, supabaseReady, user])
+
+  const handleOpenMembers = React.useCallback(
+    async (conversation: ProjectConversationRow) => {
+      setConversationMembers([])
+      setConversationMembersError(null)
+      setView("members")
+      await loadConversationMembers(conversation)
+    },
+    [loadConversationMembers],
+  )
+
+  const handleRequestDelete = React.useCallback((conversation: ProjectConversationRow) => {
+    if (conversation.kind === "general") return
+    setDeleteError(null)
+    setConfirmDelete(conversation)
+  }, [])
+
+  const handleConfirmDelete = React.useCallback(async () => {
+    if (!confirmDelete) return
+    if (confirmDelete.kind === "general") {
+      setConfirmDelete(null)
+      return
+    }
+    if (!supabaseReady) {
+      setDeleteError("Não foi possível conectar ao serviço de dados.")
+      return
+    }
+    setDeletingGroup(true)
+    setDeleteError(null)
+    try {
+      const client = getSupabaseClient()
+      const rpcResult = await client.rpc("delete_project_group_conversation", {
+        p_conversation_id: confirmDelete.id,
+      })
+      if (rpcResult.error) throw rpcResult.error
+      const wasOpen = selectedConversation?.id === confirmDelete.id
+      setConfirmDelete(null)
+      if (wasOpen) {
+        setSelectedConversation(null)
+        setMessages([])
+        setView("conversations")
+      }
+      if (selectedProject) {
+        await loadConversations(selectedProject.id)
+      }
+    } catch (error) {
+      setDeleteError(
+        error instanceof Error ? error.message : "Não foi possível excluir o grupo agora.",
+      )
+    } finally {
+      setDeletingGroup(false)
+    }
+  }, [confirmDelete, loadConversations, selectedConversation, selectedProject, supabaseReady])
 
   const handleBack = React.useCallback(() => {
     setSendError(null)
@@ -291,9 +688,22 @@ export function ProjectChatWidget() {
       setView("projects")
       setSelectedProject(null)
       setConversations([])
+      setGroupMemberCounts({})
       return
     }
-  }, [view])
+    if (view === "create-group") {
+      setCreateGroupError(null)
+      setView("conversations")
+      return
+    }
+    if (view === "members") {
+      // Volta para o thread (se houver conversa aberta) ou para a lista.
+      setConversationMembers([])
+      setConversationMembersError(null)
+      setView(selectedConversation ? "thread" : "conversations")
+      return
+    }
+  }, [selectedConversation, view])
 
   const handleSend = React.useCallback(async () => {
     if (!user) return
@@ -337,6 +747,30 @@ export function ProjectChatWidget() {
   if (sessionLoading) return null
   if (!isAuthenticated) return null
 
+  // -------------------------------------------------------------------------
+  // Render
+  // -------------------------------------------------------------------------
+
+  const headerTitle = (() => {
+    if (view === "projects") return "Mensagens"
+    if (view === "conversations") return selectedProject?.title ?? "Conversas"
+    if (view === "create-group") return "Novo grupo"
+    if (view === "members") return "Membros"
+    return conversationLabel(selectedConversation)
+  })()
+
+  const headerSubtitle = (() => {
+    if (view === "projects") return "Seus projetos ativos"
+    if (view === "conversations") return "Conversa geral e seus grupos"
+    if (view === "create-group") return selectedProject?.title ?? undefined
+    if (view === "members") return conversationLabel(selectedConversation)
+    if (view === "thread") return selectedProject?.title ?? undefined
+    return undefined
+  })()
+
+  const showMembersButton =
+    view === "thread" && selectedConversation && selectedConversation.kind !== "direct"
+
   const launcher = (
     <button
       type="button"
@@ -361,9 +795,7 @@ export function ProjectChatWidget() {
       aria-label="Chat dos seus projetos"
       className={cn(
         "fixed z-[40] flex flex-col overflow-hidden rounded-3xl border border-border bg-card text-card-foreground shadow-2xl",
-        // Mobile: drawer próximo ao botão, com largura quase total
         "bottom-20 left-4 right-4 max-h-[min(72vh,640px)]",
-        // Desktop
         "md:left-auto md:right-6 md:bottom-24 md:w-[380px] md:max-h-[600px]",
       )}
     >
@@ -387,29 +819,38 @@ export function ProjectChatWidget() {
           )}
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold leading-tight text-foreground">
-              {view === "projects"
-                ? "Mensagens"
-                : view === "conversations"
-                  ? selectedProject?.title ?? "Conversas"
-                  : conversationLabel(selectedConversation)}
+              {headerTitle}
             </p>
-            {view === "thread" && selectedProject ? (
-              <p className="truncate text-xs text-muted-foreground">{selectedProject.title}</p>
-            ) : view === "projects" ? (
-              <p className="truncate text-xs text-muted-foreground">Seus projetos ativos</p>
+            {headerSubtitle ? (
+              <p className="truncate text-xs text-muted-foreground">{headerSubtitle}</p>
             ) : null}
           </div>
         </div>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          onClick={() => setOpen(false)}
-          aria-label="Fechar chat"
-        >
-          <X className="h-4 w-4" aria-hidden />
-        </Button>
+        <div className="flex items-center gap-1">
+          {showMembersButton && selectedConversation ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => void handleOpenMembers(selectedConversation)}
+              aria-label="Ver membros"
+              title="Ver membros"
+            >
+              <Users className="h-4 w-4" aria-hidden />
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setOpen(false)}
+            aria-label="Fechar chat"
+          >
+            <X className="h-4 w-4" aria-hidden />
+          </Button>
+        </div>
       </header>
 
       <div className="flex min-h-0 flex-1 flex-col">
@@ -428,9 +869,47 @@ export function ProjectChatWidget() {
             loading={conversationsLoading}
             error={conversationsError}
             conversations={conversations}
+            memberCounts={groupMemberCounts}
             onSelect={handleSelectConversation}
             onRetry={() =>
               selectedProject ? void loadConversations(selectedProject.id) : undefined
+            }
+            onCreateGroup={() => void handleOpenCreateGroup()}
+            onViewMembers={(conversation) => void handleOpenMembers(conversation)}
+            onRequestDelete={handleRequestDelete}
+          />
+        ) : null}
+
+        {view === "create-group" ? (
+          <CreateGroupView
+            currentUserId={user?.id ?? ""}
+            title={groupTitle}
+            onTitleChange={(value) => {
+              setGroupTitle(value)
+              setCreateGroupError(null)
+            }}
+            members={projectMembers}
+            selectedIds={groupSelectedIds}
+            onToggleMember={handleToggleGroupMember}
+            loading={projectMembersLoading}
+            loadError={projectMembersError}
+            onRetryLoad={() =>
+              selectedProject ? void loadProjectMembers(selectedProject.id) : undefined
+            }
+            error={createGroupError}
+            submitting={creatingGroup}
+            onCancel={handleBack}
+            onSubmit={() => void handleCreateGroup()}
+          />
+        ) : null}
+
+        {view === "members" ? (
+          <MembersListView
+            loading={conversationMembersLoading}
+            error={conversationMembersError}
+            members={conversationMembers}
+            onRetry={() =>
+              selectedConversation ? void loadConversationMembers(selectedConversation) : undefined
             }
           />
         ) : null}
@@ -455,6 +934,20 @@ export function ProjectChatWidget() {
           />
         ) : null}
       </div>
+
+      {confirmDelete ? (
+        <ConfirmDeleteOverlay
+          conversation={confirmDelete}
+          deleting={deletingGroup}
+          error={deleteError}
+          onCancel={() => {
+            if (deletingGroup) return
+            setDeleteError(null)
+            setConfirmDelete(null)
+          }}
+          onConfirm={() => void handleConfirmDelete()}
+        />
+      ) : null}
     </div>
   ) : null
 
@@ -533,7 +1026,9 @@ function ProjectsListView({ loading, error, projects, onSelect, onRetry }: Proje
               <span className="block truncate text-sm font-semibold text-foreground">
                 {project.title}
               </span>
-              <span className="block truncate text-xs text-muted-foreground">Conversa geral</span>
+              <span className="block truncate text-xs text-muted-foreground">
+                Conversas do projeto
+              </span>
             </span>
           </button>
         </li>
@@ -546,20 +1041,25 @@ interface ConversationsListViewProps {
   loading: boolean
   error: string | null
   conversations: ProjectConversationRow[]
+  memberCounts: Record<string, number>
   onSelect: (conversation: ProjectConversationRow) => void
   onRetry: () => void
+  onCreateGroup: () => void
+  onViewMembers: (conversation: ProjectConversationRow) => void
+  onRequestDelete: (conversation: ProjectConversationRow) => void
 }
 
 function ConversationsListView({
   loading,
   error,
   conversations,
+  memberCounts,
   onSelect,
   onRetry,
+  onCreateGroup,
+  onViewMembers,
+  onRequestDelete,
 }: ConversationsListViewProps) {
-  // Fase 1: mostrar apenas a conversa Geral.
-  const general = conversations.find((conversation) => conversation.kind === "general")
-
   if (loading) {
     return (
       <div className="flex flex-1 items-center justify-center px-6 py-8 text-sm text-muted-foreground">
@@ -577,37 +1077,428 @@ function ConversationsListView({
       </div>
     )
   }
-  if (!general) {
+
+  const general = conversations.find((conversation) => conversation.kind === "general")
+  const groups = conversations.filter((conversation) => conversation.kind === "group")
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex items-center justify-between gap-2 border-b border-border/60 px-4 py-2">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          Conversas
+        </p>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 gap-1 px-2 text-xs font-semibold text-primary hover:bg-primary/10"
+          onClick={onCreateGroup}
+        >
+          <Plus className="h-3.5 w-3.5" aria-hidden />
+          Novo grupo
+        </Button>
+      </div>
+
+      <ul className="flex-1 overflow-y-auto p-2">
+        {general ? (
+          <li>
+            <button
+              type="button"
+              onClick={() => onSelect(general)}
+              className="flex w-full cursor-pointer items-center gap-3 rounded-2xl px-3 py-3 text-left transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
+                <MessagesSquare className="h-4 w-4" aria-hidden />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-semibold text-foreground">Geral</span>
+                <span className="block truncate text-xs text-muted-foreground">
+                  Todos os membros do projeto
+                </span>
+              </span>
+            </button>
+          </li>
+        ) : (
+          <li className="px-3 py-4 text-center text-xs text-muted-foreground">
+            A conversa geral deste projeto ainda não foi criada.
+          </li>
+        )}
+
+        {groups.length > 0 ? (
+          <li
+            aria-hidden
+            className="my-1 px-3 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+          >
+            Grupos
+          </li>
+        ) : null}
+
+        {groups.map((group) => {
+          const count = memberCounts[group.id] ?? 0
+          return (
+            <li key={group.id} className="group/conv relative">
+              <button
+                type="button"
+                onClick={() => onSelect(group)}
+                className="flex w-full cursor-pointer items-center gap-3 rounded-2xl px-3 py-3 pr-10 text-left transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
+              >
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-semibold text-foreground">
+                  {initialsOf(group.title ?? "Grupo")}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold text-foreground">
+                    {group.title ?? "Grupo"}
+                  </span>
+                  <span className="block truncate text-xs text-muted-foreground">
+                    {count === 0
+                      ? "Sem membros"
+                      : count === 1
+                        ? "1 membro"
+                        : `${count} membros`}
+                  </span>
+                </span>
+              </button>
+
+              <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      aria-label="Opções do grupo"
+                    >
+                      <MoreVertical className="h-4 w-4" aria-hidden />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="min-w-[180px]">
+                    <DropdownMenuItem onSelect={() => onViewMembers(group)}>
+                      <Users className="h-4 w-4" aria-hidden /> Ver membros
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onSelect={() => onRequestDelete(group)}
+                    >
+                      <Trash2 className="h-4 w-4" aria-hidden /> Excluir grupo
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
+interface CreateGroupViewProps {
+  currentUserId: string
+  title: string
+  onTitleChange: (value: string) => void
+  members: ProjectMemberOption[]
+  selectedIds: Set<string>
+  onToggleMember: (userId: string) => void
+  loading: boolean
+  loadError: string | null
+  onRetryLoad: () => void
+  error: string | null
+  submitting: boolean
+  onCancel: () => void
+  onSubmit: () => void
+}
+
+function CreateGroupView({
+  currentUserId,
+  title,
+  onTitleChange,
+  members,
+  selectedIds,
+  onToggleMember,
+  loading,
+  loadError,
+  onRetryLoad,
+  error,
+  submitting,
+  onCancel,
+  onSubmit,
+}: CreateGroupViewProps) {
+  const others = members.filter((member) => member.user_id !== currentUserId)
+  const selectedOthersCount = Array.from(selectedIds).filter((id) => id !== currentUserId).length
+
+  const submitDisabled =
+    submitting || title.trim().length === 0 || selectedOthersCount === 0
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="px-4 pt-4">
+        <label
+          htmlFor="chat-group-name"
+          className="mb-1 block text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+        >
+          Nome do grupo
+        </label>
+        <Input
+          id="chat-group-name"
+          value={title}
+          maxLength={GROUP_TITLE_MAX_LENGTH + 20}
+          onChange={(event) => onTitleChange(event.target.value)}
+          placeholder="Ex.: Frente de design"
+          disabled={submitting}
+          aria-invalid={Boolean(error) && title.trim().length === 0}
+        />
+      </div>
+
+      <div className="mt-4 flex items-baseline justify-between px-4">
+        <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Membros do projeto
+        </p>
+        <p className="text-[11px] text-muted-foreground">
+          Você entra como administrador
+        </p>
+      </div>
+
+      <div className="mt-2 flex min-h-0 flex-1 flex-col">
+        {loading ? (
+          <div className="flex flex-1 items-center justify-center px-6 py-6 text-sm text-muted-foreground">
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> Carregando membros...
+          </div>
+        ) : loadError ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-6 text-center">
+            <p className="text-sm font-medium text-destructive">{loadError}</p>
+            <Button type="button" variant="outline" size="sm" onClick={onRetryLoad}>
+              Tentar novamente
+            </Button>
+          </div>
+        ) : others.length === 0 ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 py-6 text-center">
+            <Users className="h-7 w-7 text-muted-foreground" aria-hidden />
+            <p className="text-sm font-semibold text-foreground">Sem outros membros</p>
+            <p className="text-xs text-muted-foreground">
+              Convide alguém para o projeto antes de criar um grupo.
+            </p>
+          </div>
+        ) : (
+          <ul className="flex-1 overflow-y-auto px-2">
+            {others.map((member) => {
+              const checked = selectedIds.has(member.user_id)
+              const displayName = member.full_name?.trim() || "Membro do projeto"
+              return (
+                <li key={member.user_id}>
+                  <label
+                    className={cn(
+                      "flex w-full cursor-pointer items-center gap-3 rounded-2xl px-3 py-2.5 transition-colors hover:bg-muted",
+                      checked && "bg-primary/5",
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 cursor-pointer accent-primary"
+                      checked={checked}
+                      onChange={() => onToggleMember(member.user_id)}
+                      disabled={submitting}
+                      aria-label={`Selecionar ${displayName}`}
+                    />
+                    <UserAvatar
+                      name={displayName}
+                      imageUrl={member.avatar_url ?? undefined}
+                      sizeClassName="h-8 w-8"
+                      ring={false}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold text-foreground">
+                        {displayName}
+                      </span>
+                      {member.course?.trim() ? (
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {member.course}
+                        </span>
+                      ) : null}
+                    </span>
+                  </label>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </div>
+
+      <div className="border-t border-border bg-background/60 px-4 py-3">
+        {error ? (
+          <p role="alert" className="mb-2 text-xs font-medium text-destructive">
+            {error}
+          </p>
+        ) : null}
+        <div className="flex items-center justify-end gap-2">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onCancel}
+            disabled={submitting}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            onClick={onSubmit}
+            disabled={submitDisabled}
+            className="font-semibold"
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> Criando...
+              </>
+            ) : (
+              "Criar grupo"
+            )}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+interface MembersListViewProps {
+  loading: boolean
+  error: string | null
+  members: ConversationMemberView[]
+  onRetry: () => void
+}
+
+function MembersListView({ loading, error, members, onRetry }: MembersListViewProps) {
+  if (loading) {
+    return (
+      <div className="flex flex-1 items-center justify-center px-6 py-8 text-sm text-muted-foreground">
+        <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> Carregando membros...
+      </div>
+    )
+  }
+  if (error) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-8 text-center">
+        <p className="text-sm font-medium text-destructive">{error}</p>
+        <Button type="button" variant="outline" size="sm" onClick={onRetry}>
+          Tentar novamente
+        </Button>
+      </div>
+    )
+  }
+  if (members.length === 0) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 py-8 text-center">
-        <MessagesSquare className="h-8 w-8 text-muted-foreground" aria-hidden />
-        <p className="text-sm font-semibold text-foreground">Sem conversa disponível</p>
+        <Users className="h-8 w-8 text-muted-foreground" aria-hidden />
+        <p className="text-sm font-semibold text-foreground">Nenhum membro encontrado</p>
         <p className="text-xs text-muted-foreground">
-          A conversa geral deste projeto ainda não foi criada.
+          Esta conversa ainda não tem participantes.
         </p>
       </div>
     )
   }
   return (
     <ul className="flex-1 overflow-y-auto p-2">
-      <li>
-        <button
-          type="button"
-          onClick={() => onSelect(general)}
-          className="flex w-full cursor-pointer items-center gap-3 rounded-2xl px-3 py-3 text-left transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
-        >
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-primary">
-            <MessagesSquare className="h-4 w-4" aria-hidden />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-semibold text-foreground">Geral</span>
-            <span className="block truncate text-xs text-muted-foreground">
-              Todos os membros do projeto
-            </span>
-          </span>
-        </button>
-      </li>
+      {members.map((member) => {
+        const displayName = member.full_name?.trim() || "Membro do projeto"
+        const roleLabel =
+          member.role === "owner"
+            ? "Dono do projeto"
+            : member.role === "mentor"
+              ? "Mentor"
+              : member.role === "admin"
+                ? "Admin"
+                : "Membro"
+        return (
+          <li key={member.user_id}>
+            <div className="flex items-center gap-3 rounded-2xl px-3 py-2.5">
+              <UserAvatar
+                name={displayName}
+                imageUrl={member.avatar_url ?? undefined}
+                sizeClassName="h-9 w-9"
+                ring={false}
+              />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-foreground">{displayName}</p>
+                {member.course?.trim() ? (
+                  <p className="truncate text-xs text-muted-foreground">{member.course}</p>
+                ) : null}
+              </div>
+              <span
+                className={cn(
+                  "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                  member.role === "admin" || member.role === "owner"
+                    ? "bg-primary/15 text-primary"
+                    : "bg-muted text-muted-foreground",
+                )}
+              >
+                {roleLabel}
+              </span>
+            </div>
+          </li>
+        )
+      })}
     </ul>
+  )
+}
+
+interface ConfirmDeleteOverlayProps {
+  conversation: ProjectConversationRow
+  deleting: boolean
+  error: string | null
+  onCancel: () => void
+  onConfirm: () => void
+}
+
+function ConfirmDeleteOverlay({
+  conversation,
+  deleting,
+  error,
+  onCancel,
+  onConfirm,
+}: ConfirmDeleteOverlayProps) {
+  return (
+    <div
+      role="alertdialog"
+      aria-modal="true"
+      aria-label="Confirmar exclusão"
+      className="absolute inset-0 z-10 flex items-center justify-center bg-background/85 px-4 backdrop-blur-sm"
+    >
+      <div className="w-full rounded-2xl border border-border bg-card p-4 shadow-xl">
+        <p className="text-sm font-semibold text-foreground">
+          Excluir {conversation.title?.trim() ? `“${conversation.title.trim()}”` : "este grupo"}?
+        </p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          As mensagens deixarão de aparecer para os membros, mas o histórico será preservado.
+        </p>
+        {error ? (
+          <p role="alert" className="mt-2 text-xs font-medium text-destructive">
+            {error}
+          </p>
+        ) : null}
+        <div className="mt-4 flex items-center justify-end gap-2">
+          <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={deleting}>
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            variant="destructive"
+            size="sm"
+            onClick={onConfirm}
+            disabled={deleting}
+            className="font-semibold"
+          >
+            {deleting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> Excluindo...
+              </>
+            ) : (
+              "Excluir grupo"
+            )}
+          </Button>
+        </div>
+      </div>
+    </div>
   )
 }
 
