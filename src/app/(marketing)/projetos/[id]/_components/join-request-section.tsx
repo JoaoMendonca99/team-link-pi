@@ -130,18 +130,18 @@ export function JoinRequestSection({
         <div className="mt-3 h-12 animate-pulse rounded-2xl bg-card" />
       ) : state.kind === 'owner' ? (
         <p className="mt-2 text-sm text-muted-foreground">
-          Você é o dono deste projeto. As solicitações de outras pessoas aparecem no painel acima.
+          Você é responsável por este projeto. As solicitações chegam direto na sua área de gestão.
         </p>
       ) : state.kind === 'member' ? (
         <p className="mt-2 text-sm text-muted-foreground">Você já participa deste projeto.</p>
       ) : state.kind === 'anonymous' ? (
         <>
           <p className="mt-2 text-sm text-muted-foreground">
-            Entre para solicitar participação neste projeto.
+            Entre na sua conta para solicitar participação neste projeto.
           </p>
           <div className="mt-4 flex flex-wrap gap-3">
             <Button asChild className="rounded-2xl font-semibold">
-              <Link href="/login">Entrar para solicitar</Link>
+              <Link href="/login">Entrar</Link>
             </Button>
             <Button asChild variant="outline" className="rounded-2xl font-semibold">
               <Link href="/cadastro">Criar conta</Link>
@@ -151,7 +151,7 @@ export function JoinRequestSection({
       ) : state.kind === 'pending' ? (
         <div className="space-y-3">
           <p className="mt-2 text-sm text-muted-foreground">
-            Solicitação enviada. Aguardando resposta do dono do projeto.
+            Solicitação enviada. Aguardando a resposta da equipe.
           </p>
           {state.request.message ? (
             <p className="whitespace-pre-line rounded-2xl bg-card/70 px-4 py-3 text-sm text-muted-foreground">
@@ -176,7 +176,7 @@ export function JoinRequestSection({
       ) : (
         <div className="space-y-3">
           <p className="mt-2 text-sm text-muted-foreground">
-            Conte para o dono por que quer participar. A mensagem é opcional.
+            Conte para a equipe por que quer participar. A mensagem é opcional.
           </p>
           {state.lastRequest && state.lastRequest.status === 'rejected' ? (
             <p className="text-xs text-muted-foreground">
@@ -188,7 +188,7 @@ export function JoinRequestSection({
             onChange={(event) => setMessage(event.target.value)}
             placeholder="Apresente-se, sua disponibilidade ou interesse pelo projeto..."
             disabled={submitting}
-            aria-label="Mensagem para o dono do projeto"
+            aria-label="Mensagem para a equipe do projeto"
           />
           {errorMessage ? (
             <p role="alert" className="text-xs font-medium text-destructive">

@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import * as React from "react"
 import { createPortal } from "react-dom"
 import {
@@ -8,6 +9,7 @@ import {
 } from "@supabase/supabase-js"
 import {
   ArrowLeft,
+  ExternalLink,
   Loader2,
   MessageCircle,
   MessagesSquare,
@@ -958,6 +960,20 @@ export function ProjectChatWidget() {
               <Users className="h-4 w-4" aria-hidden />
             </Button>
           ) : null}
+          <Button
+            asChild
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            aria-label="Abrir central de mensagens"
+            title="Abrir central de mensagens"
+            onClick={() => setOpen(false)}
+          >
+            <Link href="/mensagens">
+              <ExternalLink className="h-4 w-4" aria-hidden />
+            </Link>
+          </Button>
           <Button
             type="button"
             variant="ghost"

@@ -194,10 +194,10 @@ export function CommentsSection({
         </div>
       ) : (
         <div className="rounded-2xl border border-border bg-card p-4 text-sm font-medium text-muted-foreground">
-          <p className="text-foreground">Você precisa entrar para comentar.</p>
+          <p className="text-foreground">Entre na sua conta para comentar.</p>
           <div className="mt-4 flex flex-wrap gap-3">
             <Button asChild className="rounded-xl font-semibold">
-              <Link href="/login">Ir para login</Link>
+              <Link href="/login">Entrar</Link>
             </Button>
             <Button asChild variant="outline" className="rounded-xl font-semibold">
               <Link href="/cadastro">Criar conta</Link>

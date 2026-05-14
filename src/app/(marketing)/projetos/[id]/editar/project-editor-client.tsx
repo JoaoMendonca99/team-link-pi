@@ -1,9 +1,18 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { ArrowLeft, Construction } from 'lucide-react'
+import {
+  ArrowLeft,
+  CalendarDays,
+  CheckCircle2,
+  Construction,
+  ExternalLink,
+  Eye,
+  Globe2,
+  Link2,
+  Lock,
+} from 'lucide-react'
 
 import { ChipInput } from '@/components/team-link/chip-input'
 import { Container } from '@/components/layout/container'
@@ -60,7 +69,6 @@ const FIELD_ORDER: FormErrorField[] = [
 ]
 
 export function ProjectEditorClient({ slug }: { slug: string }) {
-  const router = useRouter()
   const { loading: sessionLoading, isAuthenticated, user } = useSupabaseSession()
 
   // Snapshot do projeto carregado (id, slug original, owner_id...)
@@ -209,7 +217,7 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
     const errors: FormErrors = {}
     if (!title.trim()) errors.title = 'Preencha o título do projeto.'
     if (!category) errors.category = 'Selecione uma categoria.'
-    if (!shortDescription.trim()) errors.shortDescription = 'Informe uma descrição curta.'
+    if (!shortDescription.trim()) errors.shortDescription = 'Preencha a descrição curta.'
     if (!fullDescription.trim()) errors.fullDescription = 'Descreva o projeto com mais detalhes.'
 
     const parsedSpots = Number.parseInt(spots, 10)
@@ -359,10 +367,20 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
       }
 
       setSuccessMessage('Projeto atualizado com sucesso.')
-      // Pequena pausa para o usuário ver o feedback, depois redireciona.
-      window.setTimeout(() => {
-        router.push(`/projetos/${project.slug}`)
-      }, 700)
+      // Atualiza o snapshot local (incluindo updated_at) para refletir no
+      // card "Resumo atual" sem precisar recarregar a página.
+      const nextUpdatedAt = new Date().toISOString()
+      setProject((prev) =>
+        prev
+          ? {
+              ...prev,
+              ...updates,
+              updated_at: nextUpdatedAt,
+            }
+          : prev,
+      )
+      setOriginalTags(tags)
+      setOriginalSkills(skills)
     } catch (error) {
       console.error('[project-editor] save failed', error)
       setErrorMessage('Não foi possível salvar as alterações agora.')
@@ -381,6 +399,26 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
     () => Object.keys(formErrors).length > 0,
     [formErrors],
   )
+
+  const updatedAtLabel = useMemo(() => {
+    const raw = project?.updated_at ?? project?.created_at ?? null
+    if (!raw) return ''
+    const date = new Date(raw)
+    if (Number.isNaN(date.getTime())) return ''
+    return date.toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+  }, [project?.updated_at, project?.created_at])
+
+  const safeSpotsPreview = useMemo(() => {
+    const parsed = Number.parseInt(spots, 10)
+    if (!Number.isFinite(parsed) || parsed < 0) return 0
+    return parsed
+  }, [spots])
 
   if (sessionLoading || loading) {
     return (
@@ -418,11 +456,14 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
         <Container className="py-24">
           <PageHeader
             title="Acesso necessário"
-            description="Entre com sua conta para editar este projeto."
+            description="Entre na sua conta para editar este projeto."
           />
           <div className="mt-6 flex flex-wrap gap-3">
             <Button asChild className="rounded-2xl font-semibold">
-              <Link href="/login">Ir para login</Link>
+              <Link href="/login">Entrar</Link>
+            </Button>
+            <Button asChild variant="outline" className="rounded-2xl font-semibold">
+              <Link href="/cadastro">Criar conta</Link>
             </Button>
           </div>
         </Container>
@@ -499,7 +540,7 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
   return (
     <main className="bg-background pb-20">
       <div className="border-b border-border bg-gradient-to-br from-muted/60 via-background to-background">
-        <Container className="space-y-8 py-14">
+        <Container className="space-y-8 py-12">
           <Button asChild variant="ghost" className="w-fit gap-2 rounded-2xl font-semibold">
             <Link href={headerHref}>
               <ArrowLeft className="h-4 w-4" />
@@ -508,15 +549,20 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
           </Button>
 
           <PageHeader
-            eyebrow="Editar projeto"
-            title={project.title || 'Editar projeto'}
-            description="Atualize as informações públicas do projeto."
+            title="Editar projeto"
+            description="Atualize as informações públicas e operacionais do projeto."
           />
         </Container>
       </div>
 
-      <Container size="article" className="py-12">
-        <form className="space-y-8" onSubmit={handleSubmit} noValidate>
+      <Container className="py-12">
+        <form
+          className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)] lg:items-start"
+          onSubmit={handleSubmit}
+          noValidate
+        >
+          {/* Card grande com o formulário */}
+          <section className="min-w-0 space-y-8 rounded-[1.85rem] border border-border bg-card p-6 shadow-sm sm:p-8">
           <FormSection
             title="Informações principais"
             description="Como o projeto se apresenta para quem visita a página."
@@ -540,12 +586,24 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
                 <p id="edit-title-error" className="text-xs font-medium text-destructive">
                   {formErrors.title}
                 </p>
-              ) : (
-                <p className="text-xs text-muted-foreground">
-                  Endereço público:{' '}
-                  <span className="font-mono">/projetos/{project.slug}</span>
-                </p>
-              )}
+              ) : null}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="edit-slug">Endereço da página</Label>
+              <div className="flex items-center gap-2 rounded-2xl border border-border bg-muted/40 px-3 py-2">
+                <Link2 className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                <Input
+                  id="edit-slug"
+                  value={`/projetos/${project.slug}`}
+                  readOnly
+                  aria-readonly="true"
+                  className="rounded-xl border-0 bg-transparent px-0 font-mono text-xs shadow-none focus-visible:ring-0"
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                O endereço público fica fixo para preservar links já compartilhados.
+              </p>
             </div>
 
             <div className="space-y-3" data-field="category">
@@ -781,9 +839,23 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
           {successMessage ? (
             <div
               role="status"
-              className="rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-700 dark:text-emerald-300"
+              className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-700 dark:text-emerald-300"
             >
-              {successMessage}
+              <span className="inline-flex items-center gap-2">
+                <CheckCircle2 className="h-4 w-4" aria-hidden />
+                {successMessage}
+              </span>
+              <Button
+                asChild
+                type="button"
+                variant="outline"
+                className="rounded-2xl font-semibold"
+              >
+                <Link href={`/projetos/${project.slug}`}>
+                  <ExternalLink className="h-4 w-4" aria-hidden />
+                  Ver projeto público
+                </Link>
+              </Button>
             </div>
           ) : null}
 
@@ -799,8 +871,99 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
               {submitting ? 'Salvando...' : 'Salvar alterações'}
             </Button>
           </div>
+          </section>
+
+          {/* Coluna lateral: Resumo atual */}
+          <aside className="min-w-0 space-y-4 lg:sticky lg:top-[96px]">
+            <section className="rounded-[1.75rem] border border-border bg-card p-6 shadow-sm">
+              <header>
+                <p className="text-xs font-semibold uppercase tracking-[0.26em] text-primary">
+                  Resumo atual
+                </p>
+                <h2 className="mt-1 text-lg font-semibold">Como o projeto está agora</h2>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Os valores refletem o que está sendo editado abaixo. A última atualização muda só após salvar.
+                </p>
+              </header>
+
+              <dl className="mt-5 space-y-4">
+                <SummaryRow
+                  icon={Link2}
+                  label="Endereço da página"
+                  value={`/projetos/${project.slug}`}
+                  mono
+                />
+                <SummaryRow
+                  icon={CheckCircle2}
+                  label="Status atual"
+                  value={PROJECT_STATUS_LABEL[status]}
+                />
+                <SummaryRow
+                  icon={visibility === 'private' ? Lock : Globe2}
+                  label="Visibilidade"
+                  value={PROJECT_VISIBILITY_LABEL[visibility]}
+                />
+                <SummaryRow
+                  icon={Eye}
+                  label="Vagas em aberto"
+                  value={`${safeSpotsPreview} ${safeSpotsPreview === 1 ? 'vaga' : 'vagas'}`}
+                />
+                <SummaryRow
+                  icon={CalendarDays}
+                  label="Última atualização"
+                  value={updatedAtLabel || 'Sem atualização registrada'}
+                />
+              </dl>
+
+              <Button
+                asChild
+                variant="outline"
+                className="mt-6 w-full rounded-2xl font-semibold"
+              >
+                <Link href={`/projetos/${project.slug}`}>
+                  <ExternalLink className="h-4 w-4" aria-hidden />
+                  Ver projeto público
+                </Link>
+              </Button>
+            </section>
+          </aside>
         </form>
       </Container>
     </main>
+  )
+}
+
+function SummaryRow({
+  icon: Icon,
+  label,
+  value,
+  mono = false,
+}: {
+  icon: React.ComponentType<{ className?: string; 'aria-hidden'?: boolean }>
+  label: string
+  value: string
+  mono?: boolean
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+        <Icon className="h-4 w-4" aria-hidden />
+      </span>
+      <div className="min-w-0">
+        <dt className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+          {label}
+        </dt>
+        <dd
+          className={
+            mono
+              ? 'mt-0.5 truncate font-mono text-xs text-foreground'
+              : 'mt-0.5 truncate text-sm font-semibold text-foreground'
+          }
+          title={value}
+        >
+          {value}
+        </dd>
+      </div>
+    </div>
   )
 }

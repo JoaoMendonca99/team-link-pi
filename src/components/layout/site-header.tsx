@@ -156,6 +156,12 @@ export function SiteHeader() {
                   >
                     <Link href="/meus-projetos">Meus projetos</Link>
                   </DropdownMenuItem>
+                  <DropdownMenuItem
+                    asChild
+                    className="cursor-pointer rounded-lg px-3 py-2 text-sm font-medium"
+                  >
+                    <Link href="/mensagens">Mensagens</Link>
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator className="my-1.5" />
                   <DropdownMenuItem
                     variant="destructive"
@@ -273,6 +279,9 @@ export function SiteHeader() {
                   </Button>
                   <Button asChild variant="secondary" className="w-full font-semibold" onClick={closeMobile}>
                     <Link href="/meus-projetos">Meus projetos</Link>
+                  </Button>
+                  <Button asChild variant="secondary" className="w-full font-semibold" onClick={closeMobile}>
+                    <Link href="/mensagens">Mensagens</Link>
                   </Button>
                   <Button asChild variant="outline" className="w-full font-semibold" onClick={closeMobile}>
                     <Link href="/nova-ideia">Criar ideia</Link>
