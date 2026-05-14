@@ -908,8 +908,13 @@ export function ProjectChatWidget() {
       aria-label="Chat dos seus projetos"
       className={cn(
         "fixed z-[40] flex flex-col overflow-hidden rounded-3xl border border-border bg-card text-card-foreground shadow-2xl",
-        "bottom-20 left-4 right-4 max-h-[min(72vh,640px)]",
-        "md:left-auto md:right-6 md:bottom-24 md:w-[380px] md:max-h-[600px]",
+        // Mobile: ancorado acima do launcher, com margem lateral. dvh evita
+        // que o chrome do navegador mobile coma a janela e faça o painel
+        // parecer "subir" para cima do header.
+        "left-4 right-4 top-auto bottom-20 max-h-[min(calc(100dvh-164px),640px)]",
+        // Desktop: janela flutuante fixa no canto inferior direito, com
+        // folga garantida abaixo do header (72px) e acima do launcher.
+        "md:left-auto md:right-6 md:bottom-24 md:w-[400px] md:max-h-[min(calc(100dvh-180px),640px)]",
       )}
     >
       <header className="flex items-center justify-between gap-3 border-b border-border bg-background/60 px-4 py-3">
