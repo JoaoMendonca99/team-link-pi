@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Container } from "@/components/layout/container"
+import { NotificationBell } from "@/components/notifications/notification-bell"
 import { UserAvatar } from "@/components/team-link/user-avatar"
 import { useThemeMode } from "@/components/providers/theme-provider"
 import { useSupabaseSession } from "@/hooks/use-supabase-session"
@@ -112,6 +113,8 @@ export function SiteHeader() {
           >
             {darkMode ? <Sun className="h-5 w-5" aria-hidden /> : <Moon className="h-5 w-5" aria-hidden />}
           </Button>
+
+          <NotificationBell />
 
           <div className="hidden items-center gap-2 lg:flex">
             {isAuthenticated ? (

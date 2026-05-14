@@ -306,3 +306,34 @@ export interface ProjectMessageInsert {
   content: string
   status?: ProjectMessageStatus
 }
+
+// ============================================================================
+// Notificações
+// ============================================================================
+
+/**
+ * Item retornado por `public.get_my_notifications`.
+ *
+ * O backend já entrega título, corpo e link prontos para exibição.
+ * Campos opcionais (actor_*, project_*, etc.) são preenchidos somente
+ * quando fazem sentido para o tipo de notificação.
+ */
+export interface NotificationItem {
+  id: string
+  notification_type: string
+  title: string | null
+  body: string | null
+  href: string | null
+  metadata: Record<string, unknown> | null
+  is_read: boolean
+  read_at: string | null
+  created_at: string
+  actor_id: string | null
+  actor_name: string | null
+  actor_course: string | null
+  project_id: string | null
+  project_title: string | null
+  conversation_id: string | null
+  message_id: string | null
+  join_request_id: string | null
+}
