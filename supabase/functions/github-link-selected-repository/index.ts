@@ -1,10 +1,14 @@
+/** Garante que o bundle inclui o import RSA compartilhado (PKCS#1 → Web Crypto). */
+import '../_shared/github-rsa-import.ts'
+
 import {
   createInstallationAccessToken,
   fetchRepositoryById,
   GitHubApiError,
+  GitHubPrivateKeyError,
   listInstallationRepositories,
 } from '../_shared/github-app.ts'
-import { assertProjectManager, insertSyncLog } from '../_shared/github-db.ts'
+import { assertProjectManager, insertSyncLog, RepositoryCommitsSaveError } from '../_shared/github-db.ts'
 import { linkProjectRepositoryCore } from '../_shared/github-link-core.ts'
 import type { CommitVisibility } from '../_shared/github-db.ts'
 import { errorResponse, handleCors, jsonResponse } from '../_shared/http.ts'
@@ -19,6 +23,24 @@ interface LinkSelectedBody {
   installation_id?: number
   github_repository_id?: number
   commit_visibility?: string
+}
+
+function safeJwtRelatedDetail(e: unknown, maxLen = 400): string {
+  if (e == null) return ''
+  if (typeof e === 'string') {
+    const s = e.trim()
+    if (!s) return ''
+    if (/-----BEGIN|BEGIN[\sA-Z]*PRIVATE|RSA PRIVATE/i.test(s)) return 'redacted'
+    return s.length > maxLen ? `${s.slice(0, maxLen)}…` : s
+  }
+  if (e instanceof Error) {
+    let m = e.message
+    if (/-----BEGIN|BEGIN[\sA-Z]*PRIVATE|RSA PRIVATE/i.test(m)) return 'redacted+pem'
+    m = m.replace(/[A-Za-z0-9+/=]{64,}/g, '[b64]')
+    if (m.length > maxLen) m = `${m.slice(0, maxLen)}…`
+    return `${e.name}: ${m}`
+  }
+  return 'unknown'
 }
 
 Deno.serve(async (req) => {
@@ -82,6 +104,64 @@ Deno.serve(async (req) => {
 
     return jsonResponse(result)
   } catch (error) {
+    if (error instanceof RepositoryCommitsSaveError) {
+      await insertSyncLog(admin, {
+        project_id: projectId,
+        action: 'link',
+        status: 'error',
+        message: error.message,
+      }).catch(() => undefined)
+
+      console.error('[github-link-selected-repository] save_repository_commits_failed', {
+        code: error.code,
+        details_keys: Object.keys(error.details),
+      })
+
+      return jsonResponse(
+        {
+          ok: false,
+          step: error.step,
+          code: error.code,
+          message: error.message,
+          details: error.details,
+        },
+        500,
+      )
+    }
+
+    if (error instanceof GitHubPrivateKeyError) {
+      const causeMsg = safeJwtRelatedDetail(error.cause)
+      const detailMsg = causeMsg || error.message
+
+      await insertSyncLog(admin, {
+        project_id: projectId,
+        action: 'link',
+        status: 'error',
+        message: error.message,
+      }).catch(() => undefined)
+
+      console.error('[github-link-selected-repository] create_github_jwt_failed', {
+        error_name: error.name,
+        cause_name: error.cause instanceof Error
+          ? error.cause.name
+          : typeof error.cause,
+      })
+
+      return jsonResponse(
+        {
+          ok: false,
+          step: 'create_github_jwt',
+          code: 'github_private_key_invalid',
+          message: 'Chave privada do GitHub App inválida ou mal formatada.',
+          details: {
+            error_name: error.name,
+            error_message: detailMsg,
+          },
+        },
+        500,
+      )
+    }
+
     const message =
       error instanceof GitHubApiError
         ? error.message

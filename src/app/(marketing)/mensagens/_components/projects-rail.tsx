@@ -39,6 +39,8 @@ export function ProjectsRail({
   error,
   onRetry,
   className,
+  /** Quando false, não renderiza badges de não lidas (UI sem sistema de leitura confiável). */
+  showUnreadBadges = false,
 }: {
   projects: ChatProjectListItem[]
   selectedProjectId: string | null
@@ -47,6 +49,7 @@ export function ProjectsRail({
   error: string | null
   onRetry: () => void
   className?: string
+  showUnreadBadges?: boolean
 }) {
   return (
     <aside
@@ -58,11 +61,11 @@ export function ProjectsRail({
     >
       <header className="border-b border-border bg-background/60 px-4 py-3">
         <p className="text-[11px] font-semibold uppercase tracking-[0.26em] text-primary">
-          Central de mensagens
+          PROJETOS
         </p>
-        <h1 className="mt-1 text-lg font-semibold text-foreground">Mensagens</h1>
+        <h1 className="mt-1 text-lg font-semibold text-foreground">Central de mensagens</h1>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Conversas dos seus projetos.
+          Escolha um projeto para abrir conversas e grupos da equipe.
         </p>
       </header>
 
@@ -135,7 +138,9 @@ export function ProjectsRail({
                             ? project.lastMessageContent
                             : 'Conversas do projeto'}
                         </span>
-                        {project.unreadCount && project.unreadCount > 0 ? (
+                        {showUnreadBadges &&
+                        project.unreadCount != null &&
+                        project.unreadCount > 0 ? (
                           <span className="ml-auto inline-flex h-5 min-w-[1.25rem] shrink-0 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
                             {project.unreadCount > 9 ? '9+' : project.unreadCount}
                           </span>

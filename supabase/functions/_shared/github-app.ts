@@ -29,8 +29,8 @@ export class GitHubApiError extends Error {
 }
 
 export class GitHubPrivateKeyError extends Error {
-  constructor(message = 'Chave privada do GitHub App inválida ou mal formatada.') {
-    super(message)
+  constructor(message?: string, options?: { cause?: unknown }) {
+    super(message ?? 'Chave privada do GitHub App inválida ou mal formatada.', options)
     this.name = 'GitHubPrivateKeyError'
   }
 }
@@ -45,7 +45,9 @@ async function loadJose(): Promise<JoseModule> {
       console.error('[github-app] jose_import_failed', {
         error_name: error instanceof Error ? error.name : 'unknown',
       })
-      throw new GitHubPrivateKeyError('Biblioteca JWT indisponível no runtime.')
+      throw new GitHubPrivateKeyError('Biblioteca JWT indisponível no runtime.', {
+        cause: error,
+      })
     })
   }
   return joseModulePromise
@@ -64,7 +66,7 @@ export interface GitHubRepo {
 export interface GitHubInstallationMeta {
   installation_id: number
   app_id: number
-  account_id: number
+  account_id: number | null
   account_login: string
   account_type: string
   target_type: string
@@ -75,12 +77,17 @@ export interface GitHubCommitListItem {
   sha: string
   html_url: string
   commit: {
-    message: string
-    author: {
+    message?: string
+    author?: {
       name: string | null
       email: string | null
       date: string
-    }
+    } | null
+    committer?: {
+      name: string | null
+      email: string | null
+      date: string
+    } | null
   }
   author: { login: string | null } | null
 }
@@ -146,7 +153,7 @@ export async function createGitHubAppJwt(): Promise<string> {
     console.error('[github-app] github_private_key_invalid', {
       error_name: error instanceof Error ? error.name : 'unknown',
     })
-    throw new GitHubPrivateKeyError()
+    throw new GitHubPrivateKeyError(undefined, { cause: error })
   }
 
   let privateKey: CryptoKey
@@ -157,7 +164,7 @@ export async function createGitHubAppJwt(): Promise<string> {
       hint: 'Verifique GITHUB_PRIVATE_KEY (PEM completo, com quebras de linha).',
       error_name: error instanceof Error ? error.name : 'unknown',
     })
-    throw new GitHubPrivateKeyError()
+    throw new GitHubPrivateKeyError(undefined, { cause: error })
   }
 
   let token: string
@@ -173,7 +180,7 @@ export async function createGitHubAppJwt(): Promise<string> {
     console.error('[github-app] github_jwt_failed', {
       error_name: error instanceof Error ? error.name : 'unknown',
     })
-    throw new GitHubPrivateKeyError()
+    throw new GitHubPrivateKeyError(undefined, { cause: error })
   }
 
   cachedAppJwt = { token, expiresAt: now + 9 * 60 }
@@ -420,11 +427,12 @@ export async function fetchRecentCommits(
 export function normalizeApiCommits(commits: GitHubCommitListItem[]): NormalizedCommit[] {
   return commits.map((item) => ({
     sha: item.sha,
-    message: item.commit.message,
-    author_name: item.commit.author.name ?? null,
-    author_email: item.commit.author.email ?? null,
+    message: item.commit.message ?? '',
+    author_name: item.commit.author?.name ?? item.commit.committer?.name ?? null,
+    author_email: item.commit.author?.email ?? item.commit.committer?.email ?? null,
     github_username: item.author?.login ?? null,
-    committed_at: item.commit.author.date,
+    committed_at:
+      item.commit.author?.date ?? item.commit.committer?.date ?? '',
     commit_url: item.html_url,
     additions: null,
     deletions: null,

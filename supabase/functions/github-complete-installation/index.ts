@@ -82,6 +82,14 @@ function checkEnvs(): { ok: true } | { ok: false; missing: string[] } {
   return { ok: true }
 }
 
+/** Mínimo para client admin REST (debug de banco sem GitHub). */
+function checkDbEnv(): { ok: true } | { ok: false; missing: string[] } {
+  const required = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY']
+  const missing = required.filter((name) => !envPresent(name))
+  if (missing.length > 0) return { ok: false, missing }
+  return { ok: true }
+}
+
 function normalizePrivateKey(): { ok: true; pem: string } | { ok: false; reason: string } {
   const raw = Deno.env.get('GITHUB_PRIVATE_KEY')?.trim()
   if (!raw) return { ok: false, reason: 'GITHUB_PRIVATE_KEY ausente' }
@@ -664,6 +672,235 @@ async function handleDebugModes(
     })
   }
 
+  if (debugVal === 'db_upsert_installation_test') {
+    logStep('debug_mode', { mode: 'db_upsert_installation_test' })
+    const installationId = parseInstallationId(body.installation_id)
+    if (!installationId) {
+      return json({
+        ok: false,
+        debug: 'db_upsert_installation_test',
+        step: 'parse_body',
+        code: 'missing_installation_id',
+        message: 'installation_id é obrigatório.',
+        details: {},
+      })
+    }
+
+    const dbEnv = checkDbEnv()
+    if (!dbEnv.ok) {
+      return json({
+        ok: false,
+        debug: 'db_upsert_installation_test',
+        step: 'check_envs',
+        code: 'missing_env',
+        message: 'Secrets Supabase ausentes para este teste.',
+        details: { missing: dbEnv.missing },
+      })
+    }
+
+    const githubDb = await import('../_shared/github-db.ts')
+    const { createGithubAdminRestClient } = await import('../_shared/github-edge-supabase.ts')
+    const adminRest = createGithubAdminRestClient()
+
+    const syntheticMeta: import('../_shared/github-app.ts').GitHubInstallationMeta = {
+      installation_id: installationId,
+      app_id: 3725115,
+      account_id: null,
+      account_login: 'JoaoMendonca99',
+      account_type: 'User',
+      target_type: 'User',
+      status: 'active',
+    }
+
+    const upsertResult = await githubDb.upsertGithubInstallation(
+      adminRest,
+      syntheticMeta,
+      null,
+    )
+
+    if (!upsertResult.ok) {
+      return json(
+        {
+          ok: false,
+          debug: 'db_upsert_installation_test',
+          step: 'debug_db_upsert_installation',
+          code: 'database_upsert_failed',
+          message: 'Falha no teste de upsert da instalação.',
+          details: {
+            supabase_error_code: upsertResult.supabase_error_code,
+            supabase_error_message: upsertResult.supabase_error_message,
+            supabase_error_details: upsertResult.supabase_error_details,
+            supabase_error_hint: upsertResult.supabase_error_hint,
+            using_service_role: true,
+            payload_keys: upsertResult.payload_keys,
+            payload_preview: upsertResult.payload_preview,
+          },
+        },
+        500,
+      )
+    }
+
+    const { data: row, error: selectError } = await adminRest
+      .from('github_installations')
+      .select(
+        'installation_id, app_id, account_id, account_login, account_type, target_type, status, created_by, updated_at, metadata',
+      )
+      .eq('installation_id', installationId)
+      .maybeSingle()
+
+    return json({
+      ok: true,
+      debug: 'db_upsert_installation_test',
+      using_service_role: true,
+      payload_keys: upsertResult.payload_keys,
+      result: row,
+      select_error: selectError
+        ? { code: selectError.code, message: selectError.message, hint: selectError.hint }
+        : null,
+    })
+  }
+
+  if (debugVal === 'real_upsert_installation_test') {
+    logStep('debug_mode', { mode: 'real_upsert_installation_test' })
+    const installationId = parseInstallationId(body.installation_id)
+    if (!installationId) {
+      return json({
+        ok: false,
+        debug: 'real_upsert_installation_test',
+        step: 'parse_body',
+        code: 'missing_installation_id',
+        message: 'installation_id é obrigatório.',
+        details: {},
+      })
+    }
+
+    const envCheck = checkEnvs()
+    if (!envCheck.ok) {
+      return json({
+        ok: false,
+        debug: 'real_upsert_installation_test',
+        step: 'check_envs',
+        code: 'missing_env',
+        message: 'Secrets obrigatórios ausentes para este teste.',
+        details: { missing: envCheck.missing },
+      })
+    }
+
+    let createdBy: string | null = null
+    const cb = body.created_by
+    if (typeof cb === 'string' && cb.trim()) createdBy = cb.trim()
+
+    const keyCheck = normalizePrivateKey()
+    if (!keyCheck.ok) {
+      return json({
+        ok: false,
+        debug: 'real_upsert_installation_test',
+        step: 'normalize_private_key',
+        code: 'github_private_key_invalid',
+        message: 'Chave privada do GitHub App inválida.',
+        details: { reason: keyCheck.reason },
+      })
+    }
+
+    let githubApp: typeof import('../_shared/github-app.ts')
+    try {
+      githubApp = await import('../_shared/github-app.ts')
+      await githubApp.createGitHubAppJwt()
+    } catch (e) {
+      const isPk = e instanceof Error && e.name === 'GitHubPrivateKeyError'
+      return json({
+        ok: false,
+        debug: 'real_upsert_installation_test',
+        step: 'create_github_jwt',
+        code: isPk ? 'github_private_key_invalid' : 'github_jwt_failed',
+        message: 'Falha ao gerar JWT do GitHub App.',
+        details: { error_name: e instanceof Error ? e.name : 'unknown' },
+      })
+    }
+
+    let installationMeta: import('../_shared/github-app.ts').GitHubInstallationMeta
+    try {
+      installationMeta = await githubApp.fetchInstallation(installationId)
+    } catch (e) {
+      const details =
+        e instanceof githubApp.GitHubApiError
+          ? e.toSanitizedDetails()
+          : { error_name: e instanceof Error ? e.name : 'unknown' }
+      return json({
+        ok: false,
+        debug: 'real_upsert_installation_test',
+        step: 'github_get_installation',
+        code: 'github_installation_fetch_failed',
+        message: 'Falha ao buscar instalação no GitHub.',
+        details,
+      })
+    }
+
+    const githubDb = await import('../_shared/github-db.ts')
+    const { createGithubAdminRestClient } = await import('../_shared/github-edge-supabase.ts')
+    const adminRest = createGithubAdminRestClient()
+
+    const upsertResult = await githubDb.upsertGithubInstallation(
+      adminRest,
+      installationMeta,
+      createdBy,
+    )
+
+    const payload_preview = {
+      installation_id: installationMeta.installation_id,
+      app_id: installationMeta.app_id,
+      account_id: installationMeta.account_id,
+      account_login: installationMeta.account_login,
+      account_type: installationMeta.account_type,
+      target_type: installationMeta.target_type,
+      status: installationMeta.status,
+      created_by: createdBy,
+      metadata_keys: [] as string[],
+      using_service_role: true,
+    }
+
+    if (!upsertResult.ok) {
+      return json(
+        {
+          ok: false,
+          debug: 'real_upsert_installation_test',
+          step: 'debug_db_upsert_installation',
+          code: 'database_upsert_failed',
+          message: 'Falha no teste de upsert da instalação (payload real).',
+          details: {
+            supabase_error_code: upsertResult.supabase_error_code,
+            supabase_error_message: upsertResult.supabase_error_message,
+            supabase_error_details: upsertResult.supabase_error_details,
+            supabase_error_hint: upsertResult.supabase_error_hint,
+            using_service_role: true,
+            payload_keys: upsertResult.payload_keys,
+            payload_preview: upsertResult.payload_preview,
+            installation_preview: payload_preview,
+          },
+        },
+        500,
+      )
+    }
+
+    return json({
+      ok: true,
+      debug: 'real_upsert_installation_test',
+      using_service_role: true,
+      payload_keys: upsertResult.payload_keys,
+      payload_preview,
+      installation_meta: {
+        installation_id: installationMeta.installation_id,
+        app_id: installationMeta.app_id,
+        account_id: installationMeta.account_id,
+        account_login: installationMeta.account_login,
+        account_type: installationMeta.account_type,
+        target_type: installationMeta.target_type,
+        status: installationMeta.status,
+      },
+      created_by_used: createdBy,
+    })
+  }
+
   return null
 }
 
@@ -791,14 +1028,10 @@ async function handleRequest(req: Request): Promise<Response> {
 
   let userId: string
   try {
-    const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2.49.1')
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!.trim()
-    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!.trim()
+    const { createGithubAdminAuthClient } = await import('../_shared/github-edge-supabase.ts')
+    const adminAuth = createGithubAdminAuthClient()
     const token = authHeader.slice('Bearer '.length).trim()
-    const admin = createClient(supabaseUrl, serviceKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    })
-    const { data, error } = await admin.auth.getUser(token)
+    const { data, error } = await adminAuth.auth.getUser(token)
     if (error || !data.user) {
       return fail({
         step: 'validate_user',
@@ -835,22 +1068,14 @@ async function handleRequest(req: Request): Promise<Response> {
 
   try {
     const githubDb = await import('../_shared/github-db.ts')
-    const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2.49.1')
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!.trim()
-    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!.trim()
-    const admin = createClient(supabaseUrl, serviceKey, {
-      auth: { persistSession: false, autoRefreshToken: false },
-    })
-    const anonKey = Deno.env.get('SUPABASE_ANON_KEY')?.trim()
-    let userClient = null
-    if (anonKey) {
-      userClient = createClient(supabaseUrl, anonKey, {
-        global: { headers: { Authorization: authHeader } },
-        auth: { persistSession: false, autoRefreshToken: false },
-      })
-    }
+    const {
+      createGithubAdminRestClient,
+      createGithubUserClient,
+    } = await import('../_shared/github-edge-supabase.ts')
+    const adminRest = createGithubAdminRestClient()
+    const userClient = createGithubUserClient(authHeader)
     const canManage = await githubDb.assertProjectManager(
-      admin,
+      adminRest,
       statePayload.project_id,
       userId,
       userClient,
@@ -997,13 +1222,34 @@ async function handleRequest(req: Request): Promise<Response> {
 
   try {
     const githubDb = await import('../_shared/github-db.ts')
-    const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2.49.1')
-    const admin = createClient(
-      Deno.env.get('SUPABASE_URL')!.trim(),
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!.trim(),
-      { auth: { persistSession: false, autoRefreshToken: false } },
+    const { createGithubAdminRestClient } = await import('../_shared/github-edge-supabase.ts')
+    const adminRest = createGithubAdminRestClient()
+    const upsertResult = await githubDb.upsertGithubInstallation(
+      adminRest,
+      installationMeta,
+      userId,
     )
-    await githubDb.upsertGithubInstallation(admin, installationMeta, userId)
+    if (!upsertResult.ok) {
+      console.error('github_upsert_installation_failed', {
+        code: upsertResult.supabase_error_code,
+        installation_id: installationId,
+      })
+      return fail({
+        step: 'upsert_installation',
+        code: 'database_upsert_failed',
+        message: 'Falha ao salvar instalação.',
+        status: 500,
+        details: {
+          supabase_error_code: upsertResult.supabase_error_code,
+          supabase_error_message: upsertResult.supabase_error_message,
+          supabase_error_details: upsertResult.supabase_error_details,
+          supabase_error_hint: upsertResult.supabase_error_hint,
+          using_service_role: true,
+          payload_preview: upsertResult.payload_preview,
+          payload_keys: upsertResult.payload_keys,
+        },
+      })
+    }
   } catch (error) {
     console.error('github_upsert_installation_failed', {
       error_name: error instanceof Error ? error.name : 'unknown',
@@ -1013,7 +1259,27 @@ async function handleRequest(req: Request): Promise<Response> {
       code: 'database_upsert_failed',
       message: 'Falha ao salvar instalação.',
       status: 500,
-      details: { error_name: error instanceof Error ? error.name : 'unknown' },
+      details: {
+        supabase_error_code: null,
+        supabase_error_message: error instanceof Error ? error.message : 'unknown',
+        supabase_error_details: null,
+        supabase_error_hint: null,
+        using_service_role: true,
+        caught_exception: true,
+        error_name: error instanceof Error ? error.name : 'unknown',
+        payload_preview: {
+          installation_id: installationMeta.installation_id,
+          app_id: installationMeta.app_id,
+          account_id: installationMeta.account_id,
+          account_login: installationMeta.account_login,
+          account_type: installationMeta.account_type,
+          target_type: installationMeta.target_type,
+          status: installationMeta.status,
+          created_by: userId,
+          metadata_keys: [] as string[],
+        },
+        payload_keys: [] as string[],
+      },
     })
   }
 
@@ -1024,13 +1290,9 @@ async function handleRequest(req: Request): Promise<Response> {
 
   let projectSlug: string | null = null
   try {
-    const { createClient } = await import('https://esm.sh/@supabase/supabase-js@2.49.1')
-    const admin = createClient(
-      Deno.env.get('SUPABASE_URL')!.trim(),
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!.trim(),
-      { auth: { persistSession: false, autoRefreshToken: false } },
-    )
-    const { data: project } = await admin
+    const { createGithubAdminRestClient } = await import('../_shared/github-edge-supabase.ts')
+    const adminRest = createGithubAdminRestClient()
+    const { data: project } = await adminRest
       .from('projects')
       .select('slug')
       .eq('id', statePayload.project_id)

@@ -46,11 +46,42 @@ export async function assertProjectManager(
   return Boolean(member && (member.role === 'owner' || member.role === 'admin'))
 }
 
+export type UpsertGithubInstallationResult =
+  | { ok: true; payload_keys: string[] }
+  | {
+      ok: false
+      supabase_error_code: string | null
+      supabase_error_message: string | null
+      supabase_error_details: string | null
+      supabase_error_hint: string | null
+      payload_preview: Record<string, unknown>
+      payload_keys: string[]
+    }
+
+function installationPayloadPreview(
+  meta: GitHubInstallationMeta,
+  createdBy: string | null,
+  metadata: Record<string, unknown>,
+): Record<string, unknown> {
+  return {
+    installation_id: meta.installation_id,
+    app_id: meta.app_id,
+    account_id: meta.account_id,
+    account_login: meta.account_login,
+    account_type: meta.account_type,
+    target_type: meta.target_type,
+    status: meta.status,
+    created_by: createdBy,
+    metadata_keys: Object.keys(metadata),
+  }
+}
+
 export async function upsertGithubInstallation(
   admin: SupabaseClient,
   meta: GitHubInstallationMeta,
-  createdBy: string,
-): Promise<void> {
+  createdBy: string | null,
+): Promise<UpsertGithubInstallationResult> {
+  const metadata: Record<string, unknown> = {}
   const row = buildGithubInstallationRow({
     installation_id: meta.installation_id,
     app_id: meta.app_id,
@@ -60,8 +91,11 @@ export async function upsertGithubInstallation(
     target_type: meta.target_type,
     status: meta.status,
     created_by: createdBy,
-    metadata: {},
+    metadata,
   })
+
+  const payload_keys = Object.keys(row)
+  const payload_preview = installationPayloadPreview(meta, createdBy, metadata)
 
   const { error } = await admin.from('github_installations').upsert(row, {
     onConflict: 'installation_id',
@@ -70,11 +104,25 @@ export async function upsertGithubInstallation(
   if (error) {
     console.error('[github-db] github_installations upsert failed', {
       code: error.code,
+      message: error.message,
       hint: error.hint,
       installation_id: meta.installation_id,
     })
-    throw new Error(`database_upsert_failed:${error.code ?? 'unknown'}`)
+    return {
+      ok: false,
+      supabase_error_code: error.code ?? null,
+      supabase_error_message: error.message ?? null,
+      supabase_error_details:
+        typeof error.details === 'string' ? error.details : error.details != null
+          ? String(error.details)
+          : null,
+      supabase_error_hint: error.hint ?? null,
+      payload_preview,
+      payload_keys,
+    }
   }
+
+  return { ok: true, payload_keys }
 }
 
 export async function upsertProjectRepository(
@@ -140,6 +188,52 @@ export async function getProjectRepositoryById(
   return (data as ProjectGithubRepositoryRow | null) ?? null
 }
 
+/** Falha ao buscar commits no GitHub ou ao persistir em project_github_commits (fluxo de vínculo). */
+export class RepositoryCommitsSaveError extends Error {
+  readonly step = 'save_repository_commits' as const
+  readonly code = 'repository_commits_save_failed' as const
+  readonly details: Record<string, unknown>
+
+  constructor(details: Record<string, unknown>) {
+    super('Não foi possível salvar os commits do repositório.')
+    this.name = 'RepositoryCommitsSaveError'
+    this.details = details
+  }
+}
+
+function buildFirstCommitPreview(
+  commit: NormalizedCommit | undefined,
+  branch: string,
+): Record<string, unknown> {
+  if (!commit) {
+    return {}
+  }
+  return {
+    sha: commit.sha,
+    short_sha: typeof commit.sha === 'string' ? commit.sha.slice(0, 7) : null,
+    branch,
+    message_is_null: commit.message == null || String(commit.message).trim() === '',
+    committed_at: commit.committed_at ?? null,
+    author_name: commit.author_name,
+    github_username: commit.github_username,
+    files_type: commit.files == null ? 'null' : Array.isArray(commit.files) ? 'array' : typeof commit.files,
+    raw_commit_type: commit.raw_commit == null ? 'null' : typeof commit.raw_commit,
+  }
+}
+
+export type UpsertProjectCommitsResult =
+  | { ok: true; count: number }
+  | {
+      ok: false
+      supabase_error_code: string | null
+      supabase_error_message: string | null
+      supabase_error_details: string | null
+      supabase_error_hint: string | null
+      payload_keys: string[]
+      first_commit_preview: Record<string, unknown>
+      build_error: string | null
+    }
+
 export async function upsertProjectCommits(
   admin: SupabaseClient,
   ctx: {
@@ -149,39 +243,75 @@ export async function upsertProjectCommits(
     branch: string
   },
   commits: NormalizedCommit[],
-): Promise<number> {
-  if (commits.length === 0) return 0
+): Promise<UpsertProjectCommitsResult> {
+  const first_preview = buildFirstCommitPreview(commits[0], ctx.branch)
 
-  const rows = commits.map((commit) =>
-    buildProjectGithubCommitRow({
-      project_repository_id: ctx.project_repository_id,
-      project_id: ctx.project_id,
-      github_repository_id: ctx.github_repository_id,
-      sha: commit.sha,
-      message: commit.message,
-      author_name: commit.author_name,
-      author_email: commit.author_email,
-      github_username: commit.github_username,
-      committed_at: commit.committed_at,
-      branch: ctx.branch,
-      commit_url: commit.commit_url,
-      additions: commit.additions,
-      deletions: commit.deletions,
-      changed_files: commit.changed_files,
-      files: commit.files,
-      raw_commit: commit.raw_commit,
-    }),
-  )
+  if (commits.length === 0) {
+    return { ok: true, count: 0 }
+  }
+
+  let rows: Record<string, unknown>[]
+  try {
+    rows = commits.map((commit) =>
+      buildProjectGithubCommitRow({
+        project_repository_id: ctx.project_repository_id,
+        project_id: ctx.project_id,
+        github_repository_id: ctx.github_repository_id,
+        sha: commit.sha,
+        message: commit.message ?? '',
+        author_name: commit.author_name,
+        author_email: commit.author_email,
+        github_username: commit.github_username,
+        committed_at: commit.committed_at ?? '',
+        branch: ctx.branch,
+        commit_url: commit.commit_url,
+        additions: commit.additions,
+        deletions: commit.deletions,
+        changed_files: commit.changed_files,
+        files: commit.files,
+        raw_commit: commit.raw_commit,
+      }),
+    )
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'unknown_build_error'
+    console.error('[github-db] project_github_commits build failed', { message: msg })
+    return {
+      ok: false,
+      supabase_error_code: null,
+      supabase_error_message: msg,
+      supabase_error_details: null,
+      supabase_error_hint: null,
+      payload_keys: [],
+      first_commit_preview: first_preview,
+      build_error: msg,
+    }
+  }
 
   const { error } = await admin.from('project_github_commits').upsert(rows, {
     onConflict: 'project_repository_id,sha',
   })
 
   if (error) {
-    throw new Error('Não foi possível salvar os commits do repositório.')
+    console.error('[github-db] project_github_commits upsert failed', {
+      code: error.code,
+      message: error.message,
+    })
+    return {
+      ok: false,
+      supabase_error_code: error.code ?? null,
+      supabase_error_message: error.message ?? null,
+      supabase_error_details:
+        typeof error.details === 'string' ? error.details : error.details != null
+          ? String(error.details)
+          : null,
+      supabase_error_hint: error.hint ?? null,
+      payload_keys: Object.keys(rows[0] ?? {}),
+      first_commit_preview: first_preview,
+      build_error: null,
+    }
   }
 
-  return commits.length
+  return { ok: true, count: commits.length }
 }
 
 export async function touchRepositorySync(

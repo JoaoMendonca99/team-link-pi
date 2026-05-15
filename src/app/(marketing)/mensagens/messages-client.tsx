@@ -533,7 +533,7 @@ export function MessagesClient() {
     : 'Conversa'
 
   return (
-    <main className="flex h-[calc(100dvh-72px)] flex-col bg-background text-foreground">
+    <main className="flex min-h-0 flex-1 flex-col bg-background text-foreground">
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         <ProjectsRail
           projects={projects}
@@ -546,7 +546,7 @@ export function MessagesClient() {
         />
 
         <ConversationsRail
-          projectTitle={selectedProject?.title ?? 'Selecione um projeto'}
+          projectTitle={selectedProject?.title ?? 'Projeto'}
           conversations={conversations}
           selectedConversationId={selectedConversationId}
           onSelect={handleSelectConversation}
@@ -565,7 +565,10 @@ export function MessagesClient() {
             selectedProjectId ? void reloadConversations(selectedProjectId) : undefined
           }
           onBack={() => setMobileStep('projects')}
-          className={cn(showConversationsOnMobile ? 'flex' : 'hidden', 'lg:flex')}
+          className={cn(
+            showConversationsOnMobile ? 'flex' : 'hidden',
+            selectedProjectId ? 'lg:flex' : 'lg:hidden',
+          )}
         />
 
         <ThreadPanel
@@ -591,7 +594,10 @@ export function MessagesClient() {
           currentUserId={user?.id ?? null}
           currentUserName={currentUserName}
           currentUserAvatar={profile?.avatar_url ?? undefined}
-          className={cn(showThreadOnMobile ? 'flex' : 'hidden', 'lg:flex')}
+          className={cn(
+            showThreadOnMobile ? 'flex' : 'hidden',
+            'lg:flex lg:min-w-0 lg:flex-1',
+          )}
         />
       </div>
 

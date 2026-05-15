@@ -5,12 +5,12 @@ export type CommitVisibility = 'members' | 'public'
 export interface GithubInstallationInsert {
   installation_id: number
   app_id: number
-  account_id: number
+  account_id: number | null
   account_login: string
   account_type: string
   target_type: string
   status: string
-  created_by: string
+  created_by: string | null
   metadata: Record<string, unknown>
 }
 
@@ -46,7 +46,7 @@ export interface ProjectGithubCommitInsert {
   additions: number | null
   deletions: number | null
   changed_files: number | null
-  files: Record<string, unknown> | null
+  files: Record<string, unknown> | unknown[] | null
   raw_commit: Record<string, unknown>
 }
 
@@ -189,7 +189,41 @@ export function buildProjectGithubCommitRow(
   if (!input.sha?.trim()) {
     throw new Error('Commit inválido: sha ausente.')
   }
-  return pickAllowed(input as unknown as Record<string, unknown>, COMMIT_KEYS)
+
+  const message =
+    input.message != null && String(input.message).trim() !== ''
+      ? String(input.message)
+      : '(sem mensagem)'
+
+  const committedAt =
+    input.committed_at != null && String(input.committed_at).trim() !== ''
+      ? String(input.committed_at)
+      : '1970-01-01T00:00:00.000Z'
+
+  const files = input.files != null ? input.files : []
+  const raw_commit = input.raw_commit != null ? input.raw_commit : {}
+
+  return pickAllowed(
+    {
+      project_repository_id: input.project_repository_id,
+      project_id: input.project_id,
+      github_repository_id: input.github_repository_id,
+      sha: input.sha.trim(),
+      message,
+      author_name: input.author_name,
+      author_email: input.author_email,
+      github_username: input.github_username,
+      committed_at: committedAt,
+      branch: input.branch,
+      commit_url: input.commit_url,
+      additions: input.additions,
+      deletions: input.deletions,
+      changed_files: input.changed_files,
+      files,
+      raw_commit,
+    } as unknown as Record<string, unknown>,
+    COMMIT_KEYS,
+  )
 }
 
 export function buildGithubSyncLogRow(input: GithubSyncLogInsert): Record<string, unknown> {

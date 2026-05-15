@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
         30,
       ),
     )
-    const synced = await upsertProjectCommits(
+    const commitResult = await upsertProjectCommits(
       admin,
       {
         project_repository_id: repository.id,
@@ -86,6 +86,16 @@ Deno.serve(async (req) => {
       },
       commits,
     )
+    if (!commitResult.ok) {
+      const detailMsg =
+        commitResult.build_error ??
+        commitResult.supabase_error_message ??
+        'Falha ao salvar commits.'
+      throw new Error(
+        `${commitResult.supabase_error_code ?? 'commits'}: ${detailMsg}`,
+      )
+    }
+    const synced = commitResult.count
     await touchRepositorySync(admin, repository.id)
 
     await insertSyncLog(admin, {

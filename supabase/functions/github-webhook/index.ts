@@ -104,7 +104,7 @@ Deno.serve(async (req) => {
     let totalImported = 0
 
     for (const linked of repositories) {
-      const imported = await upsertProjectCommits(
+      const importedResult = await upsertProjectCommits(
         admin,
         {
           project_repository_id: linked.id,
@@ -114,7 +114,16 @@ Deno.serve(async (req) => {
         },
         normalizedCommits,
       )
-      totalImported += imported
+      if (!importedResult.ok) {
+        const msg =
+          importedResult.build_error ??
+          importedResult.supabase_error_message ??
+          'upsert commits failed'
+        throw new Error(
+          `${importedResult.supabase_error_code ?? 'commits'}: ${msg}`,
+        )
+      }
+      totalImported += importedResult.count
       await touchRepositorySync(admin, linked.id)
     }
 

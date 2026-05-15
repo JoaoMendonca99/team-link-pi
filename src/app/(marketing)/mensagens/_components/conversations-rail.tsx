@@ -42,6 +42,8 @@ export function ConversationsRail({
   onRetry,
   onBack,
   className,
+  /** Quando false, não renderiza badges de não lidas por conversa. */
+  showUnreadBadges = false,
 }: {
   projectTitle: string
   conversations: ChatConversationListItem[]
@@ -56,6 +58,7 @@ export function ConversationsRail({
   /** No mobile, botão de voltar para a coluna de projetos. */
   onBack?: () => void
   className?: string
+  showUnreadBadges?: boolean
 }) {
   const general = conversations.find((conversation) => conversation.kind === 'general')
   const groups = conversations.filter((conversation) => conversation.kind === 'group')
@@ -83,7 +86,7 @@ export function ConversationsRail({
         ) : null}
         <div className="min-w-0 flex-1">
           <p className="text-[11px] font-semibold uppercase tracking-[0.26em] text-primary">
-            Projeto
+            CONVERSAS
           </p>
           <h2 className="mt-0.5 truncate text-base font-semibold text-foreground" title={projectTitle}>
             {projectTitle}
@@ -129,6 +132,7 @@ export function ConversationsRail({
                   onSelect={onSelect}
                   onViewMembers={onViewMembers}
                   onRequestDelete={onRequestDelete}
+                  showUnreadBadges={showUnreadBadges}
                 />
               </li>
             ) : (
@@ -154,6 +158,7 @@ export function ConversationsRail({
                   onSelect={onSelect}
                   onViewMembers={onViewMembers}
                   onRequestDelete={onRequestDelete}
+                  showUnreadBadges={showUnreadBadges}
                 />
               </li>
             ))}
@@ -170,12 +175,14 @@ function ConversationItem({
   onSelect,
   onViewMembers,
   onRequestDelete,
+  showUnreadBadges,
 }: {
   conversation: ChatConversationListItem
   isSelected: boolean
   onSelect: (conversation: ChatConversationListItem) => void
   onViewMembers: (conversation: ChatConversationListItem) => void
   onRequestDelete: (conversation: ChatConversationListItem) => void
+  showUnreadBadges: boolean
 }) {
   const isGeneral = conversation.kind === 'general'
   const title = isGeneral
@@ -233,7 +240,9 @@ function ConversationItem({
             <span className="block min-w-0 truncate text-sm font-semibold text-foreground">
               {title}
             </span>
-            {conversation.unread_count && conversation.unread_count > 0 ? (
+            {showUnreadBadges &&
+            conversation.unread_count != null &&
+            conversation.unread_count > 0 ? (
               <span className="inline-flex h-5 min-w-[1.25rem] shrink-0 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground">
                 {conversation.unread_count > 9 ? '9+' : conversation.unread_count}
               </span>
