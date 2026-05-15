@@ -142,6 +142,7 @@ export default function NovaIdeiaPage() {
     }
 
     const trimmedSpots = spots.trim()
+    let openSpotsValue: number | null = null
     if (trimmedSpots === '') {
       errors.spots = 'Informe um número de vagas válido.'
     } else {
@@ -150,10 +151,12 @@ export default function NovaIdeiaPage() {
         errors.spots = 'Informe um número de vagas válido.'
       } else if (n < 0) {
         errors.spots = 'O número de vagas não pode ser negativo.'
+      } else {
+        openSpotsValue = n
       }
     }
 
-    if (!profileSeek.trim()) {
+    if (openSpotsValue !== null && openSpotsValue > 0 && !profileSeek.trim()) {
       errors.profileSeek = 'Descreva o perfil que você procura.'
     }
     if (tags.length === 0) {
