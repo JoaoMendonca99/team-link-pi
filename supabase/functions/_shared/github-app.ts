@@ -1,4 +1,4 @@
-import * as jose from 'npm:jose@5'
+import * as jose from 'https://esm.sh/jose@5.9.6'
 
 import { getGitHubPrivateKeyPem, requireEnv } from './env.ts'
 
@@ -13,6 +13,7 @@ export class GitHubApiError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    readonly githubMessage?: string,
   ) {
     super(message)
     this.name = 'GitHubApiError'
@@ -93,18 +94,28 @@ export interface NormalizedCommit {
 
 let cachedAppJwt: { token: string; expiresAt: number } | null = null
 
-async function importGitHubPrivateKey(pem: string): Promise<CryptoKey | Uint8Array> {
+async function readGitHubErrorBody(response: Response): Promise<string | undefined> {
+  try {
+    const payload = (await response.json()) as { message?: string }
+    const message = payload?.message?.trim()
+    return message || undefined
+  } catch {
+    return undefined
+  }
+}
+
+async function importGitHubPrivateKey(pem: string): Promise<CryptoKey> {
   const normalized = pem.trim()
   if (normalized.includes('BEGIN RSA PRIVATE KEY')) {
-    return await jose.importPKCS1(normalized, 'RS256')
+    return (await jose.importPKCS1(normalized, 'RS256')) as CryptoKey
   }
   if (normalized.includes('BEGIN PRIVATE KEY') || normalized.includes('BEGIN EC PRIVATE KEY')) {
-    return await jose.importPKCS8(normalized, 'RS256')
+    return (await jose.importPKCS8(normalized, 'RS256')) as CryptoKey
   }
   try {
-    return await jose.importPKCS8(normalized, 'RS256')
+    return (await jose.importPKCS8(normalized, 'RS256')) as CryptoKey
   } catch {
-    return await jose.importPKCS1(normalized, 'RS256')
+    return (await jose.importPKCS1(normalized, 'RS256')) as CryptoKey
   }
 }
 
@@ -115,9 +126,17 @@ export async function createGitHubAppJwt(): Promise<string> {
   }
 
   const appId = requireEnv('GITHUB_APP_ID')
-  const pem = getGitHubPrivateKeyPem()
+  let pem: string
+  try {
+    pem = getGitHubPrivateKeyPem()
+  } catch (error) {
+    console.error('[github-app] github_private_key_invalid', {
+      error_name: error instanceof Error ? error.name : 'unknown',
+    })
+    throw new GitHubPrivateKeyError()
+  }
 
-  let privateKey: CryptoKey | Uint8Array
+  let privateKey: CryptoKey
   try {
     privateKey = await importGitHubPrivateKey(pem)
   } catch (error) {
@@ -147,6 +166,40 @@ export async function createGitHubAppJwt(): Promise<string> {
   return token
 }
 
+async function mapGitHubError(response: Response): Promise<GitHubApiError> {
+  const githubMessage = await readGitHubErrorBody(response)
+
+  if (response.status === 404) {
+    return new GitHubApiError(
+      'Recurso não encontrado no GitHub para esta instalação.',
+      404,
+      githubMessage,
+    )
+  }
+  if (response.status === 401) {
+    return new GitHubApiError(
+      'Credenciais do GitHub App rejeitadas. Verifique App ID e chave privada.',
+      401,
+      githubMessage,
+    )
+  }
+  if (response.status === 403) {
+    return new GitHubApiError('Sem permissão para acessar este recurso no GitHub.', 403, githubMessage)
+  }
+  if (response.status === 429) {
+    return new GitHubApiError(
+      'Limite de requisições do GitHub atingido. Tente novamente em instantes.',
+      429,
+      githubMessage,
+    )
+  }
+  return new GitHubApiError(
+    'Não foi possível comunicar com o GitHub.',
+    response.status >= 400 ? response.status : 502,
+    githubMessage,
+  )
+}
+
 /** Gera installation access token em memória — nunca persistir nem retornar ao cliente. */
 export async function createInstallationAccessToken(
   installationId: number,
@@ -163,20 +216,8 @@ export async function createInstallationAccessToken(
     },
   )
 
-  if (response.status === 404) {
-    throw new GitHubApiError('Instalação do GitHub App não encontrada.', 404)
-  }
-  if (response.status === 403) {
-    throw new GitHubApiError('Sem permissão para acessar esta instalação no GitHub.', 403)
-  }
-  if (response.status === 429) {
-    throw new GitHubApiError(
-      'Limite de requisições do GitHub atingido. Tente novamente em instantes.',
-      429,
-    )
-  }
   if (!response.ok) {
-    throw new GitHubApiError('Não foi possível obter acesso à instalação do GitHub.', 502)
+    throw await mapGitHubError(response)
   }
 
   const payload = (await response.json()) as { token?: string }
@@ -201,25 +242,6 @@ async function githubFetch(
   })
 }
 
-function mapGitHubError(response: Response): GitHubApiError {
-  if (response.status === 404) {
-    return new GitHubApiError(
-      'Repositório não encontrado ou inacessível para esta instalação.',
-      404,
-    )
-  }
-  if (response.status === 403) {
-    return new GitHubApiError('Sem permissão para acessar este recurso no GitHub.', 403)
-  }
-  if (response.status === 429) {
-    return new GitHubApiError(
-      'Limite de requisições do GitHub atingido. Tente novamente em instantes.',
-      429,
-    )
-  }
-  return new GitHubApiError('Não foi possível comunicar com o GitHub.', response.status)
-}
-
 export async function fetchInstallation(installationId: number): Promise<GitHubInstallationMeta> {
   const appJwt = await createGitHubAppJwt()
   const response = await fetch(`${GITHUB_API}/app/installations/${installationId}`, {
@@ -230,7 +252,7 @@ export async function fetchInstallation(installationId: number): Promise<GitHubI
   })
 
   if (!response.ok) {
-    throw mapGitHubError(response)
+    throw await mapGitHubError(response)
   }
 
   const data = (await response.json()) as {
@@ -241,12 +263,17 @@ export async function fetchInstallation(installationId: number): Promise<GitHubI
     account?: { id?: number; login?: string; type?: string }
   }
 
+  const accountId = data.account?.id
+  if (!accountId || !Number.isFinite(accountId)) {
+    throw new GitHubApiError('Instalação do GitHub sem conta associada.', 502)
+  }
+
   const appId = Number(data.app_id ?? requireEnv('GITHUB_APP_ID'))
 
   return {
     installation_id: data.id ?? installationId,
     app_id: appId,
-    account_id: data.account?.id ?? 0,
+    account_id: accountId,
     account_login: data.account?.login ?? 'unknown',
     account_type: data.account?.type ?? 'User',
     target_type: data.target_type ?? 'User',
@@ -261,7 +288,7 @@ export async function fetchRepository(
 ): Promise<GitHubRepo> {
   const response = await githubFetch(`/repos/${ownerLogin}/${repoName}`, accessToken)
   if (!response.ok) {
-    throw mapGitHubError(response)
+    throw await mapGitHubError(response)
   }
   return (await response.json()) as GitHubRepo
 }
@@ -272,7 +299,7 @@ export async function fetchRepositoryById(
 ): Promise<GitHubRepo> {
   const response = await githubFetch(`/repositories/${githubRepositoryId}`, accessToken)
   if (!response.ok) {
-    throw mapGitHubError(response)
+    throw await mapGitHubError(response)
   }
   return (await response.json()) as GitHubRepo
 }
@@ -299,6 +326,33 @@ export function mapRepoToSafe(repository: GitHubRepo): SafeGithubRepository {
   }
 }
 
+export interface PublicGithubRepository {
+  id: number
+  name: string
+  full_name: string
+  owner_login: string
+  private: boolean
+  default_branch: string
+  html_url: string
+  github_repository_id: number
+  repo_name: string
+}
+
+export function mapRepoToPublic(repository: GitHubRepo): PublicGithubRepository {
+  const safe = mapRepoToSafe(repository)
+  return {
+    id: safe.github_repository_id,
+    name: safe.repo_name,
+    full_name: safe.full_name,
+    owner_login: safe.owner_login,
+    private: safe.private,
+    default_branch: safe.default_branch,
+    html_url: safe.html_url,
+    github_repository_id: safe.github_repository_id,
+    repo_name: safe.repo_name,
+  }
+}
+
 export async function listInstallationRepositories(
   accessToken: string,
 ): Promise<GitHubRepo[]> {
@@ -311,7 +365,7 @@ export async function listInstallationRepositories(
       accessToken,
     )
     if (!response.ok) {
-      throw mapGitHubError(response)
+      throw await mapGitHubError(response)
     }
 
     const payload = (await response.json()) as {
@@ -344,7 +398,7 @@ export async function fetchRecentCommits(
     accessToken,
   )
   if (!response.ok) {
-    throw mapGitHubError(response)
+    throw await mapGitHubError(response)
   }
   return (await response.json()) as GitHubCommitListItem[]
 }

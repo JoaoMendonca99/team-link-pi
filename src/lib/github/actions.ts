@@ -34,6 +34,9 @@ function friendlyFunctionError(
 }
 
 function readFunctionError(payload: Record<string, unknown> | null): string | null {
+  if (payload?.message && typeof payload.message === 'string') {
+    return payload.message
+  }
   if (payload?.error && typeof payload.error === 'string') {
     return payload.error
   }
@@ -92,11 +95,25 @@ export const GITHUB_COMPLETE_USER_MESSAGE =
 
 const COMPLETE_CODE_MESSAGES: Record<string, string> = {
   permission_denied: 'Você não tem permissão para conectar repositórios neste projeto.',
+  not_project_manager: 'Você não tem permissão para conectar repositórios neste projeto.',
+  not_authenticated: 'Autenticação obrigatória. Faça login e tente novamente.',
+  unauthenticated: 'Autenticação obrigatória. Faça login e tente novamente.',
   expired_state: 'A conexão expirou. Inicie novamente pelo painel do projeto.',
   invalid_state: 'A conexão expirou. Inicie novamente pelo painel do projeto.',
   missing_state: 'Link de retorno do GitHub incompleto. Tente conectar novamente pelo painel.',
   missing_installation_id:
     'Link de retorno do GitHub incompleto. Tente conectar novamente pelo painel.',
+  missing_body: 'Link de retorno do GitHub incompleto. Tente conectar novamente pelo painel.',
+  github_private_key_invalid:
+    'Integração GitHub indisponível no servidor. O administrador precisa revisar a chave privada do App.',
+  github_jwt_failed:
+    'Integração GitHub indisponível no servidor. O administrador precisa revisar App ID e chave privada.',
+  missing_github_secret:
+    'Integração GitHub indisponível no servidor. O administrador precisa configurar os secrets.',
+  missing_supabase_secret:
+    'Integração GitHub indisponível no servidor. O administrador precisa configurar os secrets.',
+  database_upsert_failed:
+    'Não foi possível salvar a instalação. Tente novamente ou contate o suporte.',
 }
 
 export type StartGithubInstallationResult =
@@ -197,7 +214,8 @@ export async function completeGithubInstallation(input: {
     COMPLETE_CODE_MESSAGES,
   )
 
-  if (error || readFunctionError(payload) || readFunctionCode(payload)) {
+  const payloadOk = payload?.ok === true
+  if (!payloadOk && (error || readFunctionError(payload) || readFunctionCode(payload))) {
     return fail(failure.message, failure.code, failure.step)
   }
 
@@ -205,11 +223,44 @@ export async function completeGithubInstallation(input: {
   const installationId =
     typeof payload?.installation_id === 'number' ? payload.installation_id : null
   const repositories = Array.isArray(payload?.repositories)
-    ? (payload.repositories as GithubSelectableRepository[]).filter(
-        (repo) =>
-          typeof repo?.github_repository_id === 'number' &&
-          typeof repo?.full_name === 'string',
-      )
+    ? (payload.repositories as Record<string, unknown>[])
+        .map((repo): GithubSelectableRepository | null => {
+          const githubId =
+            typeof repo.github_repository_id === 'number'
+              ? repo.github_repository_id
+              : typeof repo.id === 'number'
+                ? repo.id
+                : null
+          const fullName = typeof repo.full_name === 'string' ? repo.full_name : null
+          if (!githubId || !fullName) return null
+
+          const ownerLogin =
+            typeof repo.owner_login === 'string'
+              ? repo.owner_login
+              : fullName.includes('/')
+                ? fullName.split('/')[0]!
+                : ''
+          const repoName =
+            typeof repo.repo_name === 'string'
+              ? repo.repo_name
+              : typeof repo.name === 'string'
+                ? repo.name
+                : fullName.includes('/')
+                  ? fullName.split('/')[1]!
+                  : fullName
+
+          return {
+            github_repository_id: githubId,
+            owner_login: ownerLogin,
+            repo_name: repoName,
+            full_name: fullName,
+            default_branch:
+              typeof repo.default_branch === 'string' ? repo.default_branch : 'main',
+            private: Boolean(repo.private),
+            html_url: typeof repo.html_url === 'string' ? repo.html_url : '',
+          }
+        })
+        .filter((repo): repo is GithubSelectableRepository => repo !== null)
     : []
 
   if (!projectId || !installationId) {

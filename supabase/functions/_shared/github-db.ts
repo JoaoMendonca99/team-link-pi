@@ -68,7 +68,12 @@ export async function upsertGithubInstallation(
   })
 
   if (error) {
-    throw new Error('Não foi possível salvar a instalação do GitHub.')
+    console.error('[github-db] github_installations upsert failed', {
+      code: error.code,
+      hint: error.hint,
+      installation_id: meta.installation_id,
+    })
+    throw new Error(`database_upsert_failed:${error.code ?? 'unknown'}`)
   }
 }
 

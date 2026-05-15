@@ -19,41 +19,51 @@ export function jsonResponse(body: unknown, status = 200): Response {
 }
 
 export function errorResponse(message: string, status: number): Response {
-  return jsonResponse({ error: message }, status)
+  return jsonResponse({ ok: false, error: message, message }, status)
 }
 
-/** Resposta de erro com código e etapa — sem dados sensíveis. */
+export interface StandardFailInput {
+  code: string
+  step: string
+  message: string
+  status: number
+}
+
+/** Resposta de erro padronizada — sem dados sensíveis. */
+export function standardFailResponse(input: StandardFailInput): Response {
+  return jsonResponse(
+    {
+      ok: false,
+      code: input.code,
+      step: input.step,
+      message: input.message,
+      error: input.message,
+    },
+    input.status,
+  )
+}
+
+/** @deprecated Preferir standardFailResponse */
 export function structuredFailResponse(
   message: string,
   code: string,
   step: string,
   status: number,
 ): Response {
-  return jsonResponse(
-    {
-      ok: false,
-      error: message,
-      code,
-      step,
-    },
-    status,
-  )
+  return standardFailResponse({ code, step, message, status })
 }
 
-/** Compatível com consumidores que leem apenas `error` + `code`. */
+/** Compatível com consumidores que leem `error` + `code`. */
 export function codedErrorResponse(
   message: string,
   code: string,
   status: number,
   step?: string,
 ): Response {
-  return jsonResponse(
-    {
-      ok: false,
-      error: message,
-      code,
-      ...(step ? { step } : {}),
-    },
+  return standardFailResponse({
+    code,
+    step: step ?? 'unknown',
+    message,
     status,
-  )
+  })
 }

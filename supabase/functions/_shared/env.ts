@@ -6,9 +6,20 @@ export function requireEnv(name: string): string {
   return value
 }
 
+/** Normaliza PEM com quebras reais ou `\\n` escapado (comum em secrets). */
 export function getGitHubPrivateKeyPem(): string {
   const raw = requireEnv('GITHUB_PRIVATE_KEY')
-  return raw.replace(/\r\n/g, '\n').replace(/\\n/g, '\n').trim()
+  let pem = raw.replace(/\r\n/g, '\n').replace(/\\n/g, '\n').trim()
+
+  if (!pem.includes('-----BEGIN')) {
+    throw new Error('GITHUB_PRIVATE_KEY inválida: cabeçalho PEM ausente.')
+  }
+
+  if (!pem.includes('-----END')) {
+    throw new Error('GITHUB_PRIVATE_KEY inválida: rodapé PEM ausente.')
+  }
+
+  return pem
 }
 
 const GITHUB_RUNTIME_SECRETS = [
@@ -34,6 +45,7 @@ export function getMissingRuntimeSecretCode(): MissingSecretCode | null {
 export function isMissingEnvError(error: unknown): boolean {
   return (
     error instanceof Error &&
-    error.message.startsWith('Variável de ambiente ausente:')
+    (error.message.startsWith('Variável de ambiente ausente:') ||
+      error.message.startsWith('GITHUB_PRIVATE_KEY inválida:'))
   )
 }
