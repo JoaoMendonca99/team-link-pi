@@ -1,10 +1,20 @@
 import { getSupabaseClient } from '@/lib/supabase/client'
 
+import {
+  buildGithubFunctionDebug,
+  logGithubFunctionDebug,
+  type GithubFunctionDebugInfo,
+} from './function-debug'
 import type {
   GithubCommitVisibility,
   GithubCompleteInstallationResult,
   GithubSelectableRepository,
 } from './types'
+
+export const GITHUB_START_INSTALLATION_FUNCTION = 'github-start-installation'
+
+export const GITHUB_START_USER_MESSAGE =
+  'Não foi possível iniciar a conexão com o GitHub. Verifique se a integração foi publicada e configurada.'
 
 const TECHNICAL_ERROR_RE =
   /jwt|pgrst|postgres|edge function|functions_http|fetch failed|non-2xx|network/i
@@ -30,39 +40,45 @@ function readFunctionError(payload: Record<string, unknown> | null): string | nu
   return null
 }
 
+export type StartGithubInstallationResult =
+  | { ok: true; install_url: string }
+  | { ok: false; message: string; debug: GithubFunctionDebugInfo }
+
 export async function startGithubInstallation(
   projectId: string,
-): Promise<{ ok: true; install_url: string } | { ok: false; message: string }> {
+): Promise<StartGithubInstallationResult> {
   const client = getSupabaseClient()
-  const { data, error } = await client.functions.invoke('github-start-installation', {
-    body: { project_id: projectId },
+  const requestBody = { project_id: projectId }
+  const { data, error } = await client.functions.invoke(GITHUB_START_INSTALLATION_FUNCTION, {
+    body: requestBody,
   })
 
+  const fail = (message: string): StartGithubInstallationResult => {
+    const debug = buildGithubFunctionDebug(
+      GITHUB_START_INSTALLATION_FUNCTION,
+      error,
+      data,
+      requestBody,
+    )
+    logGithubFunctionDebug(debug)
+    return { ok: false, message, debug }
+  }
+
   if (error) {
-    return {
-      ok: false,
-      message: friendlyFunctionError(
-        error.message,
-        'Não foi possível iniciar a conexão com o GitHub.',
-      ),
-    }
+    return fail(
+      friendlyFunctionError(error.message, GITHUB_START_USER_MESSAGE),
+    )
   }
 
   const payload = data as Record<string, unknown> | null
   const fnError = readFunctionError(payload)
   if (fnError) {
-    return {
-      ok: false,
-      message: friendlyFunctionError(
-        fnError,
-        'Não foi possível iniciar a conexão com o GitHub.',
-      ),
-    }
+    return fail(friendlyFunctionError(fnError, GITHUB_START_USER_MESSAGE))
   }
 
   const installUrl = typeof payload?.install_url === 'string' ? payload.install_url : null
   if (!installUrl) {
-    return { ok: false, message: 'Não foi possível iniciar a conexão com o GitHub.' }
+    return fail(GITHUB_START_USER_MESSAGE)
   }
 
   return { ok: true, install_url: installUrl }

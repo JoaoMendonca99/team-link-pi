@@ -6,7 +6,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "supabase:deploy:github": "supabase functions deploy github-start-installation && supabase functions deploy github-complete-installation && supabase functions deploy github-link-selected-repository && supabase functions deploy github-link-repository && supabase functions deploy github-sync-repository && supabase functions deploy github-webhook",
+    "supabase:deploy:github:start": "supabase functions deploy github-start-installation",
+    "supabase:secrets:list": "supabase secrets list"
   },
   "dependencies": {
     "@radix-ui/react-avatar": "^1.1.10",

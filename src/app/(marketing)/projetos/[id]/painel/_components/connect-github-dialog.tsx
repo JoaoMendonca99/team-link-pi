@@ -4,7 +4,10 @@ import { useEffect, useState } from 'react'
 import { Github, Loader2, X } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
-import { startGithubInstallation } from '@/lib/github/actions'
+import {
+  GITHUB_START_USER_MESSAGE,
+  startGithubInstallation,
+} from '@/lib/github/actions'
 
 export interface ConnectGithubDialogProps {
   open: boolean
@@ -44,7 +47,7 @@ export function ConnectGithubDialog({ open, onClose, projectId }: ConnectGithubD
     const result = await startGithubInstallation(projectId)
     if (!result.ok) {
       setStarting(false)
-      setErrorMessage(result.message)
+      setErrorMessage(result.message || GITHUB_START_USER_MESSAGE)
       return
     }
     window.location.assign(result.install_url)
