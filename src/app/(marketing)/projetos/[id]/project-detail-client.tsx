@@ -378,7 +378,7 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
                     href={project.projectUrl}
                     target="_blank"
                     rel="noreferrer noopener"
-                    className="break-all text-primary underline underline-offset-2 hover:text-primary/90"
+                    className="break-all text-primary no-underline hover:text-primary/90"
                   >
                     {project.projectUrl}
                   </a>
