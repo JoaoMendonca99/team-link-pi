@@ -78,7 +78,6 @@ export default function NovaIdeiaPage() {
   const generatedSlug = useMemo(() => (title.trim() ? slugify(title) : ''), [title])
 
   const previewProject = useMemo<ProjectDisplay>(() => {
-    const parsedSpots = Number.parseInt(spots, 10)
     return {
       id: 'preview-local',
       slug: generatedSlug || 'pre-visualizacao',
@@ -90,7 +89,11 @@ export default function NovaIdeiaPage() {
       category: category || null,
       status: 'open',
       visibility: 'public',
-      openSpots: Number.isFinite(parsedSpots) && parsedSpots > 0 ? parsedSpots : 2,
+      openSpots: (() => {
+        const t = spots.trim()
+        const n = t === '' ? NaN : Number(t)
+        return Number.isFinite(n) && Number.isInteger(n) && n >= 0 ? n : 2
+      })(),
       desiredProfile:
         profileSeek.trim() ||
         'Descreva o ritmo de trabalho esperado, formato (remoto, presencial, híbrido) e responsabilidades iniciais.',
@@ -138,9 +141,16 @@ export default function NovaIdeiaPage() {
       errors.fullDescription = 'Descreva o projeto com mais detalhes.'
     }
 
-    const parsedSpots = Number.parseInt(spots, 10)
-    if (!Number.isFinite(parsedSpots) || parsedSpots < 1) {
-      errors.spots = 'Informe pelo menos uma vaga em aberto.'
+    const trimmedSpots = spots.trim()
+    if (trimmedSpots === '') {
+      errors.spots = 'Informe um número de vagas válido.'
+    } else {
+      const n = Number(trimmedSpots)
+      if (!Number.isFinite(n) || !Number.isInteger(n)) {
+        errors.spots = 'Informe um número de vagas válido.'
+      } else if (n < 0) {
+        errors.spots = 'O número de vagas não pode ser negativo.'
+      }
     }
 
     if (!profileSeek.trim()) {
@@ -207,8 +217,7 @@ export default function NovaIdeiaPage() {
       return
     }
 
-    const parsedSpots = Number.parseInt(spots, 10)
-    const safeSpots = Number.isFinite(parsedSpots) && parsedSpots > 0 ? parsedSpots : 1
+    const safeSpots = Number(spots.trim())
 
     const baseSlug = slugify(title)
     if (!baseSlug) {
@@ -429,7 +438,7 @@ export default function NovaIdeiaPage() {
                     <Label htmlFor="vagas">Vagas disponíveis</Label>
                     <Input
                       id="vagas"
-                      min={1}
+                      min={0}
                       type="number"
                       value={spots}
                       onChange={(event) => {

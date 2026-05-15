@@ -220,9 +220,16 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
     if (!shortDescription.trim()) errors.shortDescription = 'Preencha a descrição curta.'
     if (!fullDescription.trim()) errors.fullDescription = 'Descreva o projeto com mais detalhes.'
 
-    const parsedSpots = Number.parseInt(spots, 10)
-    if (!Number.isFinite(parsedSpots) || parsedSpots < 1) {
-      errors.spots = 'Informe pelo menos uma vaga em aberto.'
+    const trimmedSpots = spots.trim()
+    if (trimmedSpots === '') {
+      errors.spots = 'Informe um número de vagas válido.'
+    } else {
+      const n = Number(trimmedSpots)
+      if (!Number.isFinite(n) || !Number.isInteger(n)) {
+        errors.spots = 'Informe um número de vagas válido.'
+      } else if (n < 0) {
+        errors.spots = 'O número de vagas não pode ser negativo.'
+      }
     }
     if (!profileSeek.trim()) errors.profileSeek = 'Descreva o perfil que você procura.'
     if (tags.length === 0) errors.tags = 'Adicione pelo menos uma tag.'
@@ -276,8 +283,7 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
     }
     setFormErrors({})
 
-    const parsedSpots = Number.parseInt(spots, 10)
-    const safeSpots = Number.isFinite(parsedSpots) && parsedSpots > 0 ? parsedSpots : 1
+    const safeSpots = Number(spots.trim())
 
     setSubmitting(true)
     try {
@@ -699,7 +705,7 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
                 <Input
                   id="edit-spots"
                   type="number"
-                  min={1}
+                  min={0}
                   value={spots}
                   onChange={(event) => {
                     setSpots(event.target.value)
