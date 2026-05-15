@@ -94,6 +94,8 @@ export interface ProjectRow {
   visibility: ProjectVisibility
   open_spots: number
   desired_profile: string | null
+  /** Link externo opcional (http/https), coluna `project_url`. */
+  project_url?: string | null
   created_at: string
   updated_at: string
 }
@@ -109,6 +111,7 @@ export interface ProjectInsert {
   visibility?: ProjectVisibility
   open_spots?: number
   desired_profile?: string | null
+  project_url?: string | null
 }
 
 export interface ProjectUpdate {
@@ -121,6 +124,7 @@ export interface ProjectUpdate {
   visibility?: ProjectVisibility
   open_spots?: number
   desired_profile?: string | null
+  project_url?: string | null
 }
 
 // ============================================================================
@@ -204,6 +208,8 @@ export interface ProjectPublicCardRow {
   visibility: ProjectVisibility
   open_spots: number
   desired_profile: string | null
+  /** Presente quando a view pública expõe a coluna `project_url`. */
+  project_url?: string | null
   created_at: string
   updated_at: string
   owner_name: string | null
@@ -277,6 +283,8 @@ export interface CreateProjectWithDetailsArgs {
   p_category: string
   p_open_spots: number
   p_desired_profile: string
+  /** Exige RPC atualizada no Supabase; use `null` quando vazio. */
+  p_project_url: string | null
   p_tags: string[]
   p_required_skills: string[]
 }

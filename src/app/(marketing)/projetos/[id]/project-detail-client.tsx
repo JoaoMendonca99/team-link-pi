@@ -366,6 +366,20 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
             </div>
           </div>
 
+          {project.projectUrl ? (
+            <p className="text-sm text-muted-foreground">
+              <span className="font-semibold text-foreground">Link do projeto: </span>
+              <a
+                href={project.projectUrl}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="break-all text-primary underline underline-offset-2 hover:text-primary/90"
+              >
+                {project.projectUrl}
+              </a>
+            </p>
+          ) : null}
+
           <div className="space-y-2">
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">
               Sobre o projeto
@@ -379,25 +393,27 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
             )}
           </div>
 
-          <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">
-              Habilidades procuradas
-            </p>
-            {project.requiredSkills.length > 0 ? (
-              <div className="flex flex-wrap gap-2">
-                {project.requiredSkills.map((skill) => (
-                  <span
-                    key={skill}
-                    className="inline-flex items-center rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary"
-                  >
-                    {skill}
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground">Nenhuma habilidade informada.</p>
-            )}
-          </div>
+          {project.openSpots > 0 ? (
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">
+                Habilidades procuradas
+              </p>
+              {project.requiredSkills.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {project.requiredSkills.map((skill) => (
+                    <span
+                      key={skill}
+                      className="inline-flex items-center rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary"
+                    >
+                      {skill}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Nenhuma habilidade informada.</p>
+              )}
+            </div>
+          ) : null}
 
           <div className="max-w-sm">
             {project.openSpots > 0 ? (

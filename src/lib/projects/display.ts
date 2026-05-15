@@ -25,6 +25,8 @@ export interface ProjectDisplay {
   visibility: ProjectVisibility
   openSpots: number
   desiredProfile: string | null
+  /** Link externo do projeto (http/https), quando existir. */
+  projectUrl: string | null
   createdAt: string
   updatedAt: string
 
@@ -87,6 +89,7 @@ export function mapPublicCardToDisplay(row: ProjectPublicCardRow): ProjectDispla
     openSpots: row.open_spots,
     desiredProfile:
       row.open_spots > 0 ? (row.desired_profile?.trim() || null) : null,
+    projectUrl: row.project_url?.trim() || null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
 
@@ -133,6 +136,7 @@ export function mapProjectRowToDisplay(
     openSpots: row.open_spots,
     desiredProfile:
       row.open_spots > 0 ? (row.desired_profile?.trim() || null) : null,
+    projectUrl: row.project_url?.trim() || null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
 

@@ -19,6 +19,7 @@ import { getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { translateAuthError } from '@/lib/supabase/auth-errors'
 import type { ProjectDisplay } from '@/lib/projects/display'
 import { parseOpenSpotsFormValue } from '@/lib/projects/open-spots-form'
+import { parseOptionalProjectUrl } from '@/lib/projects/project-url'
 import { slugify } from '@/lib/projects/slug'
 import { useSupabaseSession } from '@/hooks/use-supabase-session'
 import { cn } from '@/lib/utils'
@@ -28,6 +29,7 @@ const today = () => new Date().toISOString()
 type FormErrorField =
   | 'title'
   | 'category'
+  | 'projectUrl'
   | 'shortDescription'
   | 'fullDescription'
   | 'spots'
@@ -39,6 +41,7 @@ type FormErrors = Partial<Record<FormErrorField, string>>
 const FIELD_ORDER: FormErrorField[] = [
   'title',
   'category',
+  'projectUrl',
   'shortDescription',
   'fullDescription',
   'spots',
@@ -52,6 +55,7 @@ export default function NovaIdeiaPage() {
 
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState('')
+  const [projectUrl, setProjectUrl] = useState('')
   const [shortDescription, setShortDescription] = useState('')
   const [fullDescription, setFullDescription] = useState('')
   const [skills, setSkills] = useState<string[]>([])
@@ -82,6 +86,11 @@ export default function NovaIdeiaPage() {
   const showProfileSeekField =
     openSpotsNumeric !== null && openSpotsNumeric > 0
 
+  const previewProjectUrl = useMemo(() => {
+    const r = parseOptionalProjectUrl(projectUrl)
+    return r.ok ? r.value : null
+  }, [projectUrl])
+
   const previewProject = useMemo<ProjectDisplay>(() => {
     const openPreview = parseOpenSpotsFormValue(spots)
     const openSpotsResolved = openPreview !== null ? openPreview : 2
@@ -97,6 +106,7 @@ export default function NovaIdeiaPage() {
       status: 'open',
       visibility: 'public',
       openSpots: openSpotsResolved,
+      projectUrl: previewProjectUrl,
       desiredProfile:
         openPreview === 0
           ? null
@@ -124,6 +134,7 @@ export default function NovaIdeiaPage() {
     generatedSlug,
     profile?.avatar_url,
     profile?.course,
+    previewProjectUrl,
     profileSeek,
     shortDescription,
     skills,
@@ -140,6 +151,10 @@ export default function NovaIdeiaPage() {
     }
     if (!category) {
       errors.category = 'Selecione uma área para o projeto.'
+    }
+    const urlParse = parseOptionalProjectUrl(projectUrl)
+    if (!urlParse.ok) {
+      errors.projectUrl = 'Informe um link válido.'
     }
     if (!shortDescription.trim()) {
       errors.shortDescription = 'Escreva uma descrição curta do projeto.'
@@ -227,6 +242,8 @@ export default function NovaIdeiaPage() {
 
     const safeSpots = parseOpenSpotsFormValue(spots) as number
     const desiredProfilePayload = safeSpots === 0 ? '' : profileSeek.trim()
+    const urlFinal = parseOptionalProjectUrl(projectUrl)
+    const projectUrlPayload = urlFinal.ok ? urlFinal.value : null
 
     const baseSlug = slugify(title)
     if (!baseSlug) {
@@ -246,6 +263,7 @@ export default function NovaIdeiaPage() {
         p_category: category,
         p_open_spots: safeSpots,
         p_desired_profile: desiredProfilePayload,
+        p_project_url: projectUrlPayload,
         p_tags: tags,
         p_required_skills: skills,
       })
@@ -391,6 +409,31 @@ export default function NovaIdeiaPage() {
                       {formErrors.category}
                     </p>
                   ) : null}
+                </div>
+
+                <div className="space-y-3" data-field="projectUrl">
+                  <Label htmlFor="project-url">Link do projeto</Label>
+                  <Input
+                    id="project-url"
+                    type="url"
+                    inputMode="url"
+                    value={projectUrl}
+                    onChange={(event) => {
+                      setProjectUrl(event.target.value)
+                      clearFieldError('projectUrl')
+                    }}
+                    placeholder="https://exemplo.com"
+                    aria-invalid={Boolean(formErrors.projectUrl)}
+                    aria-describedby={formErrors.projectUrl ? 'project-url-error' : undefined}
+                    className="rounded-2xl"
+                  />
+                  {formErrors.projectUrl ? (
+                    <p id="project-url-error" className="text-xs font-medium text-destructive">
+                      {formErrors.projectUrl}
+                    </p>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">Opcional. Use http ou https.</p>
+                  )}
                 </div>
 
                 <div className="space-y-3" data-field="shortDescription">

@@ -39,6 +39,7 @@ import {
   PROJECT_VISIBILITY_OPTIONS,
 } from '@/lib/projects/display'
 import { parseOpenSpotsFormValue } from '@/lib/projects/open-spots-form'
+import { parseOptionalProjectUrl } from '@/lib/projects/project-url'
 import type {
   ProjectRow,
   ProjectStatusValue,
@@ -51,6 +52,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 type FormErrorField =
   | 'title'
   | 'category'
+  | 'projectUrl'
   | 'shortDescription'
   | 'fullDescription'
   | 'spots'
@@ -62,6 +64,7 @@ type FormErrors = Partial<Record<FormErrorField, string>>
 const FIELD_ORDER: FormErrorField[] = [
   'title',
   'category',
+  'projectUrl',
   'shortDescription',
   'fullDescription',
   'spots',
@@ -83,6 +86,7 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
   // Form state
   const [title, setTitle] = useState('')
   const [category, setCategory] = useState('')
+  const [projectUrl, setProjectUrl] = useState('')
   const [shortDescription, setShortDescription] = useState('')
   const [fullDescription, setFullDescription] = useState('')
   const [status, setStatus] = useState<ProjectStatusValue>('open')
@@ -194,6 +198,7 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
       setStatus(projectRow.status)
       setVisibility(projectRow.visibility)
       setSpots(String(projectRow.open_spots ?? 1))
+      setProjectUrl((projectRow.project_url ?? '').trim())
       setProfileSeek(
         (projectRow.open_spots ?? 0) > 0 ? (projectRow.desired_profile ?? '') : '',
       )
@@ -224,6 +229,8 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
     const errors: FormErrors = {}
     if (!title.trim()) errors.title = 'Preencha o título do projeto.'
     if (!category) errors.category = 'Selecione uma categoria.'
+    const urlParse = parseOptionalProjectUrl(projectUrl)
+    if (!urlParse.ok) errors.projectUrl = 'Informe um link válido.'
     if (!shortDescription.trim()) errors.shortDescription = 'Preencha a descrição curta.'
     if (!fullDescription.trim()) errors.fullDescription = 'Descreva o projeto com mais detalhes.'
 
@@ -296,6 +303,8 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
 
     const safeSpots = parseOpenSpotsFormValue(spots) as number
     const desiredProfilePayload = safeSpots === 0 ? '' : profileSeek.trim()
+    const urlFinal = parseOptionalProjectUrl(projectUrl)
+    const projectUrlPayload = urlFinal.ok ? urlFinal.value : null
 
     setSubmitting(true)
     try {
@@ -310,6 +319,7 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
         visibility,
         open_spots: safeSpots,
         desired_profile: desiredProfilePayload,
+        project_url: projectUrlPayload,
       }
 
       const projectsResult = await client
@@ -398,6 +408,7 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
           : prev,
       )
       setProfileSeek(desiredProfilePayload)
+      setProjectUrl(projectUrlPayload ?? '')
       setOriginalTags(tags)
       setOriginalSkills(skills)
     } catch (error) {
@@ -655,6 +666,31 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
                   {formErrors.category}
                 </p>
               ) : null}
+            </div>
+
+            <div className="space-y-3" data-field="projectUrl">
+              <Label htmlFor="edit-project-url">Link do projeto</Label>
+              <Input
+                id="edit-project-url"
+                type="url"
+                inputMode="url"
+                value={projectUrl}
+                onChange={(event) => {
+                  setProjectUrl(event.target.value)
+                  clearFieldError('projectUrl')
+                }}
+                placeholder="https://exemplo.com"
+                aria-invalid={Boolean(formErrors.projectUrl)}
+                aria-describedby={formErrors.projectUrl ? 'edit-project-url-error' : undefined}
+                className="rounded-2xl"
+              />
+              {formErrors.projectUrl ? (
+                <p id="edit-project-url-error" className="text-xs font-medium text-destructive">
+                  {formErrors.projectUrl}
+                </p>
+              ) : (
+                <p className="text-xs text-muted-foreground">Opcional. Use http ou https.</p>
+              )}
             </div>
 
             <div className="space-y-3" data-field="shortDescription">
