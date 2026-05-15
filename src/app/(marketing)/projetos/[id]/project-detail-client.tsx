@@ -6,16 +6,13 @@ import { motion } from 'framer-motion'
 import {
   ArrowLeft,
   CalendarDays,
-  CheckCircle2,
   Eye,
   Globe2,
   Heart,
   Lock,
   MessageCircle,
-  MessagesSquare,
   Pencil,
   Share2,
-  UserPlus,
   Users,
 } from 'lucide-react'
 
@@ -37,16 +34,11 @@ import type {
   ProjectPublicDetailRow,
 } from '@/types/database'
 import { useSupabaseSession } from '@/hooks/use-supabase-session'
-import { cn } from '@/lib/utils'
-
 import { CommentsSection } from './_components/comments-section'
 import { JoinRequestSection } from './_components/join-request-section'
 import { LikeButton } from './_components/like-button'
 import { MembersPreviewCard, type MembersPreviewCardHandle } from './_components/members-preview-card'
-import {
-  computeMemberBadge,
-  isValidBadgeColor,
-} from './_components/member-badge'
+import { isValidBadgeColor } from './_components/member-badge'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -308,18 +300,6 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
   }
 
   // -------------------------------------------------------------------------
-  // Badge do próprio membro (quando aplicável)
-  // -------------------------------------------------------------------------
-
-  const myBadge = membership
-    ? computeMemberBadge({
-        role: membership.role,
-        display_role: membership.displayRole,
-        badge_color: membership.badgeColor,
-      })
-    : null
-
-  // -------------------------------------------------------------------------
   // Render
   // -------------------------------------------------------------------------
 
@@ -362,14 +342,6 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
       </div>
 
       <Container className="space-y-6 py-10">
-        <MembersPreviewCard
-          ref={membersPreviewRef}
-          projectId={project.id}
-          projectOwnerId={project.ownerId}
-          currentUserId={user?.id ?? null}
-          onCountChange={setMembersCount}
-        />
-
         <motion.section
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -485,48 +457,46 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
             <QuickFact icon={Heart} label="Curtidas" value={String(likesCount)} />
             <QuickFact icon={MessageCircle} label="Comentários" value={String(commentsCount)} />
           </div>
+
+          <div className="flex flex-wrap items-center justify-end gap-2 border-t border-card-outline/70 pt-6 sm:gap-3">
+            <LikeButton
+              projectId={project.id}
+              initialCount={likesCount}
+              onCountChange={setLikesCount}
+            />
+            <Button
+              type="button"
+              variant="outline"
+              className="rounded-2xl font-semibold"
+              onClick={() => void handleShare()}
+            >
+              <Share2 className="h-4 w-4" aria-hidden />
+              Compartilhar
+            </Button>
+            {isOwner ? (
+              <Button asChild variant="outline" className="rounded-2xl font-semibold">
+                <Link href={`/projetos/${project.slug}/editar`}>
+                  <Pencil className="h-4 w-4" aria-hidden />
+                  Editar projeto
+                </Link>
+              </Button>
+            ) : null}
+          </div>
         </motion.section>
 
-        <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
-          <LikeButton
-            projectId={project.id}
-            initialCount={likesCount}
-            onCountChange={setLikesCount}
-          />
-          <Button
-            type="button"
-            variant="outline"
-            className="rounded-2xl font-semibold"
-            onClick={() => void handleShare()}
-          >
-            <Share2 className="h-4 w-4" aria-hidden />
-            Compartilhar
-          </Button>
-          {isOwner ? (
-            <Button asChild variant="outline" className="rounded-2xl font-semibold">
-              <Link href={`/projetos/${project.slug}/editar`}>
-                <Pencil className="h-4 w-4" aria-hidden />
-                Editar projeto
-              </Link>
-            </Button>
-          ) : null}
-        </div>
-
-        <ActionsArea
-          isVisitor={isVisitor}
-          isLoggedNonMember={isLoggedNonMember}
-          isMember={isMember}
-          myBadge={myBadge}
+        <MembersPreviewCard
+          ref={membersPreviewRef}
+          projectId={project.id}
+          projectOwnerId={project.ownerId}
+          currentUserId={user?.id ?? null}
+          onCountChange={setMembersCount}
         />
 
-        {!isMember ? (
-          <div id="participar">
-            <JoinRequestSection projectId={project.id} ownerId={project.ownerId} />
-          </div>
-        ) : null}
-
-        <section className="space-y-4 rounded-[1.85rem] border border-card-outline bg-card p-6 shadow-sm sm:p-8">
-          <div className="flex items-start gap-3">
+        <section
+          id="participar"
+          className="scroll-mt-24 space-y-5 rounded-[1.85rem] border border-card-outline bg-card p-6 shadow-sm sm:p-8"
+        >
+          <div className="flex min-w-0 items-start gap-3">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
               <Users className="h-5 w-5" aria-hidden />
             </div>
@@ -551,6 +521,31 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
               A equipe ainda não detalhou o perfil ideal para essa vaga.
             </p>
           )}
+
+          {isVisitor ? (
+            <div className="flex flex-col gap-2 border-t border-card-outline/70 pt-5 sm:flex-row sm:justify-end">
+              <Button asChild className="w-full rounded-2xl font-semibold sm:w-auto">
+                <Link href="/login">Entrar</Link>
+              </Button>
+              <Button asChild variant="outline" className="w-full rounded-2xl font-semibold sm:w-auto">
+                <Link href="/cadastro">Criar conta</Link>
+              </Button>
+            </div>
+          ) : null}
+
+          {isLoggedNonMember ? (
+            <JoinRequestSection
+              variant="inline"
+              projectId={project.id}
+              ownerId={project.ownerId}
+            />
+          ) : null}
+
+          {isMember && !isOwner ? (
+            <p className="border-t border-card-outline/70 pt-5 text-sm text-muted-foreground">
+              Você já faz parte deste projeto.
+            </p>
+          ) : null}
         </section>
 
         <CommentsSection
@@ -590,106 +585,4 @@ function QuickFact({
       </div>
     </div>
   )
-}
-
-interface ActionsAreaProps {
-  isVisitor: boolean
-  isLoggedNonMember: boolean
-  isMember: boolean
-  myBadge: { label: string; className: string } | null
-}
-
-function ActionsArea({
-  isVisitor,
-  isLoggedNonMember,
-  isMember,
-  myBadge,
-}: ActionsAreaProps) {
-  // Visitante deslogado
-  if (isVisitor) {
-    return (
-      <div className="rounded-2xl border border-border bg-muted/40 p-5">
-        <p className="text-sm font-semibold text-foreground">
-          Entre para participar
-        </p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Entre na sua conta para solicitar participação e acompanhar projetos.
-        </p>
-        <div className="mt-4 grid gap-2 sm:grid-cols-2">
-          <Button asChild className="rounded-2xl font-semibold">
-            <Link href="/login">Entrar</Link>
-          </Button>
-          <Button asChild variant="outline" className="rounded-2xl font-semibold">
-            <Link href="/cadastro">Criar conta</Link>
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
-  // Logado, mas não participa
-  if (isLoggedNonMember) {
-    return (
-      <div className="rounded-2xl border border-border bg-muted/40 p-5">
-        <p className="text-sm font-semibold text-foreground">
-          Gostou do projeto?
-        </p>
-        <p className="mt-1 text-xs text-muted-foreground">
-          Solicite participação para colaborar com a equipe.
-        </p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <Button asChild className="rounded-2xl font-semibold">
-            <Link href="#participar">
-              <UserPlus className="h-4 w-4" aria-hidden />
-              Solicitar participação
-            </Link>
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
-  if (isMember) {
-    return (
-      <div className="space-y-3 rounded-2xl border border-emerald-500/40 bg-emerald-500/[0.08] p-5 dark:bg-emerald-500/10">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="inline-flex items-center gap-2 text-sm font-semibold text-emerald-800 dark:text-emerald-300">
-              <CheckCircle2 className="h-4 w-4" aria-hidden />
-              Você faz parte deste projeto
-            </p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Acesse as conversas da equipe e acompanhe as informações do projeto.
-            </p>
-          </div>
-          {myBadge ? (
-            <span
-              className={cn(
-                'inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
-                myBadge.className,
-              )}
-            >
-              {myBadge.label}
-            </span>
-          ) : null}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button asChild className="rounded-2xl font-semibold">
-            <Link href="/mensagens">
-              <MessagesSquare className="h-4 w-4" aria-hidden />
-              Abrir mensagens
-            </Link>
-          </Button>
-          <Button asChild variant="outline" className="rounded-2xl font-semibold">
-            <Link href="#equipe-do-projeto">
-              <Users className="h-4 w-4" aria-hidden />
-              Ver equipe
-            </Link>
-          </Button>
-        </div>
-      </div>
-    )
-  }
-
-  return null
 }
