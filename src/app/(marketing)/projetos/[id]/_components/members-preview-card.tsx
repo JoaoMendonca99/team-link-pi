@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import {
   forwardRef,
   useCallback,
@@ -162,7 +163,7 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
     return (
       <section
         id="equipe-do-projeto"
-        className="rounded-[1.75rem] border border-border bg-card p-6 shadow-lg scroll-mt-24"
+        className="rounded-[1.75rem] border border-card-outline bg-card p-6 shadow-lg scroll-mt-24"
       >
         <header className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -186,7 +187,7 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
         {loading ? (
           <div className="mt-5 space-y-3">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-14 animate-pulse rounded-2xl bg-muted" />
+              <div key={i} className="h-[5.5rem] animate-pulse rounded-2xl bg-muted" />
             ))}
           </div>
         ) : errorMessage ? (
@@ -201,9 +202,13 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
             Nenhum membro listado ainda.
           </p>
         ) : (
-          <ul className="mt-5 max-h-[28rem] space-y-3 overflow-y-auto pr-1">
+          <ul className="mt-5 max-h-[28rem] space-y-2 overflow-x-hidden overflow-y-auto">
             {members.map((member) => {
               const name = member.full_name?.trim() || 'Membro'
+              const profileHref =
+                currentUserId && currentUserId === member.user_id
+                  ? '/perfil'
+                  : `/usuarios/${member.user_id}`
               const badge = computeMemberBadge({
                 role: member.role,
                 display_role: member.display_role,
@@ -214,37 +219,44 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
               return (
                 <li
                   key={`${member.project_id}-${member.user_id}`}
-                  className="flex items-center gap-3"
+                  className="flex min-w-0 gap-3 rounded-2xl border border-border/60 bg-muted/20 px-3 py-3 sm:px-4"
                 >
-                  <UserAvatar
-                    name={name}
-                    imageUrl={member.avatar_url ?? undefined}
-                    sizeClassName="h-10 w-10"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-foreground">
+                  <div className="shrink-0 self-start pt-0.5">
+                    <UserAvatar
+                      name={name}
+                      imageUrl={member.avatar_url ?? undefined}
+                      sizeClassName="h-10 w-10"
+                      ring={false}
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <Link
+                      href={profileHref}
+                      className="block break-words text-sm font-semibold text-primary hover:underline"
+                    >
                       {name}
-                    </p>
+                    </Link>
                     {member.course ? (
-                      <p className="truncate text-xs text-muted-foreground">
+                      <p className="break-words text-xs leading-snug text-muted-foreground">
                         {member.course}
                       </p>
                     ) : null}
+                    <span
+                      className={cn(
+                        'inline-flex max-w-full items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase leading-snug tracking-wide',
+                        'whitespace-normal break-words text-left',
+                        badge.className,
+                      )}
+                    >
+                      {badge.label}
+                    </span>
                   </div>
-                  <span
-                    className={cn(
-                      'inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
-                      badge.className,
-                    )}
-                  >
-                    {badge.label}
-                  </span>
                   {canManage ? (
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+                      className="h-8 w-8 shrink-0 self-start text-muted-foreground hover:text-foreground"
                       onClick={() => setEditingUserId(member.user_id)}
                       aria-label={`Editar cargo de ${name}`}
                       title="Editar cargo"

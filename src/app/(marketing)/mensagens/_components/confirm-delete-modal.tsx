@@ -40,7 +40,7 @@ export function ConfirmDeleteModal({
         aria-label="Confirmar exclusão"
         className="fixed inset-0 z-[90] flex items-center justify-center p-4"
       >
-        <div className="w-full max-w-sm rounded-3xl border border-border bg-card p-5 shadow-2xl">
+        <div className="w-full max-w-sm rounded-3xl border border-card-outline bg-card p-5 shadow-2xl">
           <p className="text-base font-semibold text-foreground">
             Excluir {label}?
           </p>

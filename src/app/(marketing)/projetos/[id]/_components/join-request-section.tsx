@@ -123,7 +123,7 @@ export function JoinRequestSection({
   }
 
   return (
-    <section className="rounded-[1.75rem] border border-border bg-muted/40 p-6 dark:bg-muted/20">
+    <section className="rounded-[1.75rem] border border-card-outline bg-muted/40 p-6 dark:bg-muted/20">
       <h3 className="text-xl font-semibold">Participação</h3>
 
       {state.kind === 'loading' ? (

@@ -120,7 +120,7 @@ export default function SobrePage() {
             return (
               <article
                 key={pillar.title}
-                className="mx-auto w-full max-w-md rounded-[1.9rem] border border-border bg-card p-8 shadow-xl md:mx-0 md:max-w-none"
+                className="mx-auto w-full max-w-md rounded-[1.9rem] border border-card-outline bg-card p-8 shadow-xl md:mx-0 md:max-w-none"
               >
                 <Icon className="h-10 w-10 text-primary" aria-hidden />
                 <h2 className="mt-6 text-2xl font-bold">{pillar.title}</h2>
@@ -148,7 +148,7 @@ export default function SobrePage() {
               return (
                 <li
                   key={step.title}
-                  className="mx-auto flex h-full w-full max-w-md flex-col gap-4 rounded-[1.75rem] border border-border bg-card p-6 shadow-lg md:mx-0 md:max-w-none"
+                  className="mx-auto flex h-full w-full max-w-md flex-col gap-4 rounded-[1.75rem] border border-card-outline bg-card p-6 shadow-lg md:mx-0 md:max-w-none"
                 >
                   <div className="flex items-center gap-3">
                     <span className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/15 text-sm font-semibold text-primary">
@@ -179,7 +179,7 @@ export default function SobrePage() {
             {team.map((member) => (
               <article
                 key={member.name}
-                className="mx-auto w-full max-w-md rounded-[1.75rem] border border-border bg-card p-6 shadow-lg md:mx-0 md:max-w-none"
+                className="mx-auto w-full max-w-md rounded-[1.75rem] border border-card-outline bg-card p-6 shadow-lg md:mx-0 md:max-w-none"
               >
                 <div className="flex items-start gap-3">
                   <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/15 text-xl font-semibold text-primary">
@@ -228,7 +228,7 @@ export default function SobrePage() {
               </Button>
             </div>
           </div>
-          <div className="mx-auto w-full max-w-md rounded-[1.8rem] border border-border bg-card p-8 text-center shadow-xl md:mx-0 md:max-w-none">
+          <div className="mx-auto w-full max-w-md rounded-[1.8rem] border border-card-outline bg-card p-8 text-center shadow-xl md:mx-0 md:max-w-none">
             <Sparkles className="mx-auto h-10 w-10 text-primary" aria-hidden />
             <p className="mt-4 text-sm text-muted-foreground">
               Cada projeto começa com uma ideia. Quanto antes você compartilhar, mais cedo as pessoas

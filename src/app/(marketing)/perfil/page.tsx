@@ -279,14 +279,14 @@ export default function ProfilePage() {
         ) : null}
 
         {skills.length > 0 ? (
-          <section className="rounded-[2rem] border border-border bg-card p-8 shadow-xl">
+          <section className="rounded-[2rem] border border-card-outline bg-card p-8 shadow-xl">
             <h2 className="text-xl font-semibold text-foreground">Habilidades</h2>
             <div className="mt-4">
               <TagList tags={skills} max={skills.length} size="md" />
             </div>
           </section>
         ) : (
-          <section className="rounded-[2rem] border border-dashed border-border bg-card/40 p-8">
+          <section className="rounded-[2rem] border border-dashed border-card-outline bg-card/40 p-8">
             <h2 className="text-xl font-semibold text-foreground">Habilidades</h2>
             <p className="mt-2 text-sm text-muted-foreground">
               Você ainda não cadastrou habilidades. Edite seu perfil para incluí-las e ser encontrado por projetos compatíveis.
@@ -295,7 +295,7 @@ export default function ProfilePage() {
         )}
 
         {interests.length > 0 ? (
-          <section className="rounded-[2rem] border border-border bg-card p-8 shadow-xl">
+          <section className="rounded-[2rem] border border-card-outline bg-card p-8 shadow-xl">
             <h2 className="text-xl font-semibold text-foreground">Áreas de interesse</h2>
             <div className="mt-4">
               <TagList tags={interests} max={interests.length} size="md" />

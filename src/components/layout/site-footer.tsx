@@ -46,7 +46,7 @@ export function SiteFooter() {
             <p className="max-w-sm text-sm text-muted-foreground">
               Plataforma para publicar projetos, encontrar colaboradores e formar equipes.
             </p>
-            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-xs font-semibold text-muted-foreground">
+            <div className="inline-flex items-center gap-2 rounded-full border border-card-outline bg-card px-4 py-2 text-xs font-semibold text-muted-foreground">
               <Sparkles className="h-3.5 w-3.5 text-primary" aria-hidden />
               Conecte ideias a pessoas
             </div>

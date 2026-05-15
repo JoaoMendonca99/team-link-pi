@@ -24,6 +24,7 @@
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
+  --color-card-outline: var(--card-outline);
   --color-destructive: var(--destructive);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
@@ -69,6 +70,7 @@
   --accent-foreground: #0f766e;
   --destructive: #ef4444;
   --border: #e2e8f0;
+  --card-outline: #cbd5e1;
   --input: #e2e8f0;
   --ring: #2563eb;
   --chart-1: #2563eb;
@@ -104,6 +106,7 @@
   --accent-foreground: #5eead4;
   --destructive: #ef4444;
   --border: #1e293b;
+  --card-outline: rgba(255, 255, 255, 0.22);
   --input: #1e293b;
   --ring: #3b82f6;
   --chart-1: #60a5fa;
@@ -165,10 +168,14 @@
 }
 
 .tl-card {
-  @apply rounded-lg shadow-lg border p-6;
+  @apply rounded-lg border border-card-outline p-6 shadow-lg;
   background-color: var(--card);
   color: var(--card-foreground);
-  border-color: var(--border);
+}
+
+/* Card / panel shells — visible outline on dark backgrounds (login-style) */
+.tl-surface-border {
+  @apply border border-card-outline;
 }
 
 .tl-avatar-ring {

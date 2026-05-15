@@ -107,7 +107,7 @@ export function AjudaContent() {
               <motion.section
                 key={section.id}
                 layout
-                className={`rounded-[1.75rem] border border-border bg-card shadow-md ${opened ? 'ring-2 ring-primary/35' : ''}`}
+                className={`rounded-[1.75rem] border border-card-outline bg-card shadow-md ${opened ? 'ring-2 ring-primary/35' : ''}`}
               >
                 <button
                   type="button"
@@ -132,7 +132,7 @@ export function AjudaContent() {
           })}
         </div>
 
-        <aside className="space-y-6 rounded-[1.85rem] border border-border bg-card p-8 shadow-xl">
+        <aside className="space-y-6 rounded-[1.85rem] border border-card-outline bg-card p-8 shadow-xl">
           <div>
             <h2 className="text-2xl font-bold text-foreground">Perguntas frequentes</h2>
             <p className="text-sm text-muted-foreground">Respostas rápidas para as dúvidas mais comuns sobre o Team Link.</p>

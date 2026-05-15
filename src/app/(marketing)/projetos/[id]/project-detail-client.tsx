@@ -190,8 +190,6 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
     () => Boolean(isAuthenticated && user && project && user.id === project.ownerId),
     [isAuthenticated, project, user],
   )
-  const isAdmin = membership?.role === 'admin'
-  const isManager = isOwner || isAdmin
   const isMember = Boolean(membership) || isOwner
   const isLoggedNonMember = isAuthenticated && !isMember && !sessionLoading
   const isVisitor = !isAuthenticated && !sessionLoading
@@ -386,6 +384,14 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
                 <Share2 className="h-4 w-4" aria-hidden />
                 Compartilhar
               </Button>
+              {isOwner ? (
+                <Button asChild variant="outline" className="rounded-2xl font-semibold">
+                  <Link href={`/projetos/${project.slug}/editar`}>
+                    <Pencil className="h-4 w-4" aria-hidden />
+                    Editar projeto
+                  </Link>
+                </Button>
+              ) : null}
             </div>
           </div>
         </Container>
@@ -399,7 +405,7 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.28, ease: 'easeOut' }}
-            className="min-w-0 space-y-6 rounded-[1.85rem] border border-border bg-card p-6 shadow-sm sm:p-8"
+            className="min-w-0 space-y-6 rounded-[1.85rem] border border-card-outline bg-card p-6 shadow-sm sm:p-8"
           >
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               {project.category ? <CategoryBadge label={project.category} /> : null}
@@ -492,9 +498,6 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
               isVisitor={isVisitor}
               isLoggedNonMember={isLoggedNonMember}
               isMember={isMember}
-              isOwner={isOwner}
-              isManager={isManager}
-              projectSlug={project.slug}
               myBadge={myBadge}
             />
           </motion.section>
@@ -523,7 +526,7 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
         {/* Seções inferiores */}
         <div className="mt-10 grid gap-6">
           {project.description ? (
-            <section className="space-y-3 rounded-[1.85rem] border border-border bg-card p-6 shadow-sm sm:p-8">
+            <section className="space-y-3 rounded-[1.85rem] border border-card-outline bg-card p-6 shadow-sm sm:p-8">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-primary" aria-hidden />
                 <h2 className="text-xl font-semibold">Visão geral</h2>
@@ -537,7 +540,7 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
             </section>
           ) : null}
 
-          <section className="space-y-4 rounded-[1.85rem] border border-border bg-card p-6 shadow-sm sm:p-8">
+          <section className="space-y-4 rounded-[1.85rem] border border-card-outline bg-card p-6 shadow-sm sm:p-8">
             <div className="flex items-start gap-3">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <Users className="h-5 w-5" aria-hidden />
@@ -616,9 +619,6 @@ interface ActionsAreaProps {
   isVisitor: boolean
   isLoggedNonMember: boolean
   isMember: boolean
-  isOwner: boolean
-  isManager: boolean
-  projectSlug: string
   myBadge: { label: string; className: string } | null
 }
 
@@ -626,9 +626,6 @@ function ActionsArea({
   isVisitor,
   isLoggedNonMember,
   isMember,
-  isOwner,
-  isManager,
-  projectSlug,
   myBadge,
 }: ActionsAreaProps) {
   // Visitante deslogado
@@ -675,60 +672,6 @@ function ActionsArea({
     )
   }
 
-  // Dono ou admin
-  if (isManager) {
-    return (
-      <div className="space-y-3 rounded-2xl border border-primary/30 bg-primary/[0.06] p-5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-foreground">
-              Área de gestão do projeto
-            </p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Edite as informações, abra as mensagens e acompanhe as solicitações da equipe.
-            </p>
-          </div>
-          {myBadge ? (
-            <span
-              className={cn(
-                'inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
-                myBadge.className,
-              )}
-            >
-              {myBadge.label}
-            </span>
-          ) : null}
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button asChild className="rounded-2xl font-semibold">
-            <Link href={`/projetos/${projectSlug}/editar`}>
-              <Pencil className="h-4 w-4" aria-hidden />
-              Editar projeto
-            </Link>
-          </Button>
-          <Button asChild variant="secondary" className="rounded-2xl font-semibold">
-            <Link href="/mensagens">
-              <MessagesSquare className="h-4 w-4" aria-hidden />
-              Abrir mensagens
-            </Link>
-          </Button>
-          <Button asChild variant="outline" className="rounded-2xl font-semibold">
-            <Link href="#equipe-do-projeto">
-              <Users className="h-4 w-4" aria-hidden />
-              Ver equipe
-            </Link>
-          </Button>
-          {isOwner ? (
-            <Button asChild variant="outline" className="rounded-2xl font-semibold">
-              <Link href="#solicitacoes">Ver solicitações</Link>
-            </Button>
-          ) : null}
-        </div>
-      </div>
-    )
-  }
-
-  // Membro comum
   if (isMember) {
     return (
       <div className="space-y-3 rounded-2xl border border-emerald-500/40 bg-emerald-500/[0.08] p-5 dark:bg-emerald-500/10">

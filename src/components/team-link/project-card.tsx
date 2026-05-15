@@ -26,7 +26,7 @@ export function ProjectCard({
   const target = href ?? `/projetos/${project.slug}`
 
   const interactiveClasses =
-    "flex h-full flex-col rounded-[1.65rem] border border-border bg-card p-6 shadow-sm outline-none ring-offset-background transition-shadow duration-200 ease-out hover:shadow-xl focus-visible:ring-[3px] focus-visible:ring-ring/55"
+    "flex h-full flex-col rounded-[1.65rem] border border-card-outline bg-card p-6 shadow-sm outline-none ring-offset-background transition-shadow duration-200 ease-out hover:shadow-xl focus-visible:ring-[3px] focus-visible:ring-ring/55"
 
   const createdAtLabel = (() => {
     const date = new Date(project.createdAt)

@@ -228,7 +228,7 @@ export const MembersList = forwardRef<MembersListHandle, MembersListProps>(
             return (
               <li
                 key={`${member.project_id}-${member.user_id}`}
-                className="flex items-center gap-3 rounded-2xl border border-border/70 bg-card px-4 py-3"
+                className="flex items-center gap-3 rounded-2xl border border-card-outline bg-card px-4 py-3"
               >
                 <UserAvatar
                   name={name}

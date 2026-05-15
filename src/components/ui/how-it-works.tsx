@@ -34,7 +34,7 @@ const steps = [
 
 export function HowItWorks() {
   return (
-    <section id="como-funciona" className="border-b border-border bg-card py-20">
+    <section id="como-funciona" className="border-b border-card-outline bg-card py-20">
       <Container className="space-y-12">
         <div className="mx-auto max-w-3xl text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">Passo a passo</p>
@@ -55,7 +55,7 @@ export function HowItWorks() {
                 transition={{ duration: 0.35, delay: index * 0.05, ease: 'easeOut' }}
                 viewport={{ once: true, margin: '-40px' }}
                 whileHover={{ y: -3, scale: 1.01 }}
-                className={`relative mx-auto flex w-full max-w-md flex-col items-center rounded-[1.75rem] border border-border bg-gradient-to-br ${step.accent} p-6 text-center shadow-sm md:mx-0 md:max-w-none`}
+                className={`relative mx-auto flex w-full max-w-md flex-col items-center rounded-[1.75rem] border border-card-outline bg-gradient-to-br ${step.accent} p-6 text-center shadow-sm md:mx-0 md:max-w-none`}
               >
                 <span className="absolute right-6 top-6 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   {String(index + 1).padStart(2, '0')}

@@ -267,7 +267,7 @@ export function SiteHeader() {
 
               {isAuthenticated ? (
                 <div className="flex flex-col gap-3">
-                  <div className="flex items-center gap-3 rounded-2xl border border-border bg-card p-3">
+                  <div className="flex items-center gap-3 rounded-2xl border border-card-outline bg-card p-3">
                     <UserAvatar name={displayName} imageUrl={avatarUrl} sizeClassName="h-12 w-12" />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold">{displayName}</p>

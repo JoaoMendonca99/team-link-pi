@@ -124,7 +124,7 @@ export function EditMemberRoleDialog({
         className="absolute inset-0 cursor-default bg-background/80 backdrop-blur-sm"
       />
 
-      <div className="relative z-10 w-full max-w-md overflow-hidden rounded-3xl border border-border bg-card text-card-foreground shadow-2xl">
+      <div className="relative z-10 w-full max-w-md overflow-hidden rounded-3xl border border-card-outline bg-card text-card-foreground shadow-2xl">
         <header className="flex items-start justify-between gap-3 border-b border-border/70 bg-background/40 px-5 py-4">
           <div className="min-w-0">
             <h2 id="edit-member-role-title" className="text-base font-semibold leading-tight">

@@ -30,6 +30,8 @@ export function normalizeStringArray(value: unknown): string[] {
 
 export interface ChipInputProps {
   label: string
+  /** Exibe “(OPCIONAL)” ao lado do título do campo. */
+  optional?: boolean
   value: string[]
   onChange: (next: string[]) => void
   placeholder?: string
@@ -43,6 +45,7 @@ export interface ChipInputProps {
 
 export function ChipInput({
   label,
+  optional = false,
   value,
   onChange,
   placeholder,
@@ -100,7 +103,14 @@ export function ChipInput({
 
   return (
     <div className={cn('space-y-2', className)}>
-      <Label htmlFor={id}>{label}</Label>
+      <div className="flex flex-wrap items-center gap-2">
+        <Label htmlFor={id}>{label}</Label>
+        {optional ? (
+          <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-primary">
+            (OPCIONAL)
+          </span>
+        ) : null}
+      </div>
 
       <input
         ref={inputRef}

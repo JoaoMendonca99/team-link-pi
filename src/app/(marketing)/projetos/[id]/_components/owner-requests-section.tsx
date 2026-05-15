@@ -118,7 +118,7 @@ export function OwnerRequestsSection({
   const decided = requests.filter((r) => r.status !== 'pending')
 
   return (
-    <section className="space-y-6 rounded-[1.85rem] border border-border bg-card p-8 shadow-sm">
+    <section className="space-y-6 rounded-[1.85rem] border border-card-outline bg-card p-8 shadow-sm">
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.26em] text-primary">Gerenciar pedidos</p>
         <h3 className="text-2xl font-bold">Solicitações de participação</h3>
@@ -194,7 +194,7 @@ function RequestCard({
   const isPending = request.status === 'pending'
 
   return (
-    <article className="rounded-2xl border border-border bg-background p-5 shadow-sm">
+    <article className="rounded-2xl border border-card-outline bg-background p-5 shadow-sm">
       <header className="flex flex-wrap items-start gap-3">
         <UserAvatar name={name} imageUrl={profile?.avatar_url ?? undefined} sizeClassName="h-11 w-11" />
         <div className="min-w-0 flex-1">

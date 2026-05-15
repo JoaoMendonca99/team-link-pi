@@ -909,7 +909,7 @@ export function ProjectChatWidget() {
       aria-modal="false"
       aria-label="Chat dos seus projetos"
       className={cn(
-        "fixed z-[40] flex flex-col overflow-hidden rounded-3xl border border-border bg-card text-card-foreground shadow-2xl",
+        "fixed z-[40] flex flex-col overflow-hidden rounded-3xl border border-card-outline bg-card text-card-foreground shadow-2xl",
         // Mobile: ancorado acima do launcher, com margem lateral. dvh evita
         // que o chrome do navegador mobile coma a janela e faça o painel
         // parecer "subir" para cima do header.
@@ -1598,7 +1598,7 @@ function ConfirmDeleteOverlay({
       aria-label="Confirmar exclusão"
       className="absolute inset-0 z-10 flex items-center justify-center bg-background/85 px-4 backdrop-blur-sm"
     >
-      <div className="w-full rounded-2xl border border-border bg-card p-4 shadow-xl">
+      <div className="w-full rounded-2xl border border-card-outline bg-card p-4 shadow-xl">
         <p className="text-sm font-semibold text-foreground">
           Excluir {conversation.title?.trim() ? `“${conversation.title.trim()}”` : "este grupo"}?
         </p>

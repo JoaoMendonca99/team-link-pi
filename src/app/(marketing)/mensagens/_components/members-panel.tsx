@@ -53,7 +53,7 @@ export function MembersPanel({
         aria-modal="true"
         aria-label="Membros da conversa"
         className={cn(
-          'fixed inset-y-0 right-0 z-[70] flex w-full max-w-sm flex-col border-l border-border bg-card shadow-2xl',
+          'fixed inset-y-0 right-0 z-[70] flex w-full max-w-sm flex-col border-l border-card-outline bg-card shadow-2xl',
           'lg:top-[72px] lg:bottom-0 lg:w-80',
         )}
       >

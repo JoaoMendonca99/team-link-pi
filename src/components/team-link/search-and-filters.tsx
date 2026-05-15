@@ -51,7 +51,7 @@ export function SearchAndFilters({
   onClear: () => void
 }) {
   return (
-    <div className="rounded-[1.75rem] border border-border bg-card/90 p-4 shadow-lg backdrop-blur sm:p-6">
+    <div className="rounded-[1.75rem] border border-card-outline bg-card/90 p-4 shadow-lg backdrop-blur sm:p-6">
       <div className="grid min-w-0 gap-4 lg:grid-cols-12 lg:gap-3">
         <div className="relative min-w-0 lg:col-span-4">
           <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />

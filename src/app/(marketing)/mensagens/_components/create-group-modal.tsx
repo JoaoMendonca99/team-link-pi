@@ -107,7 +107,7 @@ export function CreateGroupModal({
         aria-label="Criar novo grupo"
         className="fixed inset-0 z-[90] flex items-end justify-center p-3 sm:items-center sm:p-6"
       >
-        <div className="flex max-h-[min(calc(100dvh-2rem),720px)] w-full max-w-lg flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-2xl">
+        <div className="flex max-h-[min(calc(100dvh-2rem),720px)] w-full max-w-lg flex-col overflow-hidden rounded-3xl border border-card-outline bg-card shadow-2xl">
           <header className="flex items-start gap-2 border-b border-border bg-background/60 px-5 py-4">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary">
               <Users className="h-5 w-5" aria-hidden />

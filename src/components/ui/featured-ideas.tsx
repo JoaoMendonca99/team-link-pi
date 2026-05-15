@@ -84,7 +84,7 @@ export function FeaturedIdeas() {
             }
             actionLabel="Criar primeira ideia"
             href="/nova-ideia"
-            className="mx-auto w-full max-w-md border-border bg-card shadow-sm dark:bg-card md:max-w-none"
+            className="mx-auto w-full max-w-md border-card-outline bg-card shadow-sm dark:bg-card md:max-w-none"
           />
         ) : (
           <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">

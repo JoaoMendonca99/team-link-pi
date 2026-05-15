@@ -562,7 +562,7 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
           noValidate
         >
           {/* Card grande com o formulário */}
-          <section className="min-w-0 space-y-8 rounded-[1.85rem] border border-border bg-card p-6 shadow-sm sm:p-8">
+          <section className="min-w-0 space-y-8 rounded-[1.85rem] border border-card-outline bg-card p-6 shadow-sm sm:p-8">
           <FormSection
             title="Informações principais"
             description="Como o projeto se apresenta para quem visita a página."
@@ -875,7 +875,7 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
 
           {/* Coluna lateral: Resumo atual */}
           <aside className="min-w-0 space-y-4 lg:sticky lg:top-[96px]">
-            <section className="rounded-[1.75rem] border border-border bg-card p-6 shadow-sm">
+            <section className="rounded-[1.75rem] border border-card-outline bg-card p-6 shadow-sm">
               <header>
                 <p className="text-xs font-semibold uppercase tracking-[0.26em] text-primary">
                   Resumo atual

@@ -51,7 +51,7 @@ export function ProjectsRail({
   return (
     <aside
       className={cn(
-        'flex min-h-0 w-full flex-col border-border bg-card text-card-foreground lg:w-72 lg:shrink-0 lg:border-r',
+        'flex min-h-0 w-full flex-col bg-card text-card-foreground lg:w-72 lg:shrink-0 lg:border-r lg:border-card-outline',
         className,
       )}
       aria-label="Lista de projetos"

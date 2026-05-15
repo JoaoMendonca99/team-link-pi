@@ -123,7 +123,7 @@ export function CommentsSection({
             const dateLabel = Number.isNaN(date.getTime()) ? '' : date.toLocaleString('pt-BR')
             const isMine = user?.id === comment.user_id
             return (
-              <article key={comment.id} className="rounded-2xl border border-border bg-card p-5 shadow-inner">
+              <article key={comment.id} className="rounded-2xl border border-card-outline bg-card p-5 shadow-inner">
                 <header className="flex items-center gap-3">
                   <UserAvatar
                     name={authorName}
@@ -193,7 +193,7 @@ export function CommentsSection({
           </div>
         </div>
       ) : (
-        <div className="rounded-2xl border border-border bg-card p-4 text-sm font-medium text-muted-foreground">
+        <div className="rounded-2xl border border-card-outline bg-card p-4 text-sm font-medium text-muted-foreground">
           <p className="text-foreground">Entre na sua conta para comentar.</p>
           <div className="mt-4 flex flex-wrap gap-3">
             <Button asChild className="rounded-xl font-semibold">
