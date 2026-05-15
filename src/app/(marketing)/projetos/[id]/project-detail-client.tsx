@@ -102,7 +102,23 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
         return
       }
 
-      const display = mapPublicDetailToDisplay(row)
+      const urlFromView = (row.project_url ?? '').trim()
+      let detailRow: ProjectPublicDetailRow = row
+      if (!urlFromView) {
+        const { data: urlRow, error: urlError } = await client
+          .from('projects')
+          .select('project_url')
+          .eq('id', row.id)
+          .maybeSingle()
+        if (!urlError && urlRow && typeof urlRow === 'object' && 'project_url' in urlRow) {
+          const u = (urlRow as { project_url: string | null }).project_url?.trim()
+          if (u) {
+            detailRow = { ...row, project_url: u }
+          }
+        }
+      }
+
+      const display = mapPublicDetailToDisplay(detailRow)
       setProject(display)
       setLikesCount(display.likesCount)
       setCommentsCount(display.commentsCount)
@@ -348,12 +364,27 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
           aria-labelledby="project-data-heading"
         >
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <h1
-              id="project-data-heading"
-              className="min-w-0 flex-1 text-balance text-3xl font-bold tracking-tight text-foreground sm:text-4xl"
-            >
-              {project.title}
-            </h1>
+            <div className="min-w-0 flex-1 space-y-2">
+              <h1
+                id="project-data-heading"
+                className="text-balance text-3xl font-bold tracking-tight text-foreground sm:text-4xl"
+              >
+                {project.title}
+              </h1>
+              {project.projectUrl ? (
+                <p className="text-sm text-muted-foreground">
+                  <span className="font-semibold text-foreground">Link do projeto: </span>
+                  <a
+                    href={project.projectUrl}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="break-all text-primary underline underline-offset-2 hover:text-primary/90"
+                  >
+                    {project.projectUrl}
+                  </a>
+                </p>
+              ) : null}
+            </div>
             <div className="flex flex-wrap items-center gap-2 sm:gap-3 lg:max-w-[50%] lg:justify-end">
               {project.category ? <CategoryBadge label={project.category} /> : null}
               <ProjectStatusBadge status={project.status} />
@@ -365,20 +396,6 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
               ) : null}
             </div>
           </div>
-
-          {project.projectUrl ? (
-            <p className="text-sm text-muted-foreground">
-              <span className="font-semibold text-foreground">Link do projeto: </span>
-              <a
-                href={project.projectUrl}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="break-all text-primary underline underline-offset-2 hover:text-primary/90"
-              >
-                {project.projectUrl}
-              </a>
-            </p>
-          ) : null}
 
           <div className="space-y-2">
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">
