@@ -26,6 +26,23 @@ type FieldErrors = {
   course?: string
 }
 
+const EMAIL_ALREADY_REGISTERED =
+  'Este e-mail já está cadastrado. Entre na sua conta ou use outro e-mail.'
+
+function isAlreadyRegisteredAuthMessage(message: string | undefined): boolean {
+  const normalized = (message ?? '').toLowerCase()
+  return (
+    normalized.includes('user already registered') ||
+    normalized.includes('already registered') ||
+    normalized.includes('already exists') ||
+    normalized.includes('user_already_exists')
+  )
+}
+
+function isDuplicateSignupResponse(identities: unknown): boolean {
+  return Array.isArray(identities) && identities.length === 0
+}
+
 type OrientationMiniCardProps = {
   title: string
   description: string
@@ -75,7 +92,7 @@ function SignupOrientationPanel({ step }: { step: SignupStep }) {
   if (step === 1) {
     return (
       <aside
-        className="flex flex-col gap-6 rounded-[1.75rem] border border-card-outline bg-card/80 p-6 shadow-xl sm:p-7 md:h-full md:justify-between"
+        className="flex flex-col gap-6 rounded-[1.75rem] border border-card-outline bg-card/80 p-6 shadow-xl sm:p-7 md:h-full"
         aria-label="Orientação do cadastro"
       >
         <div className="space-y-6">
@@ -110,17 +127,13 @@ function SignupOrientationPanel({ step }: { step: SignupStep }) {
             />
           </div>
         </div>
-
-        <p className="text-xs leading-relaxed text-muted-foreground/90">
-          Você poderá editar essas informações depois no perfil.
-        </p>
       </aside>
     )
   }
 
   return (
     <aside
-      className="flex flex-col gap-6 rounded-[1.75rem] border border-card-outline bg-card/80 p-6 shadow-xl sm:p-7 md:h-full md:justify-between"
+      className="flex flex-col gap-6 rounded-[1.75rem] border border-card-outline bg-card/80 p-6 shadow-xl sm:p-7 md:h-full"
       aria-label="Orientação do cadastro"
     >
       <div className="space-y-6">
@@ -132,8 +145,7 @@ function SignupOrientationPanel({ step }: { step: SignupStep }) {
             Complete seu perfil acadêmico
           </h1>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            Essas informações ajudam outros usuários a encontrarem seu perfil, mas podem ser
-            preenchidas depois.
+            Agora informe seu curso e, se quiser, adicione habilidades e áreas de interesse.
           </p>
         </div>
 
@@ -141,24 +153,21 @@ function SignupOrientationPanel({ step }: { step: SignupStep }) {
 
         <div className="space-y-3">
           <OrientationMiniCard
-            title="Curso"
-            description="Ajuda a identificar sua área."
+            title="Acesso"
+            description="Nome, e-mail e senha."
+          />
+          <OrientationMiniCard
+            title="Perfil"
+            description="Curso, habilidades e interesses."
             active
           />
           <OrientationMiniCard
-            title="Habilidades"
-            description="Mostra como você pode contribuir."
-          />
-          <OrientationMiniCard
-            title="Interesses"
-            description="Ajuda a sugerir projetos compatíveis."
+            title="Projetos"
+            description="Publique ideias ou participe de equipes."
           />
         </div>
       </div>
 
-      <p className="rounded-2xl border border-primary/35 bg-primary/10 px-4 py-3 text-sm font-semibold text-primary">
-        Habilidades e áreas de interesse são opcionais.
-      </p>
     </aside>
   )
 }
@@ -177,8 +186,9 @@ export default function CadastroPage() {
   const [interests, setInterests] = useState<string[]>([])
 
   const [submitting, setSubmitting] = useState(false)
+  const [step1Submitting, setStep1Submitting] = useState(false)
+  const [step1AuthDone, setStep1AuthDone] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
-  const [existingAccount, setExistingAccount] = useState(false)
   const [envMissing, setEnvMissing] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
   const [step1Touched, setStep1Touched] = useState(false)
@@ -241,16 +251,80 @@ export default function CadastroPage() {
     return false
   }
 
-  const handleContinue = () => {
+  const markEmailAlreadyRegistered = () => {
+    setFieldErrors((prev) => ({ ...prev, email: EMAIL_ALREADY_REGISTERED }))
+    setStep1Touched(true)
+  }
+
+  const handleContinue = async () => {
+    if (step1Submitting) return
+
     setErrorMessage(null)
     setStep1Touched(true)
 
     if (!validateStep1()) return
-    setStep(2)
+
+    if (envMissing) {
+      setErrorMessage('Não foi possível conectar ao serviço de dados. Tente novamente em instantes.')
+      return
+    }
+
+    setStep1Submitting(true)
+    try {
+      const client = getSupabaseClient()
+      const normalizedEmail = trimmedEmail.toLowerCase()
+
+      const { data: existingProfile } = await client
+        .from('profiles')
+        .select('id')
+        .eq('email', normalizedEmail)
+        .maybeSingle()
+
+      if (existingProfile?.id) {
+        markEmailAlreadyRegistered()
+        return
+      }
+
+      const { data, error } = await client.auth.signUp({
+        email: normalizedEmail,
+        password,
+        options: {
+          data: {
+            full_name: name.trim(),
+            course: '',
+            skills: [],
+            interests: [],
+          },
+        },
+      })
+
+      if (error) {
+        if (isAlreadyRegisteredAuthMessage(error.message)) {
+          markEmailAlreadyRegistered()
+          return
+        }
+        setErrorMessage(translateAuthError(error.message))
+        return
+      }
+
+      if (isDuplicateSignupResponse(data.user?.identities)) {
+        markEmailAlreadyRegistered()
+        return
+      }
+
+      setStep1AuthDone(true)
+      setStep(2)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : null
+      setErrorMessage(translateAuthError(message))
+    } finally {
+      setStep1Submitting(false)
+    }
   }
 
   const handleBack = () => {
     setErrorMessage(null)
+    setStep1AuthDone(false)
     setFieldErrors((prev) => {
       const next = { ...prev }
       delete next.course
@@ -261,8 +335,9 @@ export default function CadastroPage() {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (submitting) return
+
     setErrorMessage(null)
-    setExistingAccount(false)
 
     if (!validateStep2()) return
 
@@ -271,36 +346,60 @@ export default function CadastroPage() {
       return
     }
 
+    const normalizedEmail = trimmedEmail.toLowerCase()
+    const profilePayload = {
+      full_name: name.trim(),
+      course: course.trim(),
+      skills,
+      interests,
+    }
+
     setSubmitting(true)
     try {
       const client = getSupabaseClient()
+
+      if (step1AuthDone) {
+        const {
+          data: { session },
+        } = await client.auth.getSession()
+
+        if (session) {
+          const { error: authError } = await client.auth.updateUser({
+            data: profilePayload,
+          })
+          if (authError) {
+            setErrorMessage(translateAuthError(authError.message))
+            return
+          }
+
+          const { error: profileError } = await client
+            .from('profiles')
+            .update(profilePayload)
+            .eq('id', session.user.id)
+
+          if (profileError) {
+            setErrorMessage(translateAuthError(profileError.message))
+            return
+          }
+
+          router.push('/perfil')
+          return
+        }
+      }
+
       const { data, error } = await client.auth.signUp({
-        email: email.trim().toLowerCase(),
+        email: normalizedEmail,
         password,
-        options: {
-          data: {
-            full_name: name.trim(),
-            course: course.trim(),
-            skills,
-            interests,
-          },
-        },
+        options: { data: profilePayload },
       })
 
       if (error) {
-        const normalized = (error.message ?? '').toLowerCase()
-        const alreadyRegistered =
-          normalized.includes('user already registered') ||
-          normalized.includes('already registered') ||
-          normalized.includes('already exists') ||
-          normalized.includes('user_already_exists')
-
-        if (alreadyRegistered) {
-          setExistingAccount(true)
+        if (isAlreadyRegisteredAuthMessage(error.message)) {
+          markEmailAlreadyRegistered()
           setPassword('')
           setConfirmPassword('')
+          setStep1AuthDone(false)
           setStep(1)
-          setStep1Touched(true)
           return
         }
 
@@ -313,13 +412,12 @@ export default function CadastroPage() {
         return
       }
 
-      const identities = data.user?.identities
-      if (Array.isArray(identities) && identities.length === 0) {
-        setExistingAccount(true)
+      if (!step1AuthDone && isDuplicateSignupResponse(data.user?.identities)) {
+        markEmailAlreadyRegistered()
         setPassword('')
         setConfirmPassword('')
+        setStep1AuthDone(false)
         setStep(1)
-        setStep1Touched(true)
         return
       }
 
@@ -332,9 +430,10 @@ export default function CadastroPage() {
     }
   }
 
+  const emailAlreadyRegistered =
+    fieldErrors.email === EMAIL_ALREADY_REGISTERED
   const showNameError = step1Touched && Boolean(fieldErrors.name)
-  const showEmailError =
-    step1Touched && Boolean(fieldErrors.email) && !existingAccount
+  const showEmailError = step1Touched && Boolean(fieldErrors.email)
   const showPasswordError = step1Touched && Boolean(fieldErrors.password)
   const showConfirmError = step1Touched && Boolean(fieldErrors.confirmPassword)
 
@@ -353,13 +452,6 @@ export default function CadastroPage() {
               : 'Curso obrigatório. Habilidades e interesses são opcionais.'
           }
           className="h-full w-full max-w-none p-6 sm:p-7 [&>div:first-child]:mb-5"
-          footer={
-            step === 2 ? (
-              <p className="text-xs text-muted-foreground">
-                Você pode editar tudo depois em &quot;Editar perfil&quot;.
-              </p>
-            ) : undefined
-          }
         >
           {step === 1 ? (
             <form
@@ -401,7 +493,7 @@ export default function CadastroPage() {
                   value={email}
                   onChange={(event) => {
                     setEmail(event.target.value)
-                    if (existingAccount) setExistingAccount(false)
+                    setStep1AuthDone(false)
                     if (fieldErrors.email) {
                       setFieldErrors((prev) => {
                         const next = { ...prev }
@@ -410,22 +502,15 @@ export default function CadastroPage() {
                       })
                     }
                   }}
-                  aria-invalid={existingAccount || showEmailError}
+                  aria-invalid={showEmailError}
                   aria-describedby="cadastro-email-hint"
-                  className={cn(
-                    'rounded-2xl',
-                    existingAccount
-                      ? 'border-amber-500/70'
-                      : showEmailError
-                        ? 'border-destructive'
-                        : '',
-                  )}
+                  className={cn('rounded-2xl', showEmailError && 'border-destructive')}
                 />
                 <div id="cadastro-email-hint" aria-live="polite" className="space-y-1">
-                  {existingAccount ? (
+                  {emailAlreadyRegistered ? (
                     <>
-                      <p className="text-xs font-medium text-amber-700 dark:text-amber-300">
-                        Este e-mail já possui uma conta. Faça login para continuar.
+                      <p className="text-xs font-medium text-destructive">
+                        {EMAIL_ALREADY_REGISTERED}
                       </p>
                       <div className="mt-1.5 flex justify-center">
                         <Link
@@ -454,6 +539,7 @@ export default function CadastroPage() {
                     value={password}
                     onChange={(event) => {
                       setPassword(event.target.value)
+                      setStep1AuthDone(false)
                       if (fieldErrors.password) {
                         setFieldErrors((prev) => {
                           const next = { ...prev }
@@ -510,8 +596,21 @@ export default function CadastroPage() {
                 </div>
               ) : null}
 
-              <Button type="submit" className="w-full rounded-2xl py-4 text-base font-semibold">
-                Criar conta
+              {errorMessage ? (
+                <div
+                  role="alert"
+                  className="rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive"
+                >
+                  {errorMessage}
+                </div>
+              ) : null}
+
+              <Button
+                type="submit"
+                disabled={step1Submitting}
+                className="w-full rounded-2xl py-4 text-base font-semibold"
+              >
+                {step1Submitting ? 'Criando conta...' : 'Criar conta'}
               </Button>
             </form>
           ) : (
@@ -546,7 +645,6 @@ export default function CadastroPage() {
                 value={skills}
                 onChange={setSkills}
                 placeholder="Ex.: React, Figma, Arduino..."
-                helperText="Pressione Enter para adicionar. Você pode pular este campo."
                 inputId="skills-iniciais"
               />
 
@@ -556,7 +654,6 @@ export default function CadastroPage() {
                 value={interests}
                 onChange={setInterests}
                 placeholder="Ex.: sustentabilidade, educação, IA..."
-                helperText="Pressione Enter para adicionar. Você pode pular este campo."
                 inputId="interesses-iniciais"
               />
 
