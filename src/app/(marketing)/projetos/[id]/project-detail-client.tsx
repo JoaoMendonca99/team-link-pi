@@ -400,11 +400,13 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
           </div>
 
           <div className="max-w-sm">
-            <QuickFact
-              icon={Eye}
-              label="Vagas disponíveis"
-              value={`${project.openSpots} ${project.openSpots === 1 ? 'vaga' : 'vagas'}`}
-            />
+            {project.openSpots > 0 ? (
+              <QuickFact
+                icon={Eye}
+                label="Vagas disponíveis"
+                value={`${project.openSpots} ${project.openSpots === 1 ? 'vaga' : 'vagas'}`}
+              />
+            ) : null}
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-2 border-t border-card-outline/70 pt-6 sm:gap-3">
@@ -448,6 +450,7 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
           currentUserId={user?.id ?? null}
         />
 
+        {project.openSpots > 0 ? (
         <section
           id="participar"
           className="scroll-mt-24 space-y-5 rounded-[1.85rem] border border-card-outline bg-card p-6 shadow-sm sm:p-8"
@@ -503,6 +506,7 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
             </p>
           ) : null}
         </section>
+        ) : null}
 
         <CommentsSection
           projectId={project.id}

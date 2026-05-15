@@ -38,6 +38,7 @@ import {
   PROJECT_VISIBILITY_LABEL,
   PROJECT_VISIBILITY_OPTIONS,
 } from '@/lib/projects/display'
+import { parseOpenSpotsFormValue } from '@/lib/projects/open-spots-form'
 import type {
   ProjectRow,
   ProjectStatusValue,
@@ -99,6 +100,10 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
   const [formErrors, setFormErrors] = useState<FormErrors>({})
+
+  const openSpotsNumeric = useMemo(() => parseOpenSpotsFormValue(spots), [spots])
+  const showProfileSeekField =
+    openSpotsNumeric !== null && openSpotsNumeric > 0
 
   // -------------------------------------------------------------------------
   // Carregamento
@@ -189,7 +194,9 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
       setStatus(projectRow.status)
       setVisibility(projectRow.visibility)
       setSpots(String(projectRow.open_spots ?? 1))
-      setProfileSeek(projectRow.desired_profile ?? '')
+      setProfileSeek(
+        (projectRow.open_spots ?? 0) > 0 ? (projectRow.desired_profile ?? '') : '',
+      )
       setTags(loadedTags)
       setSkills(loadedSkills)
       setOriginalTags(loadedTags)
@@ -220,21 +227,20 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
     if (!shortDescription.trim()) errors.shortDescription = 'Preencha a descrição curta.'
     if (!fullDescription.trim()) errors.fullDescription = 'Descreva o projeto com mais detalhes.'
 
-    const trimmedSpots = spots.trim()
-    let openSpotsValue: number | null = null
-    if (trimmedSpots === '') {
-      errors.spots = 'Informe um número de vagas válido.'
-    } else {
-      const n = Number(trimmedSpots)
-      if (!Number.isFinite(n) || !Number.isInteger(n)) {
+    const openSpotsValue = parseOpenSpotsFormValue(spots)
+    if (openSpotsValue === null) {
+      const t = spots.trim()
+      if (t === '') {
         errors.spots = 'Informe um número de vagas válido.'
-      } else if (n < 0) {
-        errors.spots = 'O número de vagas não pode ser negativo.'
       } else {
-        openSpotsValue = n
+        const n = Number(t)
+        if (Number.isFinite(n) && Number.isInteger(n) && n < 0) {
+          errors.spots = 'O número de vagas não pode ser negativo.'
+        } else {
+          errors.spots = 'Informe um número de vagas válido.'
+        }
       }
-    }
-    if (openSpotsValue !== null && openSpotsValue > 0 && !profileSeek.trim()) {
+    } else if (openSpotsValue > 0 && !profileSeek.trim()) {
       errors.profileSeek = 'Descreva o perfil que você procura.'
     }
     if (tags.length === 0) errors.tags = 'Adicione pelo menos uma tag.'
@@ -288,7 +294,8 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
     }
     setFormErrors({})
 
-    const safeSpots = Number(spots.trim())
+    const safeSpots = parseOpenSpotsFormValue(spots) as number
+    const desiredProfilePayload = safeSpots === 0 ? '' : profileSeek.trim()
 
     setSubmitting(true)
     try {
@@ -302,7 +309,7 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
         status,
         visibility,
         open_spots: safeSpots,
-        desired_profile: profileSeek.trim(),
+        desired_profile: desiredProfilePayload,
       }
 
       const projectsResult = await client
@@ -390,6 +397,7 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
             }
           : prev,
       )
+      setProfileSeek(desiredProfilePayload)
       setOriginalTags(tags)
       setOriginalSkills(skills)
     } catch (error) {
@@ -426,9 +434,7 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
   }, [project?.updated_at, project?.created_at])
 
   const safeSpotsPreview = useMemo(() => {
-    const parsed = Number.parseInt(spots, 10)
-    if (!Number.isFinite(parsed) || parsed < 0) return 0
-    return parsed
+    return parseOpenSpotsFormValue(spots) ?? 0
   }, [spots])
 
   if (sessionLoading || loading) {
@@ -702,7 +708,7 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
 
           <FormSection
             title="Vagas e habilidades"
-            description="Quem pode contribuir e o que você espera dessa pessoa."
+            description="Indique quantas vagas estão em aberto. Com vagas abertas, descreva o perfil que você procura."
           >
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-3" data-field="spots">
@@ -713,8 +719,18 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
                   min={0}
                   value={spots}
                   onChange={(event) => {
-                    setSpots(event.target.value)
+                    const next = event.target.value
+                    setSpots(next)
                     clearFieldError('spots')
+                    if (parseOpenSpotsFormValue(next) === 0) {
+                      setProfileSeek('')
+                      setFormErrors((prev) => {
+                        if (!prev.profileSeek) return prev
+                        const copy = { ...prev }
+                        delete copy.profileSeek
+                        return copy
+                      })
+                    }
                   }}
                   aria-invalid={Boolean(formErrors.spots)}
                   aria-describedby={formErrors.spots ? 'edit-spots-error' : undefined}
@@ -725,30 +741,37 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
                     {formErrors.spots}
                   </p>
                 ) : null}
+                {openSpotsNumeric === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    Sem vagas abertas no momento.
+                  </p>
+                ) : null}
               </div>
-            </div>
 
-            <div className="space-y-3" data-field="profileSeek">
-              <Label htmlFor="edit-profile">Perfil procurado</Label>
-              <Textarea
-                id="edit-profile"
-                rows={6}
-                value={profileSeek}
-                onChange={(event) => {
-                  setProfileSeek(event.target.value)
-                  clearFieldError('profileSeek')
-                }}
-                placeholder="Disponibilidade esperada, ritmo de trabalho, tecnologias envolvidas e responsabilidades."
-                aria-invalid={Boolean(formErrors.profileSeek)}
-                aria-describedby={
-                  formErrors.profileSeek ? 'edit-profile-error' : undefined
-                }
-                className="rounded-2xl"
-              />
-              {formErrors.profileSeek ? (
-                <p id="edit-profile-error" className="text-xs font-medium text-destructive">
-                  {formErrors.profileSeek}
-                </p>
+              {showProfileSeekField ? (
+                <div className="space-y-3" data-field="profileSeek">
+                  <Label htmlFor="edit-profile">Perfil procurado</Label>
+                  <Textarea
+                    id="edit-profile"
+                    rows={6}
+                    value={profileSeek}
+                    onChange={(event) => {
+                      setProfileSeek(event.target.value)
+                      clearFieldError('profileSeek')
+                    }}
+                    placeholder="Disponibilidade esperada, ritmo de trabalho, tecnologias envolvidas e responsabilidades."
+                    aria-invalid={Boolean(formErrors.profileSeek)}
+                    aria-describedby={
+                      formErrors.profileSeek ? 'edit-profile-error' : undefined
+                    }
+                    className="rounded-2xl"
+                  />
+                  {formErrors.profileSeek ? (
+                    <p id="edit-profile-error" className="text-xs font-medium text-destructive">
+                      {formErrors.profileSeek}
+                    </p>
+                  ) : null}
+                </div>
               ) : null}
             </div>
 
@@ -917,7 +940,11 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
                 <SummaryRow
                   icon={Eye}
                   label="Vagas em aberto"
-                  value={`${safeSpotsPreview} ${safeSpotsPreview === 1 ? 'vaga' : 'vagas'}`}
+                  value={
+                    safeSpotsPreview === 0
+                      ? 'Sem vagas abertas'
+                      : `${safeSpotsPreview} ${safeSpotsPreview === 1 ? 'vaga' : 'vagas'}`
+                  }
                 />
                 <SummaryRow
                   icon={CalendarDays}

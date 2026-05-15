@@ -85,7 +85,8 @@ export function mapPublicCardToDisplay(row: ProjectPublicCardRow): ProjectDispla
     status: row.status,
     visibility: row.visibility,
     openSpots: row.open_spots,
-    desiredProfile: row.desired_profile,
+    desiredProfile:
+      row.open_spots > 0 ? (row.desired_profile?.trim() || null) : null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
 
@@ -130,7 +131,8 @@ export function mapProjectRowToDisplay(
     status: row.status,
     visibility: row.visibility,
     openSpots: row.open_spots,
-    desiredProfile: row.desired_profile,
+    desiredProfile:
+      row.open_spots > 0 ? (row.desired_profile?.trim() || null) : null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
 

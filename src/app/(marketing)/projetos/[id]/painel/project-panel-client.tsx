@@ -351,7 +351,14 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
             label="Comentários"
             value={String(project.commentsCount)}
           />
-          <SummaryTile label="Vagas abertas" value={String(project.openSpots)} />
+          <SummaryTile
+            label="Vagas abertas"
+            value={
+              project.openSpots > 0
+                ? String(project.openSpots)
+                : 'Sem vagas abertas'
+            }
+          />
           <SummaryTile label="Status">
             <ProjectStatusBadge status={project.status} />
           </SummaryTile>

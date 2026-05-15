@@ -75,7 +75,9 @@ export function ProjectCard({
           </span>
           <span className="flex items-center gap-1 rounded-full bg-muted px-2 py-1">
             <Users className="h-3.5 w-3.5 text-[#14B8A6]" aria-hidden />
-            {project.openSpots} vagas
+            {project.openSpots > 0
+              ? `${project.openSpots} ${project.openSpots === 1 ? 'vaga' : 'vagas'}`
+              : 'Sem vagas abertas'}
           </span>
         </div>
       </div>

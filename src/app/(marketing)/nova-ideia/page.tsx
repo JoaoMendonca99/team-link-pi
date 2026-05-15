@@ -18,6 +18,7 @@ import { projectCategories } from '@/data/mock-projects'
 import { getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { translateAuthError } from '@/lib/supabase/auth-errors'
 import type { ProjectDisplay } from '@/lib/projects/display'
+import { parseOpenSpotsFormValue } from '@/lib/projects/open-spots-form'
 import { slugify } from '@/lib/projects/slug'
 import { useSupabaseSession } from '@/hooks/use-supabase-session'
 import { cn } from '@/lib/utils'
@@ -77,7 +78,13 @@ export default function NovaIdeiaPage() {
   const authorId = user?.id ?? 'preview-author'
   const generatedSlug = useMemo(() => (title.trim() ? slugify(title) : ''), [title])
 
+  const openSpotsNumeric = useMemo(() => parseOpenSpotsFormValue(spots), [spots])
+  const showProfileSeekField =
+    openSpotsNumeric !== null && openSpotsNumeric > 0
+
   const previewProject = useMemo<ProjectDisplay>(() => {
+    const openPreview = parseOpenSpotsFormValue(spots)
+    const openSpotsResolved = openPreview !== null ? openPreview : 2
     return {
       id: 'preview-local',
       slug: generatedSlug || 'pre-visualizacao',
@@ -89,14 +96,14 @@ export default function NovaIdeiaPage() {
       category: category || null,
       status: 'open',
       visibility: 'public',
-      openSpots: (() => {
-        const t = spots.trim()
-        const n = t === '' ? NaN : Number(t)
-        return Number.isFinite(n) && Number.isInteger(n) && n >= 0 ? n : 2
-      })(),
+      openSpots: openSpotsResolved,
       desiredProfile:
-        profileSeek.trim() ||
-        'Descreva o ritmo de trabalho esperado, formato (remoto, presencial, híbrido) e responsabilidades iniciais.',
+        openPreview === 0
+          ? null
+          : openPreview !== null && openPreview > 0
+            ? profileSeek.trim() || null
+            : profileSeek.trim() ||
+              'Descreva o ritmo de trabalho esperado, formato (remoto, presencial, híbrido) e responsabilidades iniciais.',
       createdAt: today(),
       updatedAt: today(),
       ownerId: authorId,
@@ -141,22 +148,20 @@ export default function NovaIdeiaPage() {
       errors.fullDescription = 'Descreva o projeto com mais detalhes.'
     }
 
-    const trimmedSpots = spots.trim()
-    let openSpotsValue: number | null = null
-    if (trimmedSpots === '') {
-      errors.spots = 'Informe um número de vagas válido.'
-    } else {
-      const n = Number(trimmedSpots)
-      if (!Number.isFinite(n) || !Number.isInteger(n)) {
+    const openSpotsValue = parseOpenSpotsFormValue(spots)
+    if (openSpotsValue === null) {
+      const t = spots.trim()
+      if (t === '') {
         errors.spots = 'Informe um número de vagas válido.'
-      } else if (n < 0) {
-        errors.spots = 'O número de vagas não pode ser negativo.'
       } else {
-        openSpotsValue = n
+        const n = Number(t)
+        if (Number.isFinite(n) && Number.isInteger(n) && n < 0) {
+          errors.spots = 'O número de vagas não pode ser negativo.'
+        } else {
+          errors.spots = 'Informe um número de vagas válido.'
+        }
       }
-    }
-
-    if (openSpotsValue !== null && openSpotsValue > 0 && !profileSeek.trim()) {
+    } else if (openSpotsValue > 0 && !profileSeek.trim()) {
       errors.profileSeek = 'Descreva o perfil que você procura.'
     }
     if (tags.length === 0) {
@@ -220,7 +225,8 @@ export default function NovaIdeiaPage() {
       return
     }
 
-    const safeSpots = Number(spots.trim())
+    const safeSpots = parseOpenSpotsFormValue(spots) as number
+    const desiredProfilePayload = safeSpots === 0 ? '' : profileSeek.trim()
 
     const baseSlug = slugify(title)
     if (!baseSlug) {
@@ -239,7 +245,7 @@ export default function NovaIdeiaPage() {
         p_description: fullDescription.trim(),
         p_category: category,
         p_open_spots: safeSpots,
-        p_desired_profile: profileSeek.trim(),
+        p_desired_profile: desiredProfilePayload,
         p_tags: tags,
         p_required_skills: skills,
       })
@@ -434,19 +440,29 @@ export default function NovaIdeiaPage() {
 
               <FormSection
                 title="Equipe e vagas"
-                description="Indique quantas vagas estão em aberto e que perfil você procura."
+                description="Indique quantas vagas estão em aberto. Com vagas abertas, descreva o perfil que você procura."
               >
                 <div className="space-y-4">
                   <div className="space-y-3" data-field="spots">
-                    <Label htmlFor="vagas">Vagas disponíveis</Label>
+                    <Label htmlFor="vagas">Vagas em aberto</Label>
                     <Input
                       id="vagas"
                       min={0}
                       type="number"
                       value={spots}
                       onChange={(event) => {
-                        setSpots(event.target.value)
+                        const next = event.target.value
+                        setSpots(next)
                         clearFieldError('spots')
+                        if (parseOpenSpotsFormValue(next) === 0) {
+                          setProfileSeek('')
+                          setFormErrors((prev) => {
+                            if (!prev.profileSeek) return prev
+                            const copy = { ...prev }
+                            delete copy.profileSeek
+                            return copy
+                          })
+                        }
                       }}
                       aria-invalid={Boolean(formErrors.spots)}
                       aria-describedby={formErrors.spots ? 'vagas-error' : undefined}
@@ -457,29 +473,36 @@ export default function NovaIdeiaPage() {
                         {formErrors.spots}
                       </p>
                     ) : null}
-                  </div>
-
-                  <div className="space-y-3" data-field="profileSeek">
-                    <Label htmlFor="perfil">Perfil procurado</Label>
-                    <Textarea
-                      id="perfil"
-                      rows={6}
-                      value={profileSeek}
-                      onChange={(event) => {
-                        setProfileSeek(event.target.value)
-                        clearFieldError('profileSeek')
-                      }}
-                      placeholder="Descreva disponibilidade esperada, ritmo de trabalho, tecnologias envolvidas e responsabilidades."
-                      aria-invalid={Boolean(formErrors.profileSeek)}
-                      aria-describedby={formErrors.profileSeek ? 'perfil-error' : undefined}
-                      className="rounded-2xl"
-                    />
-                    {formErrors.profileSeek ? (
-                      <p id="perfil-error" className="text-xs font-medium text-destructive">
-                        {formErrors.profileSeek}
+                    {openSpotsNumeric === 0 ? (
+                      <p className="text-xs text-muted-foreground">
+                        Sem vagas abertas no momento.
                       </p>
                     ) : null}
                   </div>
+
+                  {showProfileSeekField ? (
+                    <div className="space-y-3" data-field="profileSeek">
+                      <Label htmlFor="perfil">Perfil procurado</Label>
+                      <Textarea
+                        id="perfil"
+                        rows={6}
+                        value={profileSeek}
+                        onChange={(event) => {
+                          setProfileSeek(event.target.value)
+                          clearFieldError('profileSeek')
+                        }}
+                        placeholder="Descreva disponibilidade esperada, ritmo de trabalho, tecnologias envolvidas e responsabilidades."
+                        aria-invalid={Boolean(formErrors.profileSeek)}
+                        aria-describedby={formErrors.profileSeek ? 'perfil-error' : undefined}
+                        className="rounded-2xl"
+                      />
+                      {formErrors.profileSeek ? (
+                        <p id="perfil-error" className="text-xs font-medium text-destructive">
+                          {formErrors.profileSeek}
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="space-y-4">
