@@ -1,5 +1,3 @@
-import * as jose from 'https://esm.sh/jose@5.9.6'
-
 import { getGitHubPrivateKeyPem, requireEnv } from './env.ts'
 
 const GITHUB_API = 'https://api.github.com'
@@ -18,6 +16,13 @@ export class GitHubApiError extends Error {
     super(message)
     this.name = 'GitHubApiError'
   }
+
+  toSanitizedDetails(): Record<string, unknown> {
+    return {
+      http_status: this.status,
+      github_message: this.githubMessage ?? null,
+    }
+  }
 }
 
 export class GitHubPrivateKeyError extends Error {
@@ -25,6 +30,22 @@ export class GitHubPrivateKeyError extends Error {
     super(message)
     this.name = 'GitHubPrivateKeyError'
   }
+}
+
+type JoseModule = typeof import('https://esm.sh/jose@5.9.6')
+let joseModulePromise: Promise<JoseModule> | null = null
+
+async function loadJose(): Promise<JoseModule> {
+  if (!joseModulePromise) {
+    joseModulePromise = import('https://esm.sh/jose@5.9.6').catch((error) => {
+      joseModulePromise = null
+      console.error('[github-app] jose_import_failed', {
+        error_name: error instanceof Error ? error.name : 'unknown',
+      })
+      throw new GitHubPrivateKeyError('Biblioteca JWT indisponível no runtime.')
+    })
+  }
+  return joseModulePromise
 }
 
 export interface GitHubRepo {
@@ -105,6 +126,7 @@ async function readGitHubErrorBody(response: Response): Promise<string | undefin
 }
 
 async function importGitHubPrivateKey(pem: string): Promise<CryptoKey> {
+  const jose = await loadJose()
   const normalized = pem.trim()
   if (normalized.includes('BEGIN RSA PRIVATE KEY')) {
     return (await jose.importPKCS1(normalized, 'RS256')) as CryptoKey
@@ -149,6 +171,7 @@ export async function createGitHubAppJwt(): Promise<string> {
 
   let token: string
   try {
+    const jose = await loadJose()
     token = await new jose.SignJWT({})
       .setProtectedHeader({ alg: 'RS256' })
       .setIssuedAt(now - 60)

@@ -57,6 +57,19 @@ function readFunctionStep(payload: Record<string, unknown> | null): string | nul
   return null
 }
 
+function readFunctionDetails(
+  payload: Record<string, unknown> | null,
+): Record<string, unknown> | null {
+  if (
+    payload?.details &&
+    typeof payload.details === 'object' &&
+    !Array.isArray(payload.details)
+  ) {
+    return payload.details as Record<string, unknown>
+  }
+  return null
+}
+
 function parseFunctionFailure(
   payload: Record<string, unknown> | null,
   invokeError: unknown,
@@ -172,6 +185,7 @@ export type CompleteGithubInstallationResult =
       message: string
       code: string | null
       step: string | null
+      details: Record<string, unknown> | null
       debug: GithubFunctionDebugInfo
     }
 
@@ -190,12 +204,14 @@ export async function completeGithubInstallation(input: {
     body: requestBody,
   })
 
-  const payload = data as Record<string, unknown> | null
+  const payload = (data ?? null) as Record<string, unknown> | null
+  const details = readFunctionDetails(payload)
 
   const fail = (
     message: string,
     code: string | null = null,
     step: string | null = null,
+    failDetails: Record<string, unknown> | null = details,
   ): CompleteGithubInstallationResult => {
     const debug = buildGithubFunctionDebug(
       GITHUB_COMPLETE_INSTALLATION_FUNCTION,
@@ -203,8 +219,8 @@ export async function completeGithubInstallation(input: {
       data,
       requestBody,
     )
-    logGithubFunctionDebug(debug, { code, step })
-    return { ok: false, message, code, step, debug }
+    logGithubFunctionDebug(debug, { code, step, details: failDetails })
+    return { ok: false, message, code, step, details: failDetails, debug }
   }
 
   const failure = parseFunctionFailure(
@@ -214,9 +230,22 @@ export async function completeGithubInstallation(input: {
     COMPLETE_CODE_MESSAGES,
   )
 
-  const payloadOk = payload?.ok === true
-  if (!payloadOk && (error || readFunctionError(payload) || readFunctionCode(payload))) {
-    return fail(failure.message, failure.code, failure.step)
+  if (payload?.ok === true) {
+    // success — parsed below
+  } else if (
+    payload?.ok === false ||
+    payload?.code ||
+    readFunctionError(payload) ||
+    readFunctionCode(payload)
+  ) {
+    return fail(
+      failure.message,
+      failure.code ?? readFunctionCode(payload),
+      failure.step,
+      details,
+    )
+  } else if (error) {
+    return fail(failure.message, failure.code, failure.step, details)
   }
 
   const projectId = typeof payload?.project_id === 'string' ? payload.project_id : null

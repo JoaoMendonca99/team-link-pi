@@ -25,9 +25,10 @@ export function createUserClientFromRequest(req: Request): SupabaseClient | null
   if (!authHeader?.startsWith('Bearer ')) return null
 
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY')?.trim()
-  if (!anonKey) return null
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')?.trim()
+  if (!anonKey || !supabaseUrl) return null
 
-  return createClient(requireEnv('SUPABASE_URL'), anonKey, {
+  return createClient(supabaseUrl, anonKey, {
     global: { headers: { Authorization: authHeader } },
     auth: { persistSession: false, autoRefreshToken: false },
   })
@@ -40,7 +41,13 @@ export async function getUserFromRequest(req: Request): Promise<User | null> {
   const token = authHeader.slice('Bearer '.length).trim()
   if (!token) return null
 
-  const admin = createAdminClient()
+  let admin: SupabaseClient
+  try {
+    admin = createAdminClient()
+  } catch {
+    return null
+  }
+
   const { data, error } = await admin.auth.getUser(token)
   if (error || !data.user) return null
   return data.user

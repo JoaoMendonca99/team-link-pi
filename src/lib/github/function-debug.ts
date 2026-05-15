@@ -45,14 +45,27 @@ export function logGithubFunctionDebug(
   debug: GithubFunctionDebugInfo,
   extra?: Record<string, unknown>,
 ): void {
-  if (process.env.NODE_ENV !== 'development') return
-
-  console.error('[Team Link · GitHub]', {
+  const payload = {
     function: debug.functionName,
     message: debug.errorMessage,
     status: debug.status,
     requestBody: debug.requestBody,
     responseBody: debug.responseBody,
     ...extra,
-  })
+  }
+
+  if (process.env.NODE_ENV === 'development') {
+    console.error('[Team Link · GitHub]', payload)
+    return
+  }
+
+  if (extra && ('code' in extra || 'step' in extra)) {
+    console.error('[Team Link · GitHub]', {
+      function: debug.functionName,
+      status: debug.status,
+      code: extra.code,
+      step: extra.step,
+      details: extra.details,
+    })
+  }
 }

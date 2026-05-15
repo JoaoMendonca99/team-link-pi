@@ -27,6 +27,7 @@ export interface StandardFailInput {
   step: string
   message: string
   status: number
+  details?: Record<string, unknown>
 }
 
 /** Resposta de erro padronizada — sem dados sensíveis. */
@@ -38,6 +39,9 @@ export function standardFailResponse(input: StandardFailInput): Response {
       step: input.step,
       message: input.message,
       error: input.message,
+      ...(input.details && Object.keys(input.details).length > 0
+        ? { details: input.details }
+        : {}),
     },
     input.status,
   )
@@ -49,8 +53,9 @@ export function structuredFailResponse(
   code: string,
   step: string,
   status: number,
+  details?: Record<string, unknown>,
 ): Response {
-  return standardFailResponse({ code, step, message, status })
+  return standardFailResponse({ code, step, message, status, details })
 }
 
 /** Compatível com consumidores que leem `error` + `code`. */
@@ -59,11 +64,13 @@ export function codedErrorResponse(
   code: string,
   status: number,
   step?: string,
+  details?: Record<string, unknown>,
 ): Response {
   return standardFailResponse({
     code,
     step: step ?? 'unknown',
     message,
     status,
+    details,
   })
 }

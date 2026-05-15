@@ -6,20 +6,37 @@ export function requireEnv(name: string): string {
   return value
 }
 
-/** Normaliza PEM com quebras reais ou `\\n` escapado (comum em secrets). */
-export function getGitHubPrivateKeyPem(): string {
-  const raw = requireEnv('GITHUB_PRIVATE_KEY')
-  let pem = raw.replace(/\r\n/g, '\n').replace(/\\n/g, '\n').trim()
+export type PrivateKeyValidationResult =
+  | { ok: true; pem: string }
+  | { ok: false; message: string }
+
+/** Valida e normaliza GITHUB_PRIVATE_KEY — nunca logar o valor. */
+export function validateGitHubPrivateKeyFromEnv(): PrivateKeyValidationResult {
+  const raw = Deno.env.get('GITHUB_PRIVATE_KEY')?.trim()
+  if (!raw) {
+    return { ok: false, message: 'GITHUB_PRIVATE_KEY ausente.' }
+  }
+
+  const pem = raw.replace(/\r\n/g, '\n').replace(/\\n/g, '\n').trim()
 
   if (!pem.includes('-----BEGIN')) {
-    throw new Error('GITHUB_PRIVATE_KEY inválida: cabeçalho PEM ausente.')
+    return { ok: false, message: 'Cabeçalho PEM (-----BEGIN) ausente.' }
   }
 
   if (!pem.includes('-----END')) {
-    throw new Error('GITHUB_PRIVATE_KEY inválida: rodapé PEM ausente.')
+    return { ok: false, message: 'Rodapé PEM (-----END) ausente.' }
   }
 
-  return pem
+  return { ok: true, pem }
+}
+
+/** Normaliza PEM com quebras reais ou `\\n` escapado (comum em secrets). */
+export function getGitHubPrivateKeyPem(): string {
+  const validated = validateGitHubPrivateKeyFromEnv()
+  if (!validated.ok) {
+    throw new Error(`GITHUB_PRIVATE_KEY inválida: ${validated.message}`)
+  }
+  return validated.pem
 }
 
 const GITHUB_RUNTIME_SECRETS = [

@@ -61,6 +61,11 @@ export function GithubSetupClient() {
 
   const [phase, setPhase] = useState<SetupPhase>('loading')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [errorDiag, setErrorDiag] = useState<{
+    code: string | null
+    step: string | null
+    status?: number
+  } | null>(null)
   const [setupData, setSetupData] = useState<GithubCompleteInstallationResult | null>(null)
   const [selectedRepoId, setSelectedRepoId] = useState<number | null>(null)
   const [visibility, setVisibility] = useState<GithubCommitVisibility>('members')
@@ -103,6 +108,7 @@ export function GithubSetupClient() {
 
     setPhase('loading')
     setErrorMessage(null)
+    setErrorDiag(null)
 
     const result = await completeGithubInstallation({
       installation_id: installationId,
@@ -113,16 +119,20 @@ export function GithubSetupClient() {
     if (!result.ok) {
       setPhase('error')
       setErrorMessage(result.message || GITHUB_COMPLETE_USER_MESSAGE)
-      if (process.env.NODE_ENV === 'development') {
-        console.error('[Team Link · GitHub setup] complete failed', {
-          function: GITHUB_COMPLETE_INSTALLATION_FUNCTION,
-          code: result.code,
-          step: result.step,
-          status: result.debug.status,
-          errorMessage: result.debug.errorMessage,
-          responseBody: result.debug.responseBody,
-        })
-      }
+      setErrorDiag({
+        code: result.code,
+        step: result.step,
+        status: result.debug.status,
+      })
+      console.error('[Team Link · GitHub setup] complete failed', {
+        function: GITHUB_COMPLETE_INSTALLATION_FUNCTION,
+        code: result.code,
+        step: result.step,
+        status: result.debug.status,
+        details: result.details,
+        errorMessage: result.debug.errorMessage,
+        responseBody: result.debug.responseBody,
+      })
       return
     }
 
@@ -266,6 +276,12 @@ export function GithubSetupClient() {
             description={errorMessage ?? GITHUB_COMPLETE_USER_MESSAGE}
             className="mx-auto max-w-lg"
           />
+          {process.env.NODE_ENV !== 'production' && errorDiag ? (
+            <p className="mx-auto mt-3 max-w-lg text-center font-mono text-xs text-muted-foreground">
+              code: {errorDiag.code ?? '—'} · step: {errorDiag.step ?? '—'} · status:{' '}
+              {errorDiag.status ?? '—'}
+            </p>
+          ) : null}
           {showAlreadyInstalledHint && canRetry ? (
             <p className="mx-auto mb-4 max-w-lg text-center text-xs text-muted-foreground">
               Se o GitHub abriu a página de instalação já existente, use &quot;Tentar novamente&quot;
