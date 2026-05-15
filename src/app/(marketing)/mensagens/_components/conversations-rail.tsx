@@ -9,6 +9,7 @@ import {
   RefreshCcw,
   Trash2,
   Users,
+  X,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -40,7 +41,7 @@ export function ConversationsRail({
   loading,
   error,
   onRetry,
-  onBack,
+  onDismissProject,
   className,
   /** Quando false, não renderiza badges de não lidas por conversa. */
   showUnreadBadges = false,
@@ -55,8 +56,8 @@ export function ConversationsRail({
   loading: boolean
   error: string | null
   onRetry: () => void
-  /** No mobile, botão de voltar para a coluna de projetos. */
-  onBack?: () => void
+  /** Fecha o projeto: limpa seleção e volta à lista de projetos (mobile + desktop). */
+  onDismissProject: () => void
   className?: string
   showUnreadBadges?: boolean
 }) {
@@ -72,18 +73,16 @@ export function ConversationsRail({
       aria-label="Conversas do projeto"
     >
       <header className="flex flex-wrap items-start gap-2 border-b border-border bg-background/60 px-4 py-3">
-        {onBack ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-8 shrink-0 gap-1.5 rounded-xl px-2 text-xs font-semibold lg:hidden"
-            onClick={onBack}
-          >
-            <ArrowLeft className="h-4 w-4" aria-hidden />
-            Projetos
-          </Button>
-        ) : null}
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-8 shrink-0 gap-1.5 rounded-xl px-2 text-xs font-semibold lg:hidden"
+          onClick={onDismissProject}
+        >
+          <ArrowLeft className="h-4 w-4" aria-hidden />
+          Projetos
+        </Button>
         <div className="min-w-0 flex-1">
           <p className="text-[11px] font-semibold uppercase tracking-[0.26em] text-primary">
             CONVERSAS
@@ -95,16 +94,28 @@ export function ConversationsRail({
             Conversa geral e seus grupos.
           </p>
         </div>
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          className="h-9 shrink-0 gap-1 rounded-xl px-3 text-xs font-semibold"
-          onClick={onCreateGroup}
-        >
-          <Plus className="h-3.5 w-3.5" aria-hidden />
-          Novo grupo
-        </Button>
+        <div className="flex shrink-0 items-center gap-1.5">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="hidden h-9 gap-1.5 rounded-xl px-2 text-xs font-semibold lg:inline-flex"
+            onClick={onDismissProject}
+          >
+            <X className="h-4 w-4" aria-hidden />
+            Fechar
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            className="h-9 shrink-0 gap-1 rounded-xl px-3 text-xs font-semibold"
+            onClick={onCreateGroup}
+          >
+            <Plus className="h-3.5 w-3.5" aria-hidden />
+            Novo grupo
+          </Button>
+        </div>
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto">

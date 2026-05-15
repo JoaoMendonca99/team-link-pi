@@ -76,10 +76,10 @@ export function ThreadPanel({
   if (!conversation) {
     const emptyTitle = hasSelectedProject
       ? 'Escolha uma conversa para começar'
-      : 'Selecione um projeto para ver suas conversas'
+      : 'Selecione um projeto para abrir as conversas.'
     const emptyDescription = hasSelectedProject
       ? 'Abra a conversa geral ou um grupo para acompanhar as mensagens em tempo real.'
-      : 'Escolha um projeto na lista à esquerda para ver a conversa geral e os grupos da equipe.'
+      : 'Escolha um projeto na primeira coluna para ver a conversa geral e os grupos da equipe.'
 
     return (
       <section

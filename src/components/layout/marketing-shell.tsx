@@ -17,7 +17,8 @@ function normalizePathname(pathname: string | null): string {
 
 export function MarketingShell({ children }: { children: React.ReactNode }) {
   const pathname = normalizePathname(usePathname())
-  const hideMarketingFooter = pathname === "/mensagens"
+  const isMessagesPage = pathname === "/mensagens"
+  const hideMarketingFooter = isMessagesPage
 
   return (
     <ThemeProvider>
@@ -28,7 +29,7 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
         </div>
         {hideMarketingFooter ? null : <SiteFooter />}
       </div>
-      <ProjectChatWidget />
+      {isMessagesPage ? null : <ProjectChatWidget />}
     </ThemeProvider>
   )
 }

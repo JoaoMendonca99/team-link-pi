@@ -147,6 +147,9 @@ export function MessagesClient() {
     void reloadProjects()
   }, [isAuthenticated, reloadProjects])
 
+  // Importante: não auto-selecionar o primeiro projeto ao carregar — o usuário pode
+  // fechar o projeto (handleCloseProjectSelection) e permanecer só na coluna PROJETOS.
+
   const reloadConversations = useCallback(
     async (projectId: string) => {
       setConversationsLoading(true)
@@ -295,6 +298,19 @@ export function MessagesClient() {
     },
     [],
   )
+
+  const handleCloseProjectSelection = useCallback(() => {
+    setSelectedProjectId(null)
+    setSelectedConversationId(null)
+    setDraft('')
+    setSendError(null)
+    setMembersOpen(false)
+    setCreateOpen(false)
+    setCreateError(null)
+    setPendingDelete(null)
+    setDeleteError(null)
+    setMobileStep('projects')
+  }, [])
 
   const handleSelectConversation = useCallback(
     (conversation: ChatConversationListItem) => {
@@ -564,7 +580,7 @@ export function MessagesClient() {
           onRetry={() =>
             selectedProjectId ? void reloadConversations(selectedProjectId) : undefined
           }
-          onBack={() => setMobileStep('projects')}
+          onDismissProject={handleCloseProjectSelection}
           className={cn(
             showConversationsOnMobile ? 'flex' : 'hidden',
             selectedProjectId ? 'lg:flex' : 'lg:hidden',
