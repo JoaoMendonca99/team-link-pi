@@ -229,6 +229,71 @@ export async function fetchRepository(
   return (await response.json()) as GitHubRepo
 }
 
+export async function fetchRepositoryById(
+  accessToken: string,
+  githubRepositoryId: number,
+): Promise<GitHubRepo> {
+  const response = await githubFetch(`/repositories/${githubRepositoryId}`, accessToken)
+  if (!response.ok) {
+    throw mapGitHubError(response)
+  }
+  return (await response.json()) as GitHubRepo
+}
+
+export interface SafeGithubRepository {
+  github_repository_id: number
+  owner_login: string
+  repo_name: string
+  full_name: string
+  default_branch: string
+  private: boolean
+  html_url: string
+}
+
+export function mapRepoToSafe(repository: GitHubRepo): SafeGithubRepository {
+  return {
+    github_repository_id: repository.id,
+    owner_login: repository.owner.login,
+    repo_name: repository.name,
+    full_name: repository.full_name,
+    default_branch: repository.default_branch || 'main',
+    private: repository.private,
+    html_url: repository.html_url,
+  }
+}
+
+export async function listInstallationRepositories(
+  accessToken: string,
+): Promise<GitHubRepo[]> {
+  const collected: GitHubRepo[] = []
+  let page = 1
+
+  while (page <= 20) {
+    const response = await githubFetch(
+      `/installation/repositories?per_page=100&page=${page}`,
+      accessToken,
+    )
+    if (!response.ok) {
+      throw mapGitHubError(response)
+    }
+
+    const payload = (await response.json()) as {
+      repositories?: GitHubRepo[]
+      total_count?: number
+    }
+    const batch = payload.repositories ?? []
+    collected.push(...batch)
+
+    const total = payload.total_count ?? collected.length
+    if (batch.length === 0 || collected.length >= total) {
+      break
+    }
+    page += 1
+  }
+
+  return collected
+}
+
 export async function fetchRecentCommits(
   accessToken: string,
   ownerLogin: string,

@@ -17,7 +17,6 @@ import { ProjectStatusBadge } from '@/components/team-link/project-status-badge'
 import { Button } from '@/components/ui/button'
 import { Container } from '@/components/layout/container'
 import {
-  linkProjectGithubRepository,
   syncProjectGithubRepository,
   unlinkProjectGithubRepository,
   updateGithubCommitVisibility,
@@ -39,7 +38,7 @@ import type { MemberBadgeColor, ProjectPublicDetailRow } from '@/types/database'
 
 import { isValidBadgeColor } from '../_components/member-badge'
 import { CommitDetailModal } from './_components/commit-detail-modal'
-import { LinkGithubDialog } from './_components/link-github-dialog'
+import { ConnectGithubDialog } from './_components/connect-github-dialog'
 import { PanelAccessDenied } from './_components/panel-access-denied'
 import { PanelGithubSection } from './_components/panel-github-section'
 
@@ -203,33 +202,6 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
     if (!hasPanelAccess || !project) return
     void refreshGithub()
   }, [hasPanelAccess, project, refreshGithub])
-
-  async function handleLink(input: {
-    installation_id: number
-    owner: string
-    repo: string
-    commit_visibility: 'members' | 'public'
-  }) {
-    if (!project) return { ok: false as const, message: 'Projeto indisponível.' }
-    setActionLoading(true)
-    setFeedback(null)
-    const result = await linkProjectGithubRepository({
-      project_id: project.id,
-      installation_id: input.installation_id,
-      owner: input.owner,
-      repo: input.repo,
-      commit_visibility: input.commit_visibility,
-    })
-    setActionLoading(false)
-    if (!result.ok) return result
-    setFeedback(
-      result.total_commits_imported > 0
-        ? `Repositório conectado. ${result.total_commits_imported} commit(s) importado(s).`
-        : 'Repositório conectado com sucesso.',
-    )
-    await refreshGithub()
-    return { ok: true as const }
-  }
 
   async function handleSync() {
     if (!repository) return
@@ -414,10 +386,10 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
         />
       </Container>
 
-      <LinkGithubDialog
+      <ConnectGithubDialog
         open={linkOpen}
         onClose={() => setLinkOpen(false)}
-        onSubmit={handleLink}
+        projectId={project.id}
       />
 
       <CommitDetailModal

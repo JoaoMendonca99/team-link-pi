@@ -1,18 +1,205 @@
 import { getSupabaseClient } from '@/lib/supabase/client'
 
-import type { GithubCommitVisibility } from './types'
+import type {
+  GithubCommitVisibility,
+  GithubCompleteInstallationResult,
+  GithubSelectableRepository,
+} from './types'
 
-function friendlyFunctionError(message: string | undefined): string {
-  const normalized = (message ?? '').toLowerCase()
-  if (normalized.includes('not authorized') || normalized.includes('403')) {
-    return 'Você não tem permissão para esta ação.'
-  }
-  if (normalized.includes('jwt') || normalized.includes('autenticação')) {
-    return 'Sessão expirada. Entre novamente.'
-  }
-  return 'Não foi possível concluir a operação agora. Tente novamente em instantes.'
+const TECHNICAL_ERROR_RE =
+  /jwt|pgrst|postgres|edge function|functions_http|fetch failed|non-2xx|network/i
+
+function isTechnicalError(message: string): boolean {
+  return TECHNICAL_ERROR_RE.test(message)
 }
 
+function friendlyFunctionError(
+  message: string | undefined,
+  fallback: string,
+): string {
+  const trimmed = message?.trim()
+  if (!trimmed) return fallback
+  if (isTechnicalError(trimmed)) return fallback
+  return trimmed
+}
+
+function readFunctionError(payload: Record<string, unknown> | null): string | null {
+  if (payload?.error && typeof payload.error === 'string') {
+    return payload.error
+  }
+  return null
+}
+
+export async function startGithubInstallation(
+  projectId: string,
+): Promise<{ ok: true; install_url: string } | { ok: false; message: string }> {
+  const client = getSupabaseClient()
+  const { data, error } = await client.functions.invoke('github-start-installation', {
+    body: { project_id: projectId },
+  })
+
+  if (error) {
+    return {
+      ok: false,
+      message: friendlyFunctionError(
+        error.message,
+        'Não foi possível iniciar a conexão com o GitHub.',
+      ),
+    }
+  }
+
+  const payload = data as Record<string, unknown> | null
+  const fnError = readFunctionError(payload)
+  if (fnError) {
+    return {
+      ok: false,
+      message: friendlyFunctionError(
+        fnError,
+        'Não foi possível iniciar a conexão com o GitHub.',
+      ),
+    }
+  }
+
+  const installUrl = typeof payload?.install_url === 'string' ? payload.install_url : null
+  if (!installUrl) {
+    return { ok: false, message: 'Não foi possível iniciar a conexão com o GitHub.' }
+  }
+
+  return { ok: true, install_url: installUrl }
+}
+
+export async function completeGithubInstallation(input: {
+  installation_id: number
+  setup_action?: string | null
+  state: string
+}): Promise<
+  { ok: true; data: GithubCompleteInstallationResult } | { ok: false; message: string }
+> {
+  const client = getSupabaseClient()
+  const { data, error } = await client.functions.invoke('github-complete-installation', {
+    body: {
+      installation_id: input.installation_id,
+      setup_action: input.setup_action ?? null,
+      state: input.state,
+    },
+  })
+
+  if (error) {
+    return {
+      ok: false,
+      message: friendlyFunctionError(
+        error.message,
+        'Não foi possível carregar os repositórios autorizados.',
+      ),
+    }
+  }
+
+  const payload = data as Record<string, unknown> | null
+  const fnError = readFunctionError(payload)
+  if (fnError) {
+    return {
+      ok: false,
+      message: friendlyFunctionError(
+        fnError,
+        'Não foi possível carregar os repositórios autorizados.',
+      ),
+    }
+  }
+
+  const projectId = typeof payload?.project_id === 'string' ? payload.project_id : null
+  const installationId =
+    typeof payload?.installation_id === 'number' ? payload.installation_id : null
+  const repositories = Array.isArray(payload?.repositories)
+    ? (payload.repositories as GithubSelectableRepository[]).filter(
+        (repo) =>
+          typeof repo?.github_repository_id === 'number' &&
+          typeof repo?.full_name === 'string',
+      )
+    : []
+
+  if (!projectId || !installationId) {
+    return { ok: false, message: 'Resposta inválida ao conectar com o GitHub.' }
+  }
+
+  return {
+    ok: true,
+    data: {
+      project_id: projectId,
+      project_slug:
+        typeof payload?.project_slug === 'string' ? payload.project_slug : null,
+      installation_id: installationId,
+      setup_action:
+        typeof payload?.setup_action === 'string' ? payload.setup_action : null,
+      repositories,
+    },
+  }
+}
+
+export async function linkSelectedGithubRepository(input: {
+  project_id: string
+  installation_id: number
+  github_repository_id: number
+  commit_visibility?: GithubCommitVisibility
+}): Promise<
+  | {
+      ok: true
+      repository_id: string
+      full_name: string
+      private: boolean
+      default_branch: string
+      total_commits_imported: number
+    }
+  | { ok: false; message: string }
+> {
+  const client = getSupabaseClient()
+  const { data, error } = await client.functions.invoke('github-link-selected-repository', {
+    body: {
+      project_id: input.project_id,
+      installation_id: input.installation_id,
+      github_repository_id: input.github_repository_id,
+      commit_visibility: input.commit_visibility ?? 'members',
+    },
+  })
+
+  if (error) {
+    return {
+      ok: false,
+      message: friendlyFunctionError(
+        error.message,
+        'Não foi possível vincular o repositório.',
+      ),
+    }
+  }
+
+  const payload = data as Record<string, unknown> | null
+  const fnError = readFunctionError(payload)
+  if (fnError) {
+    return {
+      ok: false,
+      message: friendlyFunctionError(fnError, 'Não foi possível vincular o repositório.'),
+    }
+  }
+
+  const repositoryId = typeof payload?.repository_id === 'string' ? payload.repository_id : null
+  if (!repositoryId) {
+    return { ok: false, message: 'Resposta inválida ao vincular o repositório.' }
+  }
+
+  return {
+    ok: true,
+    repository_id: repositoryId,
+    full_name: typeof payload?.full_name === 'string' ? payload.full_name : '',
+    private: Boolean(payload?.private),
+    default_branch:
+      typeof payload?.default_branch === 'string' ? payload.default_branch : 'main',
+    total_commits_imported:
+      typeof payload?.total_commits_imported === 'number'
+        ? payload.total_commits_imported
+        : 0,
+  }
+}
+
+/** Modo legado (owner + repo manual). Mantido para compatibilidade. */
 export async function linkProjectGithubRepository(input: {
   project_id: string
   installation_id: number
@@ -42,12 +229,22 @@ export async function linkProjectGithubRepository(input: {
   })
 
   if (error) {
-    return { ok: false, message: friendlyFunctionError(error.message) }
+    return {
+      ok: false,
+      message: friendlyFunctionError(
+        error.message,
+        'Não foi possível vincular o repositório.',
+      ),
+    }
   }
 
   const payload = data as Record<string, unknown> | null
-  if (payload?.error && typeof payload.error === 'string') {
-    return { ok: false, message: payload.error }
+  const fnError = readFunctionError(payload)
+  if (fnError) {
+    return {
+      ok: false,
+      message: friendlyFunctionError(fnError, 'Não foi possível vincular o repositório.'),
+    }
   }
 
   const repositoryId = typeof payload?.repository_id === 'string' ? payload.repository_id : null
@@ -78,12 +275,13 @@ export async function syncProjectGithubRepository(
   })
 
   if (error) {
-    return { ok: false, message: friendlyFunctionError(error.message) }
+    return { ok: false, message: friendlyFunctionError(error.message, 'Não foi possível sincronizar.') }
   }
 
   const payload = data as Record<string, unknown> | null
-  if (payload?.error && typeof payload.error === 'string') {
-    return { ok: false, message: payload.error }
+  const fnError = readFunctionError(payload)
+  if (fnError) {
+    return { ok: false, message: friendlyFunctionError(fnError, 'Não foi possível sincronizar.') }
   }
 
   return {

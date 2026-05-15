@@ -1,7 +1,8 @@
 import {
   createInstallationAccessToken,
-  fetchRepository,
+  fetchRepositoryById,
   GitHubApiError,
+  listInstallationRepositories,
 } from '../_shared/github-app.ts'
 import { assertProjectManager, insertSyncLog } from '../_shared/github-db.ts'
 import { linkProjectRepositoryCore } from '../_shared/github-link-core.ts'
@@ -13,11 +14,10 @@ import {
   getUserFromRequest,
 } from '../_shared/supabase-admin.ts'
 
-interface LinkRepositoryBody {
+interface LinkSelectedBody {
   project_id?: string
   installation_id?: number
-  owner?: string
-  repo?: string
+  github_repository_id?: number
   commit_visibility?: string
 }
 
@@ -35,20 +35,22 @@ Deno.serve(async (req) => {
     return errorResponse('Autenticação obrigatória.', 401)
   }
 
-  let body: LinkRepositoryBody
+  let body: LinkSelectedBody
   try {
-    body = (await req.json()) as LinkRepositoryBody
+    body = (await req.json()) as LinkSelectedBody
   } catch {
     return errorResponse('JSON inválido.', 400)
   }
 
   const projectId = body.project_id?.trim()
   const installationId = body.installation_id
-  const ownerLogin = body.owner?.trim()
-  const repoName = body.repo?.trim()
+  const githubRepositoryId = body.github_repository_id
 
-  if (!projectId || !installationId || !ownerLogin || !repoName) {
-    return errorResponse('project_id, installation_id, owner e repo são obrigatórios.', 400)
+  if (!projectId || !installationId || !githubRepositoryId) {
+    return errorResponse(
+      'project_id, installation_id e github_repository_id são obrigatórios.',
+      400,
+    )
   }
 
   const commitVisibility: CommitVisibility =
@@ -57,18 +59,17 @@ Deno.serve(async (req) => {
   const userClient = createUserClientFromRequest(req)
   const canManage = await assertProjectManager(admin, projectId, user.id, userClient)
   if (!canManage) {
-    return errorResponse('Sem permissão para vincular repositório neste projeto.', 403)
+    return errorResponse('Você não tem permissão para vincular repositórios neste projeto.', 403)
   }
 
   try {
     const accessToken = await createInstallationAccessToken(installationId)
-    const repository = await fetchRepository(accessToken, ownerLogin, repoName)
+    const repository = await fetchRepositoryById(accessToken, githubRepositoryId)
 
-    if (repository.owner.login.toLowerCase() !== ownerLogin.toLowerCase()) {
-      return errorResponse('O repositório informado não corresponde ao owner.', 400)
-    }
-    if (repository.name.toLowerCase() !== repoName.toLowerCase()) {
-      return errorResponse('O repositório informado não corresponde ao nome do repo.', 400)
+    const allowed = await listInstallationRepositories(accessToken)
+    const isAllowed = allowed.some((repo) => repo.id === repository.id)
+    if (!isAllowed) {
+      return errorResponse('Esse repositório não está disponível para esta instalação.', 400)
     }
 
     const result = await linkProjectRepositoryCore(admin, user.id, {
@@ -76,7 +77,7 @@ Deno.serve(async (req) => {
       installation_id: installationId,
       repository,
       commit_visibility: commitVisibility,
-      linked_via: 'github-link-repository',
+      linked_via: 'github-link-selected-repository',
     })
 
     return jsonResponse(result)

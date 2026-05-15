@@ -36,3 +36,22 @@ export interface GithubCommitItem {
   changed_files: number | null
   files: Record<string, unknown> | null
 }
+
+/** Repositório listado após instalação do GitHub App (sem tokens). */
+export interface GithubSelectableRepository {
+  github_repository_id: number
+  owner_login: string
+  repo_name: string
+  full_name: string
+  default_branch: string
+  private: boolean
+  html_url: string
+}
+
+export interface GithubCompleteInstallationResult {
+  project_id: string
+  project_slug: string | null
+  installation_id: number
+  setup_action: string | null
+  repositories: GithubSelectableRepository[]
+}
