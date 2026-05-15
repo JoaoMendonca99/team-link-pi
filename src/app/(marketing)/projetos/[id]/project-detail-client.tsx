@@ -7,6 +7,7 @@ import {
   ArrowLeft,
   CalendarDays,
   Eye,
+  LayoutDashboard,
   MessageCircle,
   Pencil,
   Share2,
@@ -29,6 +30,7 @@ import { CommentsSection } from './_components/comments-section'
 import { JoinRequestSection } from './_components/join-request-section'
 import { LikeButton } from './_components/like-button'
 import { MembersPreviewCard, type MembersPreviewCardHandle } from './_components/members-preview-card'
+import { isProjectManager } from '@/lib/projects/membership'
 import { isValidBadgeColor } from './_components/member-badge'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -164,11 +166,17 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
   // Derivados de tipo de usuário
   // -------------------------------------------------------------------------
 
-  const isOwner = useMemo(
-    () => Boolean(isAuthenticated && user && project && user.id === project.ownerId),
-    [isAuthenticated, project, user],
+  const isManager = useMemo(
+    () =>
+      Boolean(
+        isAuthenticated &&
+          user &&
+          project &&
+          isProjectManager(user.id, project.ownerId, membership),
+      ),
+    [isAuthenticated, membership, project, user],
   )
-  const isMember = Boolean(membership) || isOwner
+  const isMember = Boolean(membership) || isManager
   const isLoggedNonMember = isAuthenticated && !isMember && !sessionLoading
   const isVisitor = !isAuthenticated && !sessionLoading
 
@@ -414,7 +422,15 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
               <Share2 className="h-4 w-4" aria-hidden />
               Compartilhar
             </Button>
-            {isOwner ? (
+            {isMember ? (
+              <Button asChild variant="outline" className="rounded-2xl font-semibold">
+                <Link href={`/projetos/${project.slug}/painel`}>
+                  <LayoutDashboard className="h-4 w-4" aria-hidden />
+                  Painel do projeto
+                </Link>
+              </Button>
+            ) : null}
+            {isManager ? (
               <Button asChild variant="outline" className="rounded-2xl font-semibold">
                 <Link href={`/projetos/${project.slug}/editar`}>
                   <Pencil className="h-4 w-4" aria-hidden />
@@ -481,7 +497,7 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
             />
           ) : null}
 
-          {isMember && !isOwner ? (
+          {isMember && !isManager ? (
             <p className="border-t border-card-outline/70 pt-5 text-sm text-muted-foreground">
               Você já faz parte deste projeto.
             </p>

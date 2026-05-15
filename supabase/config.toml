@@ -1,0 +1,28 @@
+# Configuração mínima do Supabase CLI para Edge Functions.
+# Documentação: https://supabase.com/docs/guides/cli/config
+
+project_id = "team-link"
+
+[api]
+enabled = true
+port = 54321
+
+[db]
+port = 54322
+
+[studio]
+enabled = true
+port = 54323
+
+[functions]
+# Secrets são definidas no Dashboard ou via: supabase secrets set NAME=value
+verify_jwt = false
+
+[functions.github-link-repository]
+verify_jwt = false
+
+[functions.github-sync-repository]
+verify_jwt = false
+
+[functions.github-webhook]
+verify_jwt = false

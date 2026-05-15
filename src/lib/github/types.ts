@@ -1,0 +1,38 @@
+export type GithubCommitVisibility = 'members' | 'public'
+
+export interface GithubRepositoryLink {
+  id: string
+  project_id: string
+  installation_id: number
+  github_repository_id: number
+  owner_login: string
+  repo_name: string
+  full_name: string
+  default_branch: string
+  private: boolean
+  html_url: string
+  commit_visibility: GithubCommitVisibility
+  is_active: boolean
+  last_synced_at: string | null
+  linked_at: string | null
+}
+
+export interface GithubCommitItem {
+  id: string | null
+  project_repository_id: string | null
+  project_id: string | null
+  github_repository_id: number | null
+  sha: string
+  short_sha: string | null
+  message: string
+  author_name: string | null
+  author_email: string | null
+  github_username: string | null
+  committed_at: string
+  branch: string
+  commit_url: string | null
+  additions: number | null
+  deletions: number | null
+  changed_files: number | null
+  files: Record<string, unknown> | null
+}

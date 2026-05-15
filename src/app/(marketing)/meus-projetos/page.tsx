@@ -152,13 +152,16 @@ export default function MeusProjetosPage() {
                 key={project.id}
                 className="mx-auto w-full max-w-md space-y-4 md:mx-0 md:max-w-none"
               >
-                <ProjectCard project={project} />
+                <ProjectCard
+                  project={project}
+                  href={`/projetos/${project.slug}/painel`}
+                />
                 <div className="flex flex-wrap gap-3">
+                  <Button asChild className="flex-1 rounded-2xl font-semibold">
+                    <Link href={`/projetos/${project.slug}/painel`}>Painel do projeto</Link>
+                  </Button>
                   <Button asChild variant="outline" className="flex-1 rounded-2xl font-semibold">
                     <Link href={`/projetos/${project.slug}/editar`}>Editar</Link>
-                  </Button>
-                  <Button asChild className="flex-1 rounded-2xl font-semibold">
-                    <Link href={`/projetos/${project.slug}`}>Ver projeto</Link>
                   </Button>
                 </div>
               </div>
