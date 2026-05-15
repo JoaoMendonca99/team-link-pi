@@ -185,9 +185,9 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
         </header>
 
         {loading ? (
-          <div className="mt-5 space-y-3">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-[5.5rem] animate-pulse rounded-2xl bg-muted" />
+          <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-28 animate-pulse rounded-2xl bg-muted" />
             ))}
           </div>
         ) : errorMessage ? (
@@ -202,7 +202,7 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
             Nenhum membro listado ainda.
           </p>
         ) : (
-          <ul className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <ul className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
             {members.map((member) => {
               const name = member.full_name?.trim() || 'Membro'
               const profileHref =
@@ -219,44 +219,14 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
               return (
                 <li
                   key={`${member.project_id}-${member.user_id}`}
-                  className="flex min-w-0 gap-3 rounded-2xl border border-card-outline/70 bg-muted/20 p-4"
+                  className="relative flex min-w-0 gap-3 overflow-hidden rounded-2xl border border-card-outline/70 bg-muted/20 p-4"
                 >
-                  <div className="shrink-0 self-start">
-                    <UserAvatar
-                      name={name}
-                      imageUrl={member.avatar_url ?? undefined}
-                      sizeClassName="h-10 w-10"
-                      ring={false}
-                    />
-                  </div>
-                  <div className="min-w-0 flex-1 space-y-1.5">
-                    <Link
-                      href={profileHref}
-                      className="block break-words text-sm font-semibold text-primary hover:underline"
-                    >
-                      {name}
-                    </Link>
-                    {member.course ? (
-                      <p className="break-words text-xs leading-snug text-muted-foreground">
-                        {member.course}
-                      </p>
-                    ) : null}
-                    <span
-                      className={cn(
-                        'inline-flex max-w-full items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase leading-snug tracking-wide',
-                        'whitespace-normal break-words text-left',
-                        badge.className,
-                      )}
-                    >
-                      {badge.label}
-                    </span>
-                  </div>
                   {canManage ? (
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 shrink-0 self-start text-muted-foreground hover:text-foreground"
+                      className="absolute right-2 top-2 z-10 h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
                       onClick={() => setEditingUserId(member.user_id)}
                       aria-label={`Editar cargo de ${name}`}
                       title="Editar cargo"
@@ -264,6 +234,46 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
                       <Pencil className="h-4 w-4" aria-hidden />
                     </Button>
                   ) : null}
+                  <div className="shrink-0 self-start">
+                    <UserAvatar
+                      name={name}
+                      imageUrl={member.avatar_url ?? undefined}
+                      sizeClassName="h-11 w-11"
+                      ring={false}
+                    />
+                  </div>
+                  <div
+                    className={cn(
+                      'min-w-0 flex-1 space-y-1',
+                      canManage ? 'pr-9' : undefined,
+                    )}
+                  >
+                    <Link
+                      href={profileHref}
+                      title={name}
+                      className="block truncate text-sm font-semibold text-primary hover:underline"
+                    >
+                      {name}
+                    </Link>
+                    {member.course ? (
+                      <p
+                        title={member.course}
+                        className="truncate text-xs leading-snug text-muted-foreground"
+                      >
+                        {member.course}
+                      </p>
+                    ) : null}
+                    <span
+                      title={badge.label}
+                      className={cn(
+                        'mt-0.5 inline-block max-w-full truncate rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
+                        'whitespace-nowrap',
+                        badge.className,
+                      )}
+                    >
+                      {badge.label}
+                    </span>
+                  </div>
                 </li>
               )
             })}

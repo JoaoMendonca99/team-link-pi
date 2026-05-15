@@ -7,9 +7,6 @@ import {
   ArrowLeft,
   CalendarDays,
   Eye,
-  Globe2,
-  Heart,
-  Lock,
   MessageCircle,
   Pencil,
   Share2,
@@ -18,17 +15,11 @@ import {
 
 import { CategoryBadge } from '@/components/team-link/category-badge'
 import { ProjectStatusBadge } from '@/components/team-link/project-status-badge'
-import { TagList } from '@/components/team-link/tag-list'
-import { UserAvatar } from '@/components/team-link/user-avatar'
 import { EmptyState } from '@/components/team-link/empty-state'
 import { Button } from '@/components/ui/button'
 import { Container } from '@/components/layout/container'
 import { getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase/client'
-import {
-  PROJECT_VISIBILITY_LABEL,
-  mapPublicDetailToDisplay,
-  type ProjectDisplay,
-} from '@/lib/projects/display'
+import { mapPublicDetailToDisplay, type ProjectDisplay } from '@/lib/projects/display'
 import type {
   MemberBadgeColor,
   ProjectPublicDetailRow,
@@ -61,8 +52,6 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
 
   const [likesCount, setLikesCount] = useState(0)
   const [commentsCount, setCommentsCount] = useState(0)
-  const [membersCount, setMembersCount] = useState(0)
-
   // Membership do usuário atual no projeto (para gating de UI).
   const [membership, setMembership] = useState<CurrentMembership | null>(null)
 
@@ -115,7 +104,6 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
       setProject(display)
       setLikesCount(display.likesCount)
       setCommentsCount(display.commentsCount)
-      setMembersCount(display.membersCount)
     } catch (error) {
       setFetchError(error instanceof Error ? error.message : 'Erro desconhecido ao carregar projeto.')
     } finally {
@@ -199,10 +187,12 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
     })
   }, [project])
 
-  const visibilityLabel = project
-    ? PROJECT_VISIBILITY_LABEL[project.visibility]
-    : ''
-  const VisibilityIcon = project?.visibility === 'private' ? Lock : Globe2
+  const aboutText = useMemo(() => {
+    if (!project) return ''
+    const full = project.description?.trim()
+    if (full) return full
+    return project.shortDescription?.trim() ?? ''
+  }, [project])
 
   const handleShare = async () => {
     if (!project) return
@@ -349,86 +339,43 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
           className="space-y-6 rounded-[1.85rem] border border-card-outline bg-card p-6 shadow-sm sm:p-8"
           aria-labelledby="project-data-heading"
         >
-          <div className="space-y-1">
-            <p
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <h1
               id="project-data-heading"
-              className="text-xs font-semibold uppercase tracking-[0.3em] text-primary"
+              className="min-w-0 flex-1 text-balance text-3xl font-bold tracking-tight text-foreground sm:text-4xl"
             >
-              Dados do projeto
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Informações principais e contexto do projeto.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            {project.category ? <CategoryBadge label={project.category} /> : null}
-            <ProjectStatusBadge status={project.status} />
-            {updatedAtLabel ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                <CalendarDays className="h-3.5 w-3.5 text-primary" aria-hidden />
-                Atualizado em {updatedAtLabel}
-              </span>
-            ) : null}
-          </div>
-
-          <div className="space-y-3">
-            <h1 className="text-balance text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
               {project.title}
             </h1>
-            {project.shortDescription ? (
-              <p className="max-w-4xl text-base leading-relaxed text-muted-foreground">
-                {project.shortDescription}
-              </p>
-            ) : null}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/60 bg-background/60 px-4 py-3">
-            <UserAvatar
-              name={project.ownerName}
-              imageUrl={project.ownerAvatarUrl ?? undefined}
-              sizeClassName="h-10 w-10"
-            />
-            <div className="min-w-0 flex-1">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Publicado por
-              </p>
-              <p className="break-words text-sm font-semibold text-foreground">
-                {project.ownerName}
-              </p>
-              {project.ownerCourse ? (
-                <p className="break-words text-xs text-muted-foreground">
-                  {project.ownerCourse}
-                </p>
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 lg:max-w-[50%] lg:justify-end">
+              {project.category ? <CategoryBadge label={project.category} /> : null}
+              <ProjectStatusBadge status={project.status} />
+              {updatedAtLabel ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                  <CalendarDays className="h-3.5 w-3.5 text-primary" aria-hidden />
+                  Atualizado em {updatedAtLabel}
+                </span>
               ) : null}
             </div>
           </div>
 
-          {project.description ? (
-            <div className="space-y-2">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Sobre o projeto
-              </p>
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">
+              Sobre o projeto
+            </p>
+            {aboutText ? (
               <p className="whitespace-pre-line text-base leading-relaxed text-muted-foreground">
-                {project.description}
+                {aboutText}
               </p>
-            </div>
-          ) : null}
+            ) : (
+              <p className="text-sm text-muted-foreground">Nenhuma descrição informada.</p>
+            )}
+          </div>
 
-          {project.tags.length > 0 ? (
-            <div className="space-y-2">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Tags
-              </p>
-              <TagList tags={project.tags} max={12} size="md" />
-            </div>
-          ) : null}
-
-          {project.requiredSkills.length > 0 ? (
-            <div className="space-y-2">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                Habilidades procuradas
-              </p>
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">
+              Habilidades procuradas
+            </p>
+            {project.requiredSkills.length > 0 ? (
               <div className="flex flex-wrap gap-2">
                 {project.requiredSkills.map((skill) => (
                   <span
@@ -439,23 +386,17 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
                   </span>
                 ))}
               </div>
-            </div>
-          ) : null}
+            ) : (
+              <p className="text-sm text-muted-foreground">Nenhuma habilidade informada.</p>
+            )}
+          </div>
 
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="max-w-sm">
             <QuickFact
               icon={Eye}
               label="Vagas disponíveis"
               value={`${project.openSpots} ${project.openSpots === 1 ? 'vaga' : 'vagas'}`}
             />
-            <QuickFact
-              icon={VisibilityIcon}
-              label="Visibilidade"
-              value={visibilityLabel}
-            />
-            <QuickFact icon={Users} label="Membros" value={String(membersCount)} />
-            <QuickFact icon={Heart} label="Curtidas" value={String(likesCount)} />
-            <QuickFact icon={MessageCircle} label="Comentários" value={String(commentsCount)} />
           </div>
 
           <div className="flex flex-wrap items-center justify-end gap-2 border-t border-card-outline/70 pt-6 sm:gap-3">
@@ -489,7 +430,6 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
           projectId={project.id}
           projectOwnerId={project.ownerId}
           currentUserId={user?.id ?? null}
-          onCountChange={setMembersCount}
         />
 
         <section
