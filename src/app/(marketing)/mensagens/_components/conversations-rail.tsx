@@ -72,39 +72,48 @@ export function ConversationsRail({
       )}
       aria-label="Conversas do projeto"
     >
-      <header className="flex flex-wrap items-start gap-2 border-b border-border bg-background/60 px-4 py-3">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-8 shrink-0 gap-1.5 rounded-xl px-2 text-xs font-semibold lg:hidden"
-          onClick={onDismissProject}
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden />
-          Projetos
-        </Button>
-        <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.26em] text-primary">
-            CONVERSAS
-          </p>
-          <h2 className="mt-0.5 truncate text-base font-semibold text-foreground" title={projectTitle}>
-            {projectTitle}
-          </h2>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Conversa geral e seus grupos.
-          </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-1.5">
+      <header className="border-b border-border bg-background/60 px-4 py-3">
+        <div className="mb-2 flex lg:mb-0 lg:hidden">
           <Button
             type="button"
             variant="ghost"
             size="sm"
-            className="hidden h-9 gap-1.5 rounded-xl px-2 text-xs font-semibold lg:inline-flex"
+            className="h-8 shrink-0 gap-1.5 rounded-xl px-2 text-xs font-semibold"
             onClick={onDismissProject}
           >
-            <X className="h-4 w-4" aria-hidden />
-            Fechar
+            <ArrowLeft className="h-4 w-4" aria-hidden />
+            Projetos
           </Button>
+        </div>
+
+        <div className="flex items-center justify-between gap-3 lg:mt-0">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.26em] text-primary">
+            CONVERSAS
+          </p>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="hidden h-8 w-8 shrink-0 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground lg:inline-flex"
+            onClick={onDismissProject}
+            aria-label="Fechar projeto"
+            title="Fechar projeto"
+          >
+            <X className="h-4 w-4 shrink-0" aria-hidden />
+          </Button>
+        </div>
+
+        <h2
+          className="mt-1.5 min-w-0 truncate text-base font-semibold leading-snug text-foreground"
+          title={projectTitle}
+        >
+          {projectTitle}
+        </h2>
+
+        <div className="mt-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+          <p className="min-w-0 flex-1 text-xs leading-snug text-muted-foreground">
+            Conversa geral e seus grupos.
+          </p>
           <Button
             type="button"
             variant="secondary"
