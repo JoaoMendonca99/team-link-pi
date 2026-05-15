@@ -47,6 +47,44 @@ function readFunctionCode(payload: Record<string, unknown> | null): string | nul
   return null
 }
 
+function readFunctionStep(payload: Record<string, unknown> | null): string | null {
+  if (payload?.step && typeof payload.step === 'string') {
+    return payload.step
+  }
+  return null
+}
+
+function parseFunctionFailure(
+  payload: Record<string, unknown> | null,
+  invokeError: unknown,
+  fallbackMessage: string,
+  codeMessages: Record<string, string>,
+): { message: string; code: string | null; step: string | null } {
+  const fnCode = readFunctionCode(payload)
+  const fnError = readFunctionError(payload)
+  const fnStep = readFunctionStep(payload)
+
+  if (fnError || fnCode) {
+    const message =
+      (fnCode && codeMessages[fnCode]) ||
+      friendlyFunctionError(fnError ?? undefined, fallbackMessage)
+    return { message, code: fnCode, step: fnStep }
+  }
+
+  if (invokeError && typeof invokeError === 'object' && 'message' in invokeError) {
+    return {
+      message: friendlyFunctionError(
+        String((invokeError as { message?: string }).message),
+        fallbackMessage,
+      ),
+      code: null,
+      step: null,
+    }
+  }
+
+  return { message: fallbackMessage, code: null, step: null }
+}
+
 export const GITHUB_COMPLETE_INSTALLATION_FUNCTION = 'github-complete-installation'
 
 export const GITHUB_COMPLETE_USER_MESSAGE =
@@ -85,29 +123,40 @@ export async function startGithubInstallation(
     return { ok: false, message, debug }
   }
 
-  if (error) {
-    return fail(
-      friendlyFunctionError(error.message, GITHUB_START_USER_MESSAGE),
-    )
-  }
-
   const payload = data as Record<string, unknown> | null
-  const fnError = readFunctionError(payload)
-  if (fnError) {
-    return fail(friendlyFunctionError(fnError, GITHUB_START_USER_MESSAGE))
-  }
-
   const installUrl = typeof payload?.install_url === 'string' ? payload.install_url : null
-  if (!installUrl) {
-    return fail(GITHUB_START_USER_MESSAGE)
+
+  if (installUrl) {
+    return { ok: true, install_url: installUrl }
   }
 
-  return { ok: true, install_url: installUrl }
+  const fnError = readFunctionError(payload)
+  const fnCode = readFunctionCode(payload)
+
+  if (error || fnError || fnCode) {
+    const message = fnError
+      ? friendlyFunctionError(fnError, GITHUB_START_USER_MESSAGE)
+      : friendlyFunctionError(
+          error && typeof error === 'object' && 'message' in error
+            ? String((error as { message?: string }).message)
+            : undefined,
+          GITHUB_START_USER_MESSAGE,
+        )
+    return fail(message)
+  }
+
+  return fail(GITHUB_START_USER_MESSAGE)
 }
 
 export type CompleteGithubInstallationResult =
   | { ok: true; data: GithubCompleteInstallationResult }
-  | { ok: false; message: string; code: string | null; debug: GithubFunctionDebugInfo }
+  | {
+      ok: false
+      message: string
+      code: string | null
+      step: string | null
+      debug: GithubFunctionDebugInfo
+    }
 
 export async function completeGithubInstallation(input: {
   installation_id: number
@@ -124,30 +173,32 @@ export async function completeGithubInstallation(input: {
     body: requestBody,
   })
 
-  const fail = (message: string, code: string | null = null): CompleteGithubInstallationResult => {
+  const payload = data as Record<string, unknown> | null
+
+  const fail = (
+    message: string,
+    code: string | null = null,
+    step: string | null = null,
+  ): CompleteGithubInstallationResult => {
     const debug = buildGithubFunctionDebug(
       GITHUB_COMPLETE_INSTALLATION_FUNCTION,
       error,
       data,
       requestBody,
     )
-    logGithubFunctionDebug(debug)
-    return { ok: false, message, code, debug }
+    logGithubFunctionDebug(debug, { code, step })
+    return { ok: false, message, code, step, debug }
   }
 
-  if (error) {
-    return fail(friendlyFunctionError(error.message, GITHUB_COMPLETE_USER_MESSAGE))
-  }
+  const failure = parseFunctionFailure(
+    payload,
+    error,
+    GITHUB_COMPLETE_USER_MESSAGE,
+    COMPLETE_CODE_MESSAGES,
+  )
 
-  const payload = data as Record<string, unknown> | null
-  const fnCode = readFunctionCode(payload)
-  const fnError = readFunctionError(payload)
-
-  if (fnError) {
-    const message =
-      (fnCode && COMPLETE_CODE_MESSAGES[fnCode]) ||
-      friendlyFunctionError(fnError, GITHUB_COMPLETE_USER_MESSAGE)
-    return fail(message, fnCode)
+  if (error || readFunctionError(payload) || readFunctionCode(payload)) {
+    return fail(failure.message, failure.code, failure.step)
   }
 
   const projectId = typeof payload?.project_id === 'string' ? payload.project_id : null

@@ -19,6 +19,13 @@ export class GitHubApiError extends Error {
   }
 }
 
+export class GitHubPrivateKeyError extends Error {
+  constructor(message = 'Chave privada do GitHub App inválida ou mal formatada.') {
+    super(message)
+    this.name = 'GitHubPrivateKeyError'
+  }
+}
+
 export interface GitHubRepo {
   id: number
   name: string
@@ -86,6 +93,21 @@ export interface NormalizedCommit {
 
 let cachedAppJwt: { token: string; expiresAt: number } | null = null
 
+async function importGitHubPrivateKey(pem: string): Promise<CryptoKey | Uint8Array> {
+  const normalized = pem.trim()
+  if (normalized.includes('BEGIN RSA PRIVATE KEY')) {
+    return await jose.importPKCS1(normalized, 'RS256')
+  }
+  if (normalized.includes('BEGIN PRIVATE KEY') || normalized.includes('BEGIN EC PRIVATE KEY')) {
+    return await jose.importPKCS8(normalized, 'RS256')
+  }
+  try {
+    return await jose.importPKCS8(normalized, 'RS256')
+  } catch {
+    return await jose.importPKCS1(normalized, 'RS256')
+  }
+}
+
 export async function createGitHubAppJwt(): Promise<string> {
   const now = Math.floor(Date.now() / 1000)
   if (cachedAppJwt && cachedAppJwt.expiresAt > now + 30) {
@@ -95,16 +117,31 @@ export async function createGitHubAppJwt(): Promise<string> {
   const appId = requireEnv('GITHUB_APP_ID')
   const pem = getGitHubPrivateKeyPem()
 
-  const privateKey = pem.includes('BEGIN RSA PRIVATE KEY')
-    ? await jose.importPKCS1(pem, 'RS256')
-    : await jose.importPKCS8(pem, 'RS256')
+  let privateKey: CryptoKey | Uint8Array
+  try {
+    privateKey = await importGitHubPrivateKey(pem)
+  } catch (error) {
+    console.error('[github-app] github_private_key_invalid', {
+      hint: 'Verifique GITHUB_PRIVATE_KEY (PEM completo, com quebras de linha).',
+      error_name: error instanceof Error ? error.name : 'unknown',
+    })
+    throw new GitHubPrivateKeyError()
+  }
 
-  const token = await new jose.SignJWT({})
-    .setProtectedHeader({ alg: 'RS256' })
-    .setIssuedAt(now - 60)
-    .setExpirationTime(now + 9 * 60)
-    .setIssuer(appId)
-    .sign(privateKey)
+  let token: string
+  try {
+    token = await new jose.SignJWT({})
+      .setProtectedHeader({ alg: 'RS256' })
+      .setIssuedAt(now - 60)
+      .setExpirationTime(now + 9 * 60)
+      .setIssuer(appId)
+      .sign(privateKey)
+  } catch (error) {
+    console.error('[github-app] github_jwt_failed', {
+      error_name: error instanceof Error ? error.name : 'unknown',
+    })
+    throw new GitHubPrivateKeyError()
+  }
 
   cachedAppJwt = { token, expiresAt: now + 9 * 60 }
   return token

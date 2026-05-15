@@ -2,6 +2,7 @@ import {
   createInstallationAccessToken,
   fetchInstallation,
   GitHubApiError,
+  GitHubPrivateKeyError,
   listInstallationRepositories,
   mapRepoToSafe,
 } from '../_shared/github-app.ts'
@@ -21,33 +22,37 @@ interface CompleteInstallationBody {
   state?: string
 }
 
-type CompleteErrorCode =
+type ErrorCode =
   | 'missing_installation_id'
   | 'missing_state'
   | 'invalid_state'
   | 'expired_state'
-  | 'permission_denied'
+  | 'unauthenticated'
+  | 'not_project_manager'
   | 'missing_github_secret'
   | 'missing_supabase_secret'
+  | 'github_private_key_invalid'
   | 'github_jwt_failed'
   | 'github_installation_token_failed'
-  | 'github_list_repositories_failed'
-  | 'database_error'
-  | 'unknown_error'
+  | 'github_repositories_failed'
+  | 'supabase_insert_installation_failed'
+  | 'unexpected_error'
 
-const USER_MESSAGES: Record<CompleteErrorCode, string> = {
+const USER_MESSAGES: Record<ErrorCode, string> = {
   missing_installation_id: 'Não foi possível carregar os repositórios autorizados.',
   missing_state: 'Não foi possível carregar os repositórios autorizados.',
   invalid_state: 'Não foi possível carregar os repositórios autorizados.',
-  expired_state: 'Não foi possível carregar os repositórios autorizados.',
-  permission_denied: 'Você não tem permissão para conectar repositórios neste projeto.',
+  expired_state: 'A conexão expirou. Inicie novamente pelo painel do projeto.',
+  unauthenticated: 'Autenticação obrigatória.',
+  not_project_manager: 'Você não tem permissão para conectar repositórios neste projeto.',
   missing_github_secret: 'Não foi possível carregar os repositórios autorizados.',
   missing_supabase_secret: 'Não foi possível carregar os repositórios autorizados.',
+  github_private_key_invalid: 'Não foi possível carregar os repositórios autorizados.',
   github_jwt_failed: 'Não foi possível carregar os repositórios autorizados.',
   github_installation_token_failed: 'Não foi possível carregar os repositórios autorizados.',
-  github_list_repositories_failed: 'Não foi possível carregar os repositórios autorizados.',
-  database_error: 'Não foi possível carregar os repositórios autorizados.',
-  unknown_error: 'Não foi possível carregar os repositórios autorizados.',
+  github_repositories_failed: 'Não foi possível carregar os repositórios autorizados.',
+  supabase_insert_installation_failed: 'Não foi possível carregar os repositórios autorizados.',
+  unexpected_error: 'Não foi possível carregar os repositórios autorizados.',
 }
 
 function parseInstallationId(value: number | string | undefined): number | null {
@@ -68,13 +73,48 @@ function normalizeSetupAction(value: string | null | undefined): string | null {
   return value.trim()
 }
 
-function fail(code: CompleteErrorCode, status: number, detail?: string): Response {
-  if (detail) {
-    console.error('[github-complete-installation]', { code, detail })
-  } else {
-    console.error('[github-complete-installation]', { code })
+function fail(
+  code: ErrorCode,
+  step: string,
+  status: number,
+  detail?: string,
+): Response {
+  console.error('[github-complete-installation]', {
+    event: 'complete_failed',
+    code,
+    step,
+    ...(detail ? { detail } : {}),
+  })
+  return codedErrorResponse(USER_MESSAGES[code], code, status, step)
+}
+
+function mapGithubError(
+  error: unknown,
+  step: string,
+  fallbackCode: ErrorCode,
+): Response {
+  if (error instanceof GitHubPrivateKeyError) {
+    return fail('github_private_key_invalid', step, 500)
   }
-  return codedErrorResponse(USER_MESSAGES[code], code, status)
+  if (isMissingEnvError(error)) {
+    const code = getMissingRuntimeSecretCode() ?? 'missing_github_secret'
+    return fail(code, step, 500, error.message)
+  }
+  if (error instanceof GitHubApiError) {
+    const code =
+      step === 'github_jwt_created' || step === 'fetch_installation'
+        ? 'github_jwt_failed'
+        : step === 'installation_token_created'
+          ? 'github_installation_token_failed'
+          : 'github_repositories_failed'
+    return fail(code, step, error.status >= 400 && error.status < 600 ? error.status : 502, error.message)
+  }
+  return fail(
+    fallbackCode,
+    step,
+    500,
+    error instanceof Error ? error.message : undefined,
+  )
 }
 
 Deno.serve(async (req) => {
@@ -82,24 +122,27 @@ Deno.serve(async (req) => {
   if (cors) return cors
 
   if (req.method !== 'POST') {
-    return codedErrorResponse('Método não permitido.', 'unknown_error', 405)
+    return fail('unexpected_error', 'setup_started', 405, 'method not allowed')
   }
+
+  console.info('[github-complete-installation]', { event: 'setup_started' })
 
   const missingSecret = getMissingRuntimeSecretCode()
   if (missingSecret) {
-    return fail(missingSecret, 500)
+    return fail(missingSecret, 'check_secrets', 500)
   }
 
   const user = await getUserFromRequest(req)
   if (!user) {
-    return codedErrorResponse('Autenticação obrigatória.', 'permission_denied', 401)
+    return fail('unauthenticated', 'user_loaded', 401)
   }
+  console.info('[github-complete-installation]', { event: 'user_loaded', user_id: user.id })
 
   let body: CompleteInstallationBody
   try {
     body = (await req.json()) as CompleteInstallationBody
   } catch {
-    return fail('unknown_error', 400, 'JSON inválido')
+    return fail('unexpected_error', 'parse_body', 400, 'invalid json')
   }
 
   const installationId = parseInstallationId(body.installation_id)
@@ -107,30 +150,40 @@ Deno.serve(async (req) => {
   const setupAction = normalizeSetupAction(body.setup_action)
 
   if (!installationId) {
-    return fail('missing_installation_id', 400)
+    return fail('missing_installation_id', 'validate_input', 400)
   }
 
   if (!stateRaw) {
-    return fail('missing_state', 400, `setup_action=${setupAction ?? 'null'}`)
+    return fail(
+      'missing_state',
+      'validate_input',
+      400,
+      `setup_action=${setupAction ?? 'null'}`,
+    )
   }
 
   let statePayload
   try {
     const stateResult = await verifySignedGithubStateDetailed(stateRaw)
     if (!stateResult.ok) {
-      return fail(stateResult.code, 400)
+      const code =
+        stateResult.code === 'expired_state' ? 'expired_state' : 'invalid_state'
+      return fail(code, 'state_validated', 400, stateResult.code)
     }
     statePayload = stateResult.payload
   } catch (error) {
-    if (isMissingEnvError(error)) {
-      const code = getMissingRuntimeSecretCode() ?? 'missing_github_secret'
-      return fail(code, 500, error.message)
-    }
-    return fail('invalid_state', 400, error instanceof Error ? error.message : 'state verify failed')
+    return mapGithubError(error, 'state_validated', 'invalid_state')
   }
 
+  console.info('[github-complete-installation]', {
+    event: 'state_validated',
+    project_id: statePayload.project_id,
+    setup_action: setupAction,
+    installation_id: installationId,
+  })
+
   if (statePayload.user_id !== user.id) {
-    return fail('permission_denied', 403, 'state user mismatch')
+    return fail('invalid_state', 'state_validated', 403, 'state user mismatch')
   }
 
   const projectId = statePayload.project_id
@@ -140,84 +193,69 @@ Deno.serve(async (req) => {
     admin = createAdminClient()
   } catch (error) {
     if (isMissingEnvError(error)) {
-      return fail('missing_supabase_secret', 500, error.message)
+      return fail('missing_supabase_secret', 'create_admin_client', 500, error.message)
     }
-    return fail('unknown_error', 500)
+    return fail('unexpected_error', 'create_admin_client', 500)
   }
 
   const userClient = createUserClientFromRequest(req)
   const canManage = await assertProjectManager(admin, projectId, user.id, userClient)
   if (!canManage) {
-    return fail('permission_denied', 403)
+    return fail('not_project_manager', 'project_permission_checked', 403)
   }
+
+  console.info('[github-complete-installation]', {
+    event: 'project_permission_checked',
+    project_id: projectId,
+  })
 
   try {
     let installationMeta
     try {
       installationMeta = await fetchInstallation(installationId)
+      console.info('[github-complete-installation]', { event: 'github_jwt_created' })
     } catch (error) {
-      if (isMissingEnvError(error)) {
-        const code = getMissingRuntimeSecretCode() ?? 'missing_github_secret'
-        return fail(code, 500, error.message)
-      }
-      if (error instanceof GitHubApiError) {
-        return fail('github_jwt_failed', error.status >= 400 ? error.status : 502, error.message)
-      }
-      return fail('github_jwt_failed', 502, error instanceof Error ? error.message : undefined)
+      return mapGithubError(error, 'fetch_installation', 'github_jwt_failed')
     }
 
     if (installationMeta.installation_id !== installationId) {
-      return fail('github_installation_token_failed', 400, 'installation id mismatch')
+      return fail(
+        'github_installation_token_failed',
+        'fetch_installation',
+        400,
+        'installation id mismatch',
+      )
     }
 
     try {
       await upsertGithubInstallation(admin, installationMeta, user.id)
+      console.info('[github-complete-installation]', { event: 'installation_saved' })
     } catch (error) {
       return fail(
-        'database_error',
+        'supabase_insert_installation_failed',
+        'save_installation',
         500,
-        error instanceof Error ? error.message : 'upsert installation failed',
+        error instanceof Error ? error.message : undefined,
       )
     }
 
     let accessToken: string
     try {
       accessToken = await createInstallationAccessToken(installationId)
+      console.info('[github-complete-installation]', { event: 'installation_token_created' })
     } catch (error) {
-      if (isMissingEnvError(error)) {
-        const code = getMissingRuntimeSecretCode() ?? 'missing_github_secret'
-        return fail(code, 500, error.message)
-      }
-      if (error instanceof GitHubApiError) {
-        return fail(
-          'github_installation_token_failed',
-          error.status >= 400 ? error.status : 502,
-          error.message,
-        )
-      }
-      return fail(
-        'github_installation_token_failed',
-        502,
-        error instanceof Error ? error.message : undefined,
-      )
+      return mapGithubError(error, 'installation_token_created', 'github_installation_token_failed')
     }
 
     let repositories
     try {
       repositories = (await listInstallationRepositories(accessToken)).map(mapRepoToSafe)
+      console.info('[github-complete-installation]', {
+        event: 'repositories_loaded',
+        count: repositories.length,
+      })
     } catch (error) {
-      if (error instanceof GitHubApiError) {
-        return fail(
-          'github_list_repositories_failed',
-          error.status >= 400 ? error.status : 502,
-          error.message,
-        )
-      }
-      return fail(
-        'github_list_repositories_failed',
-        502,
-        error instanceof Error ? error.message : undefined,
-      )
+      return mapGithubError(error, 'list_repositories', 'github_repositories_failed')
     }
 
     const { data: project, error: projectError } = await admin
@@ -227,10 +265,16 @@ Deno.serve(async (req) => {
       .maybeSingle()
 
     if (projectError) {
-      return fail('database_error', 500, projectError.message)
+      return fail(
+        'unexpected_error',
+        'load_project_slug',
+        500,
+        projectError.message,
+      )
     }
 
-    console.info('[github-complete-installation] success', {
+    console.info('[github-complete-installation]', {
+      event: 'complete_success',
       project_id: projectId,
       installation_id: installationId,
       setup_action: setupAction,
@@ -238,6 +282,7 @@ Deno.serve(async (req) => {
     })
 
     return jsonResponse({
+      ok: true,
       project_id: projectId,
       project_slug: typeof project?.slug === 'string' ? project.slug : null,
       installation_id: installationId,
@@ -245,14 +290,6 @@ Deno.serve(async (req) => {
       repositories,
     })
   } catch (error) {
-    if (isMissingEnvError(error)) {
-      const code = getMissingRuntimeSecretCode() ?? 'unknown_error'
-      return fail(code, 500, error.message)
-    }
-    return fail(
-      'unknown_error',
-      500,
-      error instanceof Error ? error.message : 'unexpected error',
-    )
+    return mapGithubError(error, 'unexpected', 'unexpected_error')
   }
 })

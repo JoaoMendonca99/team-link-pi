@@ -22,10 +22,38 @@ export function errorResponse(message: string, status: number): Response {
   return jsonResponse({ error: message }, status)
 }
 
+/** Resposta de erro com código e etapa — sem dados sensíveis. */
+export function structuredFailResponse(
+  message: string,
+  code: string,
+  step: string,
+  status: number,
+): Response {
+  return jsonResponse(
+    {
+      ok: false,
+      error: message,
+      code,
+      step,
+    },
+    status,
+  )
+}
+
+/** Compatível com consumidores que leem apenas `error` + `code`. */
 export function codedErrorResponse(
   message: string,
   code: string,
   status: number,
+  step?: string,
 ): Response {
-  return jsonResponse({ error: message, code }, status)
+  return jsonResponse(
+    {
+      ok: false,
+      error: message,
+      code,
+      ...(step ? { step } : {}),
+    },
+    status,
+  )
 }

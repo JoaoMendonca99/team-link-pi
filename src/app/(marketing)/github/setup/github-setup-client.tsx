@@ -117,6 +117,7 @@ export function GithubSetupClient() {
         console.error('[Team Link · GitHub setup] complete failed', {
           function: GITHUB_COMPLETE_INSTALLATION_FUNCTION,
           code: result.code,
+          step: result.step,
           status: result.debug.status,
           errorMessage: result.debug.errorMessage,
           responseBody: result.debug.responseBody,
@@ -252,6 +253,9 @@ export function GithubSetupClient() {
 
   if (phase === 'error') {
     const canRetry = Boolean(pendingProject?.project_id)
+    const showAlreadyInstalledHint =
+      errorMessage?.includes('expirou') ||
+      errorMessage?.includes('incompleto')
 
     return (
       <main className="bg-background pb-20">
@@ -262,6 +266,12 @@ export function GithubSetupClient() {
             description={errorMessage ?? GITHUB_COMPLETE_USER_MESSAGE}
             className="mx-auto max-w-lg"
           />
+          {showAlreadyInstalledHint && canRetry ? (
+            <p className="mx-auto mb-4 max-w-lg text-center text-xs text-muted-foreground">
+              Se o GitHub abriu a página de instalação já existente, use &quot;Tentar novamente&quot;
+              para reiniciar o fluxo ou volte ao painel do projeto.
+            </p>
+          ) : null}
           <div className="mx-auto mt-6 flex max-w-lg flex-col gap-2">
             {canRetry ? (
               <Button
