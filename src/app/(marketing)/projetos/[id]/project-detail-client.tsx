@@ -15,7 +15,6 @@ import {
   MessagesSquare,
   Pencil,
   Share2,
-  Sparkles,
   UserPlus,
   Users,
 } from 'lucide-react'
@@ -44,7 +43,6 @@ import { CommentsSection } from './_components/comments-section'
 import { JoinRequestSection } from './_components/join-request-section'
 import { LikeButton } from './_components/like-button'
 import { MembersPreviewCard, type MembersPreviewCardHandle } from './_components/members-preview-card'
-import { OwnerRequestsSection } from './_components/owner-requests-section'
 import {
   computeMemberBadge,
   isValidBadgeColor,
@@ -236,13 +234,6 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
     }
   }
 
-  const handleRequestsChange = useCallback(async () => {
-    // Após aprovar/recusar uma solicitação, recarrega o painel de equipe
-    // para refletir o trigger que insere em project_members.
-    await membersPreviewRef.current?.reload()
-    await loadMembership()
-  }, [loadMembership])
-
   // -------------------------------------------------------------------------
   // Estados intermediários
   // -------------------------------------------------------------------------
@@ -334,7 +325,6 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
 
   return (
     <main className="bg-background pb-20">
-      {/* Faixa superior compacta: breadcrumb + ações sociais */}
       <div className="border-b border-border bg-gradient-to-b from-muted/50 to-transparent">
         <Container className="space-y-5 py-6">
           <nav aria-label="Breadcrumb" className="text-xs text-muted-foreground sm:text-sm">
@@ -362,229 +352,216 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
             </ol>
           </nav>
 
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <Button asChild variant="ghost" className="w-fit gap-2 rounded-2xl px-3 font-semibold">
-              <Link href="/explorar">
-                <ArrowLeft className="h-4 w-4" />
-                Voltar
-              </Link>
-            </Button>
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              <LikeButton
-                projectId={project.id}
-                initialCount={likesCount}
-                onCountChange={setLikesCount}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                className="rounded-2xl font-semibold"
-                onClick={() => void handleShare()}
-              >
-                <Share2 className="h-4 w-4" aria-hidden />
-                Compartilhar
-              </Button>
-              {isOwner ? (
-                <Button asChild variant="outline" className="rounded-2xl font-semibold">
-                  <Link href={`/projetos/${project.slug}/editar`}>
-                    <Pencil className="h-4 w-4" aria-hidden />
-                    Editar projeto
-                  </Link>
-                </Button>
-              ) : null}
-            </div>
-          </div>
+          <Button asChild variant="ghost" className="w-fit gap-2 rounded-2xl px-3 font-semibold">
+            <Link href="/explorar">
+              <ArrowLeft className="h-4 w-4" />
+              Voltar
+            </Link>
+          </Button>
         </Container>
       </div>
 
-      {/* Grid principal: card grande do projeto + sidebar de equipe */}
-      <Container className="py-10">
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(280px,1fr)] lg:items-start">
-          {/* Card grande do projeto (esquerda) */}
-          <motion.section
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.28, ease: 'easeOut' }}
-            className="min-w-0 space-y-6 rounded-[1.85rem] border border-card-outline bg-card p-6 shadow-sm sm:p-8"
-          >
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              {project.category ? <CategoryBadge label={project.category} /> : null}
-              <ProjectStatusBadge status={project.status} />
-              {updatedAtLabel ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  <CalendarDays className="h-3.5 w-3.5 text-primary" aria-hidden />
-                  Atualizado em {updatedAtLabel}
-                </span>
+      <Container className="space-y-6 py-10">
+        <MembersPreviewCard
+          ref={membersPreviewRef}
+          projectId={project.id}
+          projectOwnerId={project.ownerId}
+          currentUserId={user?.id ?? null}
+          onCountChange={setMembersCount}
+        />
+
+        <motion.section
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.28, ease: 'easeOut' }}
+          className="space-y-6 rounded-[1.85rem] border border-card-outline bg-card p-6 shadow-sm sm:p-8"
+          aria-labelledby="project-data-heading"
+        >
+          <div className="space-y-1">
+            <p
+              id="project-data-heading"
+              className="text-xs font-semibold uppercase tracking-[0.3em] text-primary"
+            >
+              Dados do projeto
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Informações principais e contexto do projeto.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            {project.category ? <CategoryBadge label={project.category} /> : null}
+            <ProjectStatusBadge status={project.status} />
+            {updatedAtLabel ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                <CalendarDays className="h-3.5 w-3.5 text-primary" aria-hidden />
+                Atualizado em {updatedAtLabel}
+              </span>
+            ) : null}
+          </div>
+
+          <div className="space-y-3">
+            <h1 className="text-balance text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+              {project.title}
+            </h1>
+            {project.shortDescription ? (
+              <p className="max-w-4xl text-base leading-relaxed text-muted-foreground">
+                {project.shortDescription}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/60 bg-background/60 px-4 py-3">
+            <UserAvatar
+              name={project.ownerName}
+              imageUrl={project.ownerAvatarUrl ?? undefined}
+              sizeClassName="h-10 w-10"
+            />
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Publicado por
+              </p>
+              <p className="break-words text-sm font-semibold text-foreground">
+                {project.ownerName}
+              </p>
+              {project.ownerCourse ? (
+                <p className="break-words text-xs text-muted-foreground">
+                  {project.ownerCourse}
+                </p>
               ) : null}
             </div>
+          </div>
 
-            <div className="space-y-3">
-              <h1 className="text-balance text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-                {project.title}
-              </h1>
-              {project.shortDescription ? (
-                <p className="max-w-3xl text-base leading-relaxed text-muted-foreground">
-                  {project.shortDescription}
-                </p>
-              ) : null}
-            </div>
-
-            <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-border/60 bg-background/60 px-4 py-3">
-              <UserAvatar
-                name={project.ownerName}
-                imageUrl={project.ownerAvatarUrl ?? undefined}
-                sizeClassName="h-10 w-10"
-              />
-              <div className="min-w-0 flex-1">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Publicado por
-                </p>
-                <p className="truncate text-sm font-semibold text-foreground">
-                  {project.ownerName}
-                </p>
-                {project.ownerCourse ? (
-                  <p className="truncate text-xs text-muted-foreground">
-                    {project.ownerCourse}
-                  </p>
-                ) : null}
-              </div>
-            </div>
-
-            {project.tags.length > 0 ? (
-              <div className="space-y-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Tags
-                </p>
-                <TagList tags={project.tags} max={12} size="md" />
-              </div>
-            ) : null}
-
-            {project.requiredSkills.length > 0 ? (
-              <div className="space-y-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Habilidades procuradas
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {project.requiredSkills.map((skill) => (
-                    <span
-                      key={skill}
-                      className="inline-flex items-center rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary"
-                    >
-                      {skill}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
-            {/* Resumo rápido em pills */}
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <QuickFact
-                icon={Eye}
-                label="Vagas disponíveis"
-                value={`${project.openSpots} ${project.openSpots === 1 ? 'vaga' : 'vagas'}`}
-              />
-              <QuickFact
-                icon={VisibilityIcon}
-                label="Visibilidade"
-                value={visibilityLabel}
-              />
-              <QuickFact icon={Users} label="Membros" value={String(membersCount)} />
-              <QuickFact icon={Heart} label="Curtidas" value={String(likesCount)} />
-            </div>
-
-            {/* Banner de membro / barra de ações por tipo */}
-            <ActionsArea
-              isVisitor={isVisitor}
-              isLoggedNonMember={isLoggedNonMember}
-              isMember={isMember}
-              myBadge={myBadge}
-            />
-          </motion.section>
-
-          {/* Sidebar: equipe + (se for o caso) bloco de participação */}
-          <aside className="min-w-0 space-y-6 lg:sticky lg:top-[96px]">
-            <MembersPreviewCard
-              ref={membersPreviewRef}
-              projectId={project.id}
-              projectOwnerId={project.ownerId}
-              currentUserId={user?.id ?? null}
-              onCountChange={setMembersCount}
-            />
-
-            {!isMember ? (
-              <div id="participar">
-                <JoinRequestSection
-                  projectId={project.id}
-                  ownerId={project.ownerId}
-                />
-              </div>
-            ) : null}
-          </aside>
-        </div>
-
-        {/* Seções inferiores */}
-        <div className="mt-10 grid gap-6">
           {project.description ? (
-            <section className="space-y-3 rounded-[1.85rem] border border-card-outline bg-card p-6 shadow-sm sm:p-8">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-primary" aria-hidden />
-                <h2 className="text-xl font-semibold">Visão geral</h2>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Acompanhe as informações principais do projeto.
+            <div className="space-y-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Sobre o projeto
               </p>
               <p className="whitespace-pre-line text-base leading-relaxed text-muted-foreground">
                 {project.description}
               </p>
-            </section>
-          ) : null}
-
-          <section className="space-y-4 rounded-[1.85rem] border border-card-outline bg-card p-6 shadow-sm sm:p-8">
-            <div className="flex items-start gap-3">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <Users className="h-5 w-5" aria-hidden />
-              </div>
-              <div className="min-w-0">
-                <h3 className="text-lg font-semibold">
-                  {project.openSpots} {project.openSpots === 1 ? 'vaga disponível' : 'vagas disponíveis'}
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  {isMember
-                    ? 'Conheça o perfil que a equipe está buscando para essa vaga.'
-                    : 'Solicite participação para colaborar com a equipe.'}
-                </p>
-              </div>
-            </div>
-            {project.desiredProfile ? (
-              <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
-                {project.desiredProfile}
-              </p>
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                A equipe ainda não detalhou o perfil ideal para essa vaga.
-              </p>
-            )}
-          </section>
-
-          {isOwner ? (
-            <div id="solicitacoes" className="scroll-mt-24">
-              <OwnerRequestsSection
-                projectId={project.id}
-                onChange={handleRequestsChange}
-              />
             </div>
           ) : null}
 
-          <CommentsSection
+          {project.tags.length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Tags
+              </p>
+              <TagList tags={project.tags} max={12} size="md" />
+            </div>
+          ) : null}
+
+          {project.requiredSkills.length > 0 ? (
+            <div className="space-y-2">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Habilidades procuradas
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {project.requiredSkills.map((skill) => (
+                  <span
+                    key={skill}
+                    className="inline-flex items-center rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary"
+                  >
+                    {skill}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            <QuickFact
+              icon={Eye}
+              label="Vagas disponíveis"
+              value={`${project.openSpots} ${project.openSpots === 1 ? 'vaga' : 'vagas'}`}
+            />
+            <QuickFact
+              icon={VisibilityIcon}
+              label="Visibilidade"
+              value={visibilityLabel}
+            />
+            <QuickFact icon={Users} label="Membros" value={String(membersCount)} />
+            <QuickFact icon={Heart} label="Curtidas" value={String(likesCount)} />
+            <QuickFact icon={MessageCircle} label="Comentários" value={String(commentsCount)} />
+          </div>
+        </motion.section>
+
+        <div className="flex flex-wrap items-center justify-end gap-2 sm:gap-3">
+          <LikeButton
             projectId={project.id}
-            initialCount={commentsCount}
-            onCountChange={setCommentsCount}
+            initialCount={likesCount}
+            onCountChange={setLikesCount}
           />
+          <Button
+            type="button"
+            variant="outline"
+            className="rounded-2xl font-semibold"
+            onClick={() => void handleShare()}
+          >
+            <Share2 className="h-4 w-4" aria-hidden />
+            Compartilhar
+          </Button>
+          {isOwner ? (
+            <Button asChild variant="outline" className="rounded-2xl font-semibold">
+              <Link href={`/projetos/${project.slug}/editar`}>
+                <Pencil className="h-4 w-4" aria-hidden />
+                Editar projeto
+              </Link>
+            </Button>
+          ) : null}
         </div>
+
+        <ActionsArea
+          isVisitor={isVisitor}
+          isLoggedNonMember={isLoggedNonMember}
+          isMember={isMember}
+          myBadge={myBadge}
+        />
+
+        {!isMember ? (
+          <div id="participar">
+            <JoinRequestSection projectId={project.id} ownerId={project.ownerId} />
+          </div>
+        ) : null}
+
+        <section className="space-y-4 rounded-[1.85rem] border border-card-outline bg-card p-6 shadow-sm sm:p-8">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Users className="h-5 w-5" aria-hidden />
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-lg font-semibold">
+                {project.openSpots}{' '}
+                {project.openSpots === 1 ? 'vaga disponível' : 'vagas disponíveis'}
+              </h2>
+              <p className="text-xs text-muted-foreground">
+                {isMember
+                  ? 'Conheça o perfil que a equipe está buscando para essa vaga.'
+                  : 'Solicite participação para colaborar com a equipe.'}
+              </p>
+            </div>
+          </div>
+          {project.desiredProfile ? (
+            <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
+              {project.desiredProfile}
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              A equipe ainda não detalhou o perfil ideal para essa vaga.
+            </p>
+          )}
+        </section>
+
+        <CommentsSection
+          projectId={project.id}
+          initialCount={commentsCount}
+          onCountChange={setCommentsCount}
+        />
       </Container>
     </main>
   )
+
 }
 
 // ---------------------------------------------------------------------------

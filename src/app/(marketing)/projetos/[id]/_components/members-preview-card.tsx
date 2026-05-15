@@ -167,13 +167,13 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
       >
         <header className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.26em] text-primary">
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">
               Equipe do projeto
             </p>
             <h3 className="mt-1 text-lg font-semibold">
               {loading
                 ? 'Carregando equipe…'
-                : `${members.length} ${members.length === 1 ? 'pessoa' : 'pessoas'} no projeto`}
+                : `${members.length} ${members.length === 1 ? 'membro' : 'membros'}`}
             </h3>
             <p className="mt-1 text-xs text-muted-foreground">
               Veja quem faz parte deste projeto.
@@ -202,7 +202,7 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
             Nenhum membro listado ainda.
           </p>
         ) : (
-          <ul className="mt-5 max-h-[28rem] space-y-2 overflow-x-hidden overflow-y-auto">
+          <ul className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {members.map((member) => {
               const name = member.full_name?.trim() || 'Membro'
               const profileHref =
@@ -219,9 +219,9 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
               return (
                 <li
                   key={`${member.project_id}-${member.user_id}`}
-                  className="flex min-w-0 gap-3 rounded-2xl border border-border/60 bg-muted/20 px-3 py-3 sm:px-4"
+                  className="flex min-w-0 gap-3 rounded-2xl border border-card-outline/70 bg-muted/20 p-4"
                 >
-                  <div className="shrink-0 self-start pt-0.5">
+                  <div className="shrink-0 self-start">
                     <UserAvatar
                       name={name}
                       imageUrl={member.avatar_url ?? undefined}
@@ -229,7 +229,7 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
                       ring={false}
                     />
                   </div>
-                  <div className="min-w-0 flex-1 space-y-1">
+                  <div className="min-w-0 flex-1 space-y-1.5">
                     <Link
                       href={profileHref}
                       className="block break-words text-sm font-semibold text-primary hover:underline"

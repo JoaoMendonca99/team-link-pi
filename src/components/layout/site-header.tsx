@@ -83,26 +83,34 @@ export function SiteHeader() {
     <>
       <header className="sticky top-0 z-[60] w-full border-b border-border/70 bg-background/85 backdrop-blur-xl supports-[backdrop-filter]:bg-background/75">
         <Container className="flex h-[72px] items-center justify-between gap-3">
-        <Link href="/" className="flex min-w-0 shrink items-center gap-2 font-bold tracking-tight text-foreground">
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary">
-            <Link2 className="h-5 w-5" aria-hidden />
-          </span>
-          <span className="truncate text-lg">Team Link</span>
-        </Link>
-
-        <nav aria-label="Principal" className="hidden items-center gap-6 text-sm font-semibold text-foreground/90 lg:flex xl:gap-7">
-          {primaryLinks.map((item) => (
+          <div className="flex min-w-0 items-center gap-4 lg:gap-6">
             <Link
-              key={item.href}
-              href={item.href}
-              className="whitespace-nowrap transition-colors hover:text-primary focus-visible:rounded-md focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/45"
+              href="/"
+              className="flex shrink-0 items-center gap-2 font-bold tracking-tight text-foreground"
             >
-              {item.label}
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary">
+                <Link2 className="h-5 w-5" aria-hidden />
+              </span>
+              <span className="text-lg">Team Link</span>
             </Link>
-          ))}
-        </nav>
 
-        <div className="flex shrink-0 items-center gap-2">
+            <nav
+              aria-label="Principal"
+              className="hidden items-center gap-4 text-sm font-semibold text-foreground/90 lg:flex xl:gap-5"
+            >
+              {primaryLinks.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="whitespace-nowrap transition-colors hover:text-primary focus-visible:rounded-md focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/45"
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+          </div>
+
+          <div className="ml-auto flex shrink-0 items-center gap-2">
           <Button
             type="button"
             variant="ghost"
@@ -123,10 +131,10 @@ export function SiteHeader() {
                   <Button
                     type="button"
                     variant="ghost"
-                    className="flex max-w-[14rem] items-center gap-2 rounded-full px-2"
+                    className="flex items-center gap-2 rounded-full px-2"
                   >
                     <UserAvatar name={displayName} imageUrl={avatarUrl} sizeClassName="h-9 w-9" />
-                    <span className="truncate text-sm font-semibold">{displayName}</span>
+                    <span className="whitespace-nowrap text-sm font-semibold">{displayName}</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
@@ -199,7 +207,7 @@ export function SiteHeader() {
           >
             <Menu className="h-5 w-5" aria-hidden />
           </Button>
-        </div>
+          </div>
         </Container>
       </header>
 
