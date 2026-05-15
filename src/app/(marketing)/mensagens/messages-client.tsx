@@ -151,25 +151,26 @@ export function MessagesClient() {
   // fechar o projeto (handleCloseProjectSelection) e permanecer só na coluna PROJETOS.
 
   const reloadConversations = useCallback(
-    async (projectId: string) => {
+    async (projectId: string): Promise<ChatConversationListItem[] | null> => {
       setConversationsLoading(true)
       setConversationsError(null)
       try {
         const rows = await loadProjectConversations(projectId)
         setConversations(rows)
-        // Seleção padrão: se nada selecionado ou pertence a outro projeto,
-        // foca a conversa Geral quando existir.
+        // Mantém só se a conversa ainda existir neste projeto; nunca auto-abre Geral/grupo.
         setSelectedConversationId((current) => {
           if (current && rows.some((row) => row.id === current)) {
             return current
           }
-          const general = rows.find((row) => row.kind === 'general')
-          return general?.id ?? null
+          return null
         })
+        return rows
       } catch (error) {
         console.error('[mensagens] loadProjectConversations', error)
         setConversations([])
+        setSelectedConversationId(null)
         setConversationsError('Não foi possível carregar as conversas.')
+        return null
       } finally {
         setConversationsLoading(false)
       }
@@ -322,6 +323,14 @@ export function MessagesClient() {
     [],
   )
 
+  const handleCloseConversation = useCallback(() => {
+    setSelectedConversationId(null)
+    setDraft('')
+    setSendError(null)
+    setMembersOpen(false)
+    setMobileStep('conversations')
+  }, [])
+
   const handleSend = useCallback(async () => {
     if (!user || !selectedConversation) return
     const content = draft.trim()
@@ -409,17 +418,20 @@ export function MessagesClient() {
           p_title: title,
           p_member_ids: memberIds,
         })
-        await reloadConversations(selectedProjectId)
-        // Tenta abrir o grupo recém-criado (pelo título), senão deixa a
-        // seleção atual.
-        setSelectedConversationId((current) => {
-          const created = [...conversationsRef.current]
-            .filter((row) => row.kind === 'group' && row.title?.trim() === title)
-            .pop()
-          return created?.id ?? current
-        })
+        const rows = await reloadConversations(selectedProjectId)
+        const created = rows
+          ? [...rows]
+              .filter((row) => row.kind === 'group' && row.title?.trim() === title)
+              .pop()
+          : undefined
+        if (created) {
+          setSelectedConversationId(created.id)
+          setMobileStep('thread')
+        } else {
+          setSelectedConversationId(null)
+          setMobileStep('conversations')
+        }
         setCreateOpen(false)
-        setMobileStep('thread')
       } catch (error) {
         console.error('[mensagens] createGroupConversation', error)
         setCreateError('Não foi possível criar o grupo agora.')
@@ -429,12 +441,6 @@ export function MessagesClient() {
     },
     [reloadConversations, selectedProjectId],
   )
-
-  // Mantém referência atualizada para usar logo após reload no create.
-  const conversationsRef = useRef<ChatConversationListItem[]>([])
-  useEffect(() => {
-    conversationsRef.current = conversations
-  }, [conversations])
 
   const handleRequestDelete = useCallback(
     (conversation: ChatConversationListItem) => {
@@ -456,14 +462,8 @@ export function MessagesClient() {
         await reloadConversations(selectedProjectId)
       }
       if (wasOpen) {
-        // Fallback: foca a conversa Geral se existir.
-        setSelectedConversationId((current) => {
-          if (!current) return null
-          const general = conversationsRef.current.find(
-            (row) => row.kind === 'general',
-          )
-          return general?.id ?? null
-        })
+        setSelectedConversationId(null)
+        setMobileStep('conversations')
       }
       setPendingDelete(null)
     } catch (error) {
@@ -606,6 +606,7 @@ export function MessagesClient() {
           sending={sending}
           sendError={sendError}
           onOpenMembers={() => void handleOpenMembers()}
+          onCloseConversation={handleCloseConversation}
           onBack={() => setMobileStep('conversations')}
           currentUserId={user?.id ?? null}
           currentUserName={currentUserName}

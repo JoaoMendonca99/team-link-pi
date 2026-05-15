@@ -8,6 +8,7 @@ import {
   RefreshCcw,
   Send,
   Users,
+  X,
 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -39,6 +40,7 @@ export function ThreadPanel({
   sending,
   sendError,
   onOpenMembers,
+  onCloseConversation,
   onBack,
   currentUserId,
   currentUserName,
@@ -58,6 +60,8 @@ export function ThreadPanel({
   sending: boolean
   sendError: string | null
   onOpenMembers: () => void
+  /** Fecha só a conversa (painel vazio); projeto permanece selecionado. */
+  onCloseConversation?: () => void
   onBack?: () => void
   currentUserId: string | null
   currentUserName: string
@@ -75,10 +79,10 @@ export function ThreadPanel({
 
   if (!conversation) {
     const emptyTitle = hasSelectedProject
-      ? 'Escolha uma conversa para começar'
+      ? 'Selecione uma conversa para abrir as mensagens.'
       : 'Selecione um projeto para abrir as conversas.'
     const emptyDescription = hasSelectedProject
-      ? 'Abra a conversa geral ou um grupo para acompanhar as mensagens em tempo real.'
+      ? 'Escolha o grupo Geral ou um grupo da equipe na coluna de conversas.'
       : 'Escolha um projeto na primeira coluna para ver a conversa geral e os grupos da equipe.'
 
     return (
@@ -143,6 +147,19 @@ export function ThreadPanel({
             {projectTitle}
           </p>
         </div>
+        {onCloseConversation ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8 shrink-0 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground"
+            onClick={onCloseConversation}
+            aria-label="Fechar conversa"
+            title="Fechar conversa"
+          >
+            <X className="h-4 w-4 shrink-0" aria-hidden />
+          </Button>
+        ) : null}
         <Button
           type="button"
           variant="outline"
