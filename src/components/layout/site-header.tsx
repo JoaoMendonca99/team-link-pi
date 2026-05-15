@@ -18,6 +18,7 @@ import { NotificationBell } from "@/components/notifications/notification-bell"
 import { UserAvatar } from "@/components/team-link/user-avatar"
 import { useThemeMode } from "@/components/providers/theme-provider"
 import { useSupabaseSession } from "@/hooks/use-supabase-session"
+import { cn } from "@/lib/utils"
 
 const primaryLinks = [
   { href: "/", label: "Início" },
@@ -27,7 +28,26 @@ const primaryLinks = [
   { href: "/ajuda", label: "Ajuda" },
 ]
 
-export function SiteHeader() {
+function HeaderShell({
+  fullBleed,
+  className,
+  children,
+}: {
+  fullBleed: boolean
+  className?: string
+  children: React.ReactNode
+}) {
+  if (fullBleed) {
+    return (
+      <div className={cn("w-full px-4 sm:px-6 lg:px-8", className)}>
+        {children}
+      </div>
+    )
+  }
+  return <Container className={className}>{children}</Container>
+}
+
+export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
   const router = useRouter()
   const { darkMode, toggleTheme } = useThemeMode()
   const { isAuthenticated, profile, user, signOut } = useSupabaseSession()
@@ -82,7 +102,7 @@ export function SiteHeader() {
   return (
     <>
       <header className="sticky top-0 z-[60] w-full border-b border-border/70 bg-background/85 backdrop-blur-xl supports-[backdrop-filter]:bg-background/75">
-        <Container className="flex h-[72px] items-center justify-between gap-3">
+        <HeaderShell fullBleed={fullBleed} className="flex h-[72px] items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-4 lg:gap-6">
             <Link
               href="/"
@@ -208,7 +228,7 @@ export function SiteHeader() {
             <Menu className="h-5 w-5" aria-hidden />
           </Button>
           </div>
-        </Container>
+        </HeaderShell>
       </header>
 
       {mobileOpen ? (
@@ -220,7 +240,7 @@ export function SiteHeader() {
           className="fixed inset-0 z-[100] flex flex-col bg-background backdrop-blur-xl lg:hidden"
         >
           <div className="border-b border-border/70 bg-background">
-            <Container className="flex h-[72px] items-center justify-between gap-3">
+            <HeaderShell fullBleed={fullBleed} className="flex h-[72px] items-center justify-between gap-3">
               <Link
                 href="/"
                 onClick={closeMobile}
@@ -253,11 +273,11 @@ export function SiteHeader() {
                   <X className="h-5 w-5" aria-hidden />
                 </Button>
               </div>
-            </Container>
+            </HeaderShell>
           </div>
 
           <div className="flex-1 overflow-y-auto bg-background">
-            <Container className="flex flex-col gap-8 py-8">
+            <HeaderShell fullBleed={fullBleed} className="flex flex-col gap-8 py-8">
               <nav aria-label="Navegação principal" className="flex flex-col gap-1 text-base font-semibold">
                 {primaryLinks.map((item) => (
                   <Link
@@ -319,7 +339,7 @@ export function SiteHeader() {
                   </Button>
                 </div>
               )}
-            </Container>
+            </HeaderShell>
           </div>
         </div>
       ) : null}

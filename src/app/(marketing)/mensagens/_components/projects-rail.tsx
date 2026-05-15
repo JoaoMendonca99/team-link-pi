@@ -64,9 +64,6 @@ export function ProjectsRail({
           PROJETOS
         </p>
         <h1 className="mt-1 text-lg font-semibold text-foreground">Central de mensagens</h1>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          Escolha um projeto para abrir conversas e grupos da equipe.
-        </p>
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto">

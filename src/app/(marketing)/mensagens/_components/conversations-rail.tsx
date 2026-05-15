@@ -110,10 +110,7 @@ export function ConversationsRail({
           {projectTitle}
         </h2>
 
-        <div className="mt-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-          <p className="min-w-0 flex-1 text-xs leading-snug text-muted-foreground">
-            Conversa geral e seus grupos.
-          </p>
+        <div className="mt-1 flex flex-wrap items-center justify-end gap-x-3 gap-y-2">
           <Button
             type="button"
             variant="secondary"

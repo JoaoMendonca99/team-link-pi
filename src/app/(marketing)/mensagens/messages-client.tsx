@@ -8,9 +8,8 @@ import {
 } from '@supabase/supabase-js'
 import { Loader2 } from 'lucide-react'
 
-import { Container } from '@/components/layout/container'
-import { PageHeader } from '@/components/team-link/page-header'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/team-link/page-header'
 import {
   createGroupConversation,
   deleteGroupConversation,
@@ -486,18 +485,18 @@ export function MessagesClient() {
 
   if (sessionLoading) {
     return (
-      <main className="bg-background">
-        <Container className="flex min-h-[calc(100vh-72px)] items-center justify-center py-24">
+      <main className="flex min-h-0 flex-1 flex-col bg-background">
+        <div className="flex w-full flex-1 items-center justify-center px-4 py-24 sm:px-6 lg:px-8">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-hidden />
-        </Container>
+        </div>
       </main>
     )
   }
 
   if (!isAuthenticated) {
     return (
-      <main className="bg-background">
-        <Container className="py-20">
+      <main className="flex min-h-0 flex-1 flex-col bg-background">
+        <div className="w-full px-4 py-20 sm:px-6 lg:px-8">
           <PageHeader
             eyebrow="Central de mensagens"
             title="Entre para acessar suas conversas"
@@ -511,15 +510,15 @@ export function MessagesClient() {
               <Link href="/cadastro">Criar conta</Link>
             </Button>
           </div>
-        </Container>
+        </div>
       </main>
     )
   }
 
   if (!supabaseReady) {
     return (
-      <main className="bg-background">
-        <Container className="py-20">
+      <main className="flex min-h-0 flex-1 flex-col bg-background">
+        <div className="w-full px-4 py-20 sm:px-6 lg:px-8">
           <PageHeader
             title="Não foi possível abrir suas conversas"
             description="Tente novamente em instantes. Se o problema continuar, volte para os seus projetos."
@@ -529,7 +528,7 @@ export function MessagesClient() {
               <Link href="/meus-projetos">Voltar para Meus projetos</Link>
             </Button>
           </div>
-        </Container>
+        </div>
       </main>
     )
   }

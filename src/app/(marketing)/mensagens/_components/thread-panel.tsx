@@ -147,6 +147,16 @@ export function ThreadPanel({
             {projectTitle}
           </p>
         </div>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="h-9 shrink-0 gap-2 rounded-xl text-xs font-semibold"
+          onClick={onOpenMembers}
+        >
+          <Users className="h-4 w-4" aria-hidden />
+          <span className="hidden sm:inline">Membros</span>
+        </Button>
         {onCloseConversation ? (
           <Button
             type="button"
@@ -160,16 +170,6 @@ export function ThreadPanel({
             <X className="h-4 w-4 shrink-0" aria-hidden />
           </Button>
         ) : null}
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-9 shrink-0 gap-2 rounded-xl text-xs font-semibold"
-          onClick={onOpenMembers}
-        >
-          <Users className="h-4 w-4" aria-hidden />
-          <span className="hidden sm:inline">Membros</span>
-        </Button>
       </header>
 
       <div
