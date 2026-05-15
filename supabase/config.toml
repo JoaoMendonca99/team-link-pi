@@ -14,8 +14,15 @@ port = 54322
 enabled = true
 port = 54323
 
-[functions]
-# Secrets são definidas no Dashboard ou via: supabase secrets set NAME=value
+# Secrets das Edge Functions: Dashboard ou `supabase secrets set NAME=value`
+
+[functions.github-start-installation]
+verify_jwt = false
+
+[functions.github-complete-installation]
+verify_jwt = false
+
+[functions.github-link-selected-repository]
 verify_jwt = false
 
 [functions.github-link-repository]
@@ -25,13 +32,4 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.github-webhook]
-verify_jwt = false
-
-[functions.github-start-installation]
-verify_jwt = false
-
-[functions.github-complete-installation]
-verify_jwt = false
-
-[functions.github-link-selected-repository]
 verify_jwt = false

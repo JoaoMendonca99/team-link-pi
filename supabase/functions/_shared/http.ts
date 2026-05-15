@@ -21,3 +21,11 @@ export function jsonResponse(body: unknown, status = 200): Response {
 export function errorResponse(message: string, status: number): Response {
   return jsonResponse({ error: message }, status)
 }
+
+export function codedErrorResponse(
+  message: string,
+  code: string,
+  status: number,
+): Response {
+  return jsonResponse({ error: message, code }, status)
+}

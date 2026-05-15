@@ -390,6 +390,7 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
         open={linkOpen}
         onClose={() => setLinkOpen(false)}
         projectId={project.id}
+        projectSlug={project.slug}
       />
 
       <CommitDetailModal

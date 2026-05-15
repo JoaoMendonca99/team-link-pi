@@ -8,14 +8,21 @@ import {
   GITHUB_START_USER_MESSAGE,
   startGithubInstallation,
 } from '@/lib/github/actions'
+import { savePendingGithubProject } from '@/lib/github/pending-project'
 
 export interface ConnectGithubDialogProps {
   open: boolean
   onClose: () => void
   projectId: string
+  projectSlug: string
 }
 
-export function ConnectGithubDialog({ open, onClose, projectId }: ConnectGithubDialogProps) {
+export function ConnectGithubDialog({
+  open,
+  onClose,
+  projectId,
+  projectSlug,
+}: ConnectGithubDialogProps) {
   const [starting, setStarting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
@@ -50,6 +57,14 @@ export function ConnectGithubDialog({ open, onClose, projectId }: ConnectGithubD
       setErrorMessage(result.message || GITHUB_START_USER_MESSAGE)
       return
     }
+
+    savePendingGithubProject({
+      project_id: projectId,
+      project_slug: projectSlug,
+      panel_url: `/projetos/${projectSlug}/painel`,
+      saved_at: Date.now(),
+    })
+
     window.location.assign(result.install_url)
   }
 

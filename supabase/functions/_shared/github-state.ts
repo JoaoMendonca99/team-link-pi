@@ -71,25 +71,35 @@ export async function createSignedGithubState(input: {
   return `${payloadB64}.${signature}`
 }
 
-export async function verifySignedGithubState(
+export type GithubStateFailureCode = 'invalid_state' | 'expired_state'
+
+export type GithubStateVerifyResult =
+  | { ok: true; payload: GithubOAuthStatePayload }
+  | { ok: false; code: GithubStateFailureCode }
+
+export async function verifySignedGithubStateDetailed(
   state: string,
-): Promise<GithubOAuthStatePayload | null> {
+): Promise<GithubStateVerifyResult> {
   const trimmed = state.trim()
   const dot = trimmed.lastIndexOf('.')
-  if (dot <= 0) return null
+  if (dot <= 0) return { ok: false, code: 'invalid_state' }
 
   const payloadB64 = trimmed.slice(0, dot)
   const signature = trimmed.slice(dot + 1)
-  if (!payloadB64 || !signature) return null
+  if (!payloadB64 || !signature) return { ok: false, code: 'invalid_state' }
 
-  const validSig = await verifySignature(payloadB64, signature)
-  if (!validSig) return null
+  try {
+    const validSig = await verifySignature(payloadB64, signature)
+    if (!validSig) return { ok: false, code: 'invalid_state' }
+  } catch {
+    return { ok: false, code: 'invalid_state' }
+  }
 
   let payload: GithubOAuthStatePayload
   try {
     payload = JSON.parse(base64UrlDecodeToString(payloadB64)) as GithubOAuthStatePayload
   } catch {
-    return null
+    return { ok: false, code: 'invalid_state' }
   }
 
   if (
@@ -98,12 +108,19 @@ export async function verifySignedGithubState(
     !payload?.nonce ||
     typeof payload.exp !== 'number'
   ) {
-    return null
+    return { ok: false, code: 'invalid_state' }
   }
 
   if (Date.now() > payload.exp) {
-    return null
+    return { ok: false, code: 'expired_state' }
   }
 
-  return payload
+  return { ok: true, payload }
+}
+
+export async function verifySignedGithubState(
+  state: string,
+): Promise<GithubOAuthStatePayload | null> {
+  const result = await verifySignedGithubStateDetailed(state)
+  return result.ok ? result.payload : null
 }

@@ -40,6 +40,27 @@ function readFunctionError(payload: Record<string, unknown> | null): string | nu
   return null
 }
 
+function readFunctionCode(payload: Record<string, unknown> | null): string | null {
+  if (payload?.code && typeof payload.code === 'string') {
+    return payload.code
+  }
+  return null
+}
+
+export const GITHUB_COMPLETE_INSTALLATION_FUNCTION = 'github-complete-installation'
+
+export const GITHUB_COMPLETE_USER_MESSAGE =
+  'Não foi possível carregar os repositórios autorizados.'
+
+const COMPLETE_CODE_MESSAGES: Record<string, string> = {
+  permission_denied: 'Você não tem permissão para conectar repositórios neste projeto.',
+  expired_state: 'A conexão expirou. Inicie novamente pelo painel do projeto.',
+  invalid_state: 'A conexão expirou. Inicie novamente pelo painel do projeto.',
+  missing_state: 'Link de retorno do GitHub incompleto. Tente conectar novamente pelo painel.',
+  missing_installation_id:
+    'Link de retorno do GitHub incompleto. Tente conectar novamente pelo painel.',
+}
+
 export type StartGithubInstallationResult =
   | { ok: true; install_url: string }
   | { ok: false; message: string; debug: GithubFunctionDebugInfo }
@@ -84,42 +105,49 @@ export async function startGithubInstallation(
   return { ok: true, install_url: installUrl }
 }
 
+export type CompleteGithubInstallationResult =
+  | { ok: true; data: GithubCompleteInstallationResult }
+  | { ok: false; message: string; code: string | null; debug: GithubFunctionDebugInfo }
+
 export async function completeGithubInstallation(input: {
   installation_id: number
   setup_action?: string | null
   state: string
-}): Promise<
-  { ok: true; data: GithubCompleteInstallationResult } | { ok: false; message: string }
-> {
+}): Promise<CompleteGithubInstallationResult> {
   const client = getSupabaseClient()
-  const { data, error } = await client.functions.invoke('github-complete-installation', {
-    body: {
-      installation_id: input.installation_id,
-      setup_action: input.setup_action ?? null,
-      state: input.state,
-    },
+  const requestBody = {
+    installation_id: input.installation_id,
+    setup_action: input.setup_action ?? null,
+    state: input.state,
+  }
+  const { data, error } = await client.functions.invoke(GITHUB_COMPLETE_INSTALLATION_FUNCTION, {
+    body: requestBody,
   })
 
+  const fail = (message: string, code: string | null = null): CompleteGithubInstallationResult => {
+    const debug = buildGithubFunctionDebug(
+      GITHUB_COMPLETE_INSTALLATION_FUNCTION,
+      error,
+      data,
+      requestBody,
+    )
+    logGithubFunctionDebug(debug)
+    return { ok: false, message, code, debug }
+  }
+
   if (error) {
-    return {
-      ok: false,
-      message: friendlyFunctionError(
-        error.message,
-        'Não foi possível carregar os repositórios autorizados.',
-      ),
-    }
+    return fail(friendlyFunctionError(error.message, GITHUB_COMPLETE_USER_MESSAGE))
   }
 
   const payload = data as Record<string, unknown> | null
+  const fnCode = readFunctionCode(payload)
   const fnError = readFunctionError(payload)
+
   if (fnError) {
-    return {
-      ok: false,
-      message: friendlyFunctionError(
-        fnError,
-        'Não foi possível carregar os repositórios autorizados.',
-      ),
-    }
+    const message =
+      (fnCode && COMPLETE_CODE_MESSAGES[fnCode]) ||
+      friendlyFunctionError(fnError, GITHUB_COMPLETE_USER_MESSAGE)
+    return fail(message, fnCode)
   }
 
   const projectId = typeof payload?.project_id === 'string' ? payload.project_id : null
@@ -134,7 +162,7 @@ export async function completeGithubInstallation(input: {
     : []
 
   if (!projectId || !installationId) {
-    return { ok: false, message: 'Resposta inválida ao conectar com o GitHub.' }
+    return fail('Resposta inválida ao conectar com o GitHub.', 'unknown_error')
   }
 
   return {

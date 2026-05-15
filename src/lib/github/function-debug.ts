@@ -41,7 +41,10 @@ export function buildGithubFunctionDebug(
   }
 }
 
-export function logGithubFunctionDebug(debug: GithubFunctionDebugInfo): void {
+export function logGithubFunctionDebug(
+  debug: GithubFunctionDebugInfo,
+  extra?: Record<string, unknown>,
+): void {
   if (process.env.NODE_ENV !== 'development') return
 
   console.error('[Team Link · GitHub]', {
@@ -50,5 +53,6 @@ export function logGithubFunctionDebug(debug: GithubFunctionDebugInfo): void {
     status: debug.status,
     requestBody: debug.requestBody,
     responseBody: debug.responseBody,
+    ...extra,
   })
 }

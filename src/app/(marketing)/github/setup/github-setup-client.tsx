@@ -10,8 +10,17 @@ import { EmptyState } from '@/components/team-link/empty-state'
 import { Button } from '@/components/ui/button'
 import {
   completeGithubInstallation,
+  GITHUB_COMPLETE_INSTALLATION_FUNCTION,
+  GITHUB_COMPLETE_USER_MESSAGE,
+  GITHUB_START_USER_MESSAGE,
   linkSelectedGithubRepository,
+  startGithubInstallation,
 } from '@/lib/github/actions'
+import {
+  readPendingGithubProject,
+  savePendingGithubProject,
+  type PendingGithubProject,
+} from '@/lib/github/pending-project'
 import type {
   GithubCommitVisibility,
   GithubCompleteInstallationResult,
@@ -19,7 +28,16 @@ import type {
 } from '@/lib/github/types'
 import { useSupabaseSession } from '@/hooks/use-supabase-session'
 
-type SetupPhase = 'loading' | 'select' | 'linking' | 'done' | 'error' | 'auth'
+type SetupPhase = 'loading' | 'select' | 'linking' | 'done' | 'error' | 'auth' | 'retrying'
+
+function logSetupQueryParams(input: {
+  installation_id: string | null
+  setup_action: string | null
+  state_present: boolean
+}) {
+  if (process.env.NODE_ENV !== 'development') return
+  console.info('[Team Link · GitHub setup] query params', input)
+}
 
 export function GithubSetupClient() {
   const router = useRouter()
@@ -47,11 +65,39 @@ export function GithubSetupClient() {
   const [selectedRepoId, setSelectedRepoId] = useState<number | null>(null)
   const [visibility, setVisibility] = useState<GithubCommitVisibility>('members')
   const [successMessage, setSuccessMessage] = useState<string | null>(null)
+  const [pendingProject, setPendingProject] = useState<PendingGithubProject | null>(null)
+
+  useEffect(() => {
+    setPendingProject(readPendingGithubProject())
+  }, [])
+
+  useEffect(() => {
+    logSetupQueryParams({
+      installation_id: installationIdParam,
+      setup_action: setupAction,
+      state_present: Boolean(stateParam?.trim()),
+    })
+  }, [installationIdParam, setupAction, stateParam])
+
+  const panelHref = useMemo(() => {
+    if (setupData?.project_slug) {
+      return `/projetos/${setupData.project_slug}/painel`
+    }
+    if (pendingProject?.panel_url) {
+      return pendingProject.panel_url
+    }
+    if (pendingProject?.project_slug) {
+      return `/projetos/${pendingProject.project_slug}/painel`
+    }
+    return null
+  }, [pendingProject, setupData?.project_slug])
 
   const runComplete = useCallback(async () => {
     if (!installationId || !stateParam?.trim()) {
       setPhase('error')
-      setErrorMessage('Link de retorno do GitHub incompleto. Tente conectar novamente pelo painel.')
+      setErrorMessage(
+        'Link de retorno do GitHub incompleto. Tente conectar novamente pelo painel.',
+      )
       return
     }
 
@@ -66,23 +112,43 @@ export function GithubSetupClient() {
 
     if (!result.ok) {
       setPhase('error')
-      setErrorMessage(result.message)
+      setErrorMessage(result.message || GITHUB_COMPLETE_USER_MESSAGE)
+      if (process.env.NODE_ENV === 'development') {
+        console.error('[Team Link · GitHub setup] complete failed', {
+          function: GITHUB_COMPLETE_INSTALLATION_FUNCTION,
+          code: result.code,
+          status: result.debug.status,
+          errorMessage: result.debug.errorMessage,
+          responseBody: result.debug.responseBody,
+        })
+      }
       return
     }
+
+    const slug = result.data.project_slug ?? pendingProject?.project_slug ?? ''
+    savePendingGithubProject({
+      project_id: result.data.project_id,
+      project_slug: slug,
+      panel_url: slug ? `/projetos/${slug}/painel` : pendingProject?.panel_url ?? '',
+      saved_at: Date.now(),
+    })
+    setPendingProject(readPendingGithubProject())
 
     setSetupData(result.data)
     if (result.data.repositories.length === 1) {
       setSelectedRepoId(result.data.repositories[0]!.github_repository_id)
     }
     setPhase('select')
-  }, [installationId, setupAction, stateParam])
+  }, [installationId, pendingProject?.panel_url, pendingProject?.project_slug, setupAction, stateParam])
 
   useEffect(() => {
     if (sessionLoading) return
 
     if (!installationId || !stateParam?.trim()) {
       setPhase('error')
-      setErrorMessage('Link de retorno do GitHub incompleto. Tente conectar novamente pelo painel.')
+      setErrorMessage(
+        'Link de retorno do GitHub incompleto. Tente conectar novamente pelo painel.',
+      )
       return
     }
 
@@ -93,6 +159,31 @@ export function GithubSetupClient() {
 
     void runComplete()
   }, [installationId, isAuthenticated, runComplete, sessionLoading, stateParam])
+
+  async function handleRetryGithub() {
+    const pending = readPendingGithubProject()
+    if (!pending?.project_id) return
+
+    setPhase('retrying')
+    setErrorMessage(null)
+
+    const result = await startGithubInstallation(pending.project_id)
+    if (!result.ok) {
+      setPhase('error')
+      setErrorMessage(result.message || GITHUB_START_USER_MESSAGE)
+      if (process.env.NODE_ENV === 'development') {
+        console.error('[Team Link · GitHub setup] retry start failed', result.debug)
+      }
+      return
+    }
+
+    savePendingGithubProject({
+      ...pending,
+      saved_at: Date.now(),
+    })
+
+    window.location.assign(result.install_url)
+  }
 
   async function handleLink() {
     if (!setupData || selectedRepoId == null) {
@@ -124,17 +215,15 @@ export function GithubSetupClient() {
     setPhase('done')
   }
 
-  const panelHref = setupData?.project_slug
-    ? `/projetos/${setupData.project_slug}/painel`
-    : null
-
-  if (sessionLoading || phase === 'loading') {
+  if (sessionLoading || phase === 'loading' || phase === 'retrying') {
     return (
       <main className="bg-background">
         <Container className="flex min-h-[50vh] flex-col items-center justify-center gap-3 py-24">
           <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden />
           <p className="text-sm font-medium text-muted-foreground">
-            Finalizando conexão com o GitHub…
+            {phase === 'retrying'
+              ? 'Reiniciando conexão com o GitHub…'
+              : 'Finalizando conexão com o GitHub…'}
           </p>
         </Container>
       </main>
@@ -162,17 +251,33 @@ export function GithubSetupClient() {
   }
 
   if (phase === 'error') {
+    const canRetry = Boolean(pendingProject?.project_id)
+
     return (
       <main className="bg-background pb-20">
         <Container className="py-16">
           <EmptyState
             icon={Github}
             title="Não foi possível conectar"
-            description={errorMessage ?? 'Tente novamente pelo painel do projeto.'}
+            description={errorMessage ?? GITHUB_COMPLETE_USER_MESSAGE}
             className="mx-auto max-w-lg"
           />
-          <div className="mx-auto mt-6 flex max-w-lg justify-center">
-            <Button asChild variant="outline" className="rounded-2xl font-semibold">
+          <div className="mx-auto mt-6 flex max-w-lg flex-col gap-2">
+            {canRetry ? (
+              <Button
+                type="button"
+                className="w-full rounded-2xl font-semibold"
+                onClick={() => void handleRetryGithub()}
+              >
+                Tentar novamente
+              </Button>
+            ) : null}
+            {panelHref ? (
+              <Button asChild variant="outline" className="w-full rounded-2xl font-semibold">
+                <Link href={panelHref}>Voltar ao painel do projeto</Link>
+              </Button>
+            ) : null}
+            <Button asChild variant="outline" className="w-full rounded-2xl font-semibold">
               <Link href="/meus-projetos">Ir para meus projetos</Link>
             </Button>
           </div>
