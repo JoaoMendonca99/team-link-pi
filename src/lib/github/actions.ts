@@ -183,69 +183,209 @@ export type CompleteGithubInstallationResult =
   | {
       ok: false
       message: string
+      /** Mensagem retornada pela Edge Function (quando existir). */
+      serverMessage: string | null
       code: string | null
       step: string | null
       details: Record<string, unknown> | null
       debug: GithubFunctionDebugInfo
     }
 
+const RAW_TEXT_DEBUG_MAX = 12000
+
+function truncateForDebug(text: string, max = RAW_TEXT_DEBUG_MAX): string {
+  if (text.length <= max) return text
+  return `${text.slice(0, max)}…`
+}
+
 export async function completeGithubInstallation(input: {
   installation_id: number
   setup_action?: string | null
   state: string
 }): Promise<CompleteGithubInstallationResult> {
-  const client = getSupabaseClient()
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '') ?? ''
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ''
+
   const requestBody = {
     installation_id: input.installation_id,
     setup_action: input.setup_action ?? null,
     state: input.state,
   }
-  const { data, error } = await client.functions.invoke(GITHUB_COMPLETE_INSTALLATION_FUNCTION, {
-    body: requestBody,
+
+  const baseDebug = (partial: Partial<GithubFunctionDebugInfo>): GithubFunctionDebugInfo => ({
+    functionName: GITHUB_COMPLETE_INSTALLATION_FUNCTION,
+    requestBody,
+    responseBody: null,
+    ...partial,
   })
 
-  const payload = (data ?? null) as Record<string, unknown> | null
-  const details = readFunctionDetails(payload)
-
-  const fail = (
-    message: string,
-    code: string | null = null,
-    step: string | null = null,
-    failDetails: Record<string, unknown> | null = details,
-  ): CompleteGithubInstallationResult => {
-    const debug = buildGithubFunctionDebug(
-      GITHUB_COMPLETE_INSTALLATION_FUNCTION,
-      error,
-      data,
-      requestBody,
-    )
-    logGithubFunctionDebug(debug, { code, step, details: failDetails })
-    return { ok: false, message, code, step, details: failDetails, debug }
+  if (!supabaseUrl || !anonKey) {
+    const debug = baseDebug({})
+    logGithubFunctionDebug(debug, { code: null, step: null })
+    return {
+      ok: false,
+      message: 'Configuração do Supabase ausente no cliente.',
+      serverMessage: null,
+      code: null,
+      step: null,
+      details: null,
+      debug,
+    }
   }
 
-  const failure = parseFunctionFailure(
-    payload,
-    error,
-    GITHUB_COMPLETE_USER_MESSAGE,
-    COMPLETE_CODE_MESSAGES,
-  )
+  const client = getSupabaseClient()
+  const {
+    data: { session },
+  } = await client.auth.getSession()
+  const accessToken = session?.access_token
 
-  if (payload?.ok === true) {
-    // success — parsed below
-  } else if (
-    payload?.ok === false ||
-    payload?.code ||
-    readFunctionError(payload) ||
-    readFunctionCode(payload)
-  ) {
-    return fail(
-      failure.message,
-      failure.code ?? readFunctionCode(payload),
-      failure.step,
+  if (!accessToken) {
+    const debug = baseDebug({ status: 401 })
+    logGithubFunctionDebug(debug, { code: 'not_authenticated', step: 'validate_user' })
+    return {
+      ok: false,
+      message: COMPLETE_CODE_MESSAGES.not_authenticated,
+      serverMessage: 'Sessão sem access_token.',
+      code: 'not_authenticated',
+      step: 'validate_user',
+      details: null,
+      debug,
+    }
+  }
+
+  const functionUrl = `${supabaseUrl}/functions/v1/${GITHUB_COMPLETE_INSTALLATION_FUNCTION}`
+
+  let response: Response
+  try {
+    response = await fetch(functionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+        apikey: anonKey,
+      },
+      body: JSON.stringify(requestBody),
+    })
+  } catch (e) {
+    const name = e instanceof Error ? e.name : 'network_error'
+    const msg = e instanceof Error ? e.message : 'fetch failed'
+    const debug = baseDebug({
+      errorMessage: msg,
+    })
+    logGithubFunctionDebug(debug, { code: null, step: null })
+    return {
+      ok: false,
+      message: GITHUB_COMPLETE_USER_MESSAGE,
+      serverMessage: `${name}: ${msg}`,
+      code: null,
+      step: null,
+      details: null,
+      debug,
+    }
+  }
+
+  const rawText = await response.text()
+  let body: Record<string, unknown> | null = null
+  try {
+    body = rawText ? (JSON.parse(rawText) as Record<string, unknown>) : null
+  } catch {
+    body = null
+  }
+
+  const payload = body
+  const details = readFunctionDetails(payload)
+
+  const rawTextForDebug =
+    body === null && rawText.length > 0 ? truncateForDebug(rawText) : null
+
+  const edgeMessageFromPayload = (): string | null => {
+    if (payload && typeof payload.message === 'string' && payload.message.trim()) {
+      return payload.message.trim()
+    }
+    return readFunctionError(payload)
+  }
+
+  const buildFail = (
+    message: string,
+    serverMessage: string | null,
+    code: string | null,
+    step: string | null,
+    failDetails: Record<string, unknown> | null,
+    status: number,
+  ): CompleteGithubInstallationResult => {
+    const debug: GithubFunctionDebugInfo = {
+      functionName: GITHUB_COMPLETE_INSTALLATION_FUNCTION,
+      status,
+      responseBody: body,
+      requestBody,
+      rawText: rawTextForDebug,
+    }
+    logGithubFunctionDebug(debug, { code, step, details: failDetails })
+    return {
+      ok: false,
+      message,
+      serverMessage,
+      code,
+      step,
+      details: failDetails,
+      debug,
+    }
+  }
+
+  if (!response.ok) {
+    const step = readFunctionStep(payload)
+    const code = readFunctionCode(payload)
+    const serverMsg =
+      edgeMessageFromPayload() ??
+      (response.status === 500 && body === null
+        ? 'Function retornou 500 sem corpo. Verificar Supabase Edge Logs.'
+        : 'Edge Function retornou erro sem mensagem.')
+    const failure = parseFunctionFailure(payload, null, serverMsg, COMPLETE_CODE_MESSAGES)
+    const friendly =
+      (code && COMPLETE_CODE_MESSAGES[code]) ||
+      failure.message ||
+      friendlyFunctionError(serverMsg, GITHUB_COMPLETE_USER_MESSAGE)
+    return buildFail(
+      friendly,
+      serverMsg,
+      code ?? failure.code,
+      step ?? failure.step,
       details,
+      response.status,
     )
-  } else if (error) {
-    return fail(failure.message, failure.code, failure.step, details)
+  }
+
+  if (body?.ok === false) {
+    const step = readFunctionStep(payload)
+    const code = readFunctionCode(payload)
+    const serverMsg =
+      edgeMessageFromPayload() ?? 'Edge Function retornou ok: false sem mensagem.'
+    const failure = parseFunctionFailure(payload, null, serverMsg, COMPLETE_CODE_MESSAGES)
+    const friendly =
+      (code && COMPLETE_CODE_MESSAGES[code]) ||
+      failure.message ||
+      friendlyFunctionError(serverMsg, GITHUB_COMPLETE_USER_MESSAGE)
+    return buildFail(
+      friendly,
+      serverMsg,
+      code ?? failure.code,
+      step ?? failure.step,
+      details,
+      response.status,
+    )
+  }
+
+  if (body?.ok !== true) {
+    const serverMsg =
+      edgeMessageFromPayload() ?? 'Resposta inválida ao conectar com o GitHub.'
+    return buildFail(
+      friendlyFunctionError(serverMsg, GITHUB_COMPLETE_USER_MESSAGE),
+      serverMsg,
+      readFunctionCode(payload),
+      readFunctionStep(payload),
+      details,
+      response.status,
+    )
   }
 
   const projectId = typeof payload?.project_id === 'string' ? payload.project_id : null
@@ -293,7 +433,14 @@ export async function completeGithubInstallation(input: {
     : []
 
   if (!projectId || !installationId) {
-    return fail('Resposta inválida ao conectar com o GitHub.', 'unknown_error')
+    return buildFail(
+      'Resposta inválida ao conectar com o GitHub.',
+      edgeMessageFromPayload(),
+      'unknown_error',
+      null,
+      details,
+      response.status,
+    )
   }
 
   return {

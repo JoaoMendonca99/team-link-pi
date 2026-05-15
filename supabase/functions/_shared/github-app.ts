@@ -1,4 +1,7 @@
 import { getGitHubPrivateKeyPem, requireEnv } from './env.ts'
+import { importGithubAppSigningKeyFromPem } from './github-rsa-import.ts'
+
+export { importGithubAppSigningKeyFromPem } from './github-rsa-import.ts'
 
 const GITHUB_API = 'https://api.github.com'
 
@@ -126,19 +129,7 @@ async function readGitHubErrorBody(response: Response): Promise<string | undefin
 }
 
 async function importGitHubPrivateKey(pem: string): Promise<CryptoKey> {
-  const jose = await loadJose()
-  const normalized = pem.trim()
-  if (normalized.includes('BEGIN RSA PRIVATE KEY')) {
-    return (await jose.importPKCS1(normalized, 'RS256')) as CryptoKey
-  }
-  if (normalized.includes('BEGIN PRIVATE KEY') || normalized.includes('BEGIN EC PRIVATE KEY')) {
-    return (await jose.importPKCS8(normalized, 'RS256')) as CryptoKey
-  }
-  try {
-    return (await jose.importPKCS8(normalized, 'RS256')) as CryptoKey
-  } catch {
-    return (await jose.importPKCS1(normalized, 'RS256')) as CryptoKey
-  }
+  return importGithubAppSigningKeyFromPem(pem)
 }
 
 export async function createGitHubAppJwt(): Promise<string> {

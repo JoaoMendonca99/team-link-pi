@@ -65,6 +65,8 @@ export function GithubSetupClient() {
     code: string | null
     step: string | null
     status?: number
+    serverMessage?: string | null
+    missing?: string[]
   } | null>(null)
   const [setupData, setSetupData] = useState<GithubCompleteInstallationResult | null>(null)
   const [selectedRepoId, setSelectedRepoId] = useState<number | null>(null)
@@ -99,9 +101,25 @@ export function GithubSetupClient() {
 
   const runComplete = useCallback(async () => {
     if (!installationId || !stateParam?.trim()) {
+      const missing: string[] = []
+      if (!installationId) missing.push('missing_installation_id')
+      if (!stateParam?.trim()) missing.push('missing_state')
+      console.error('[Team Link · GitHub setup] runComplete skipped: incomplete callback URL', {
+        missing,
+      })
       setPhase('error')
+      setErrorDiag({
+        step: 'parse_body',
+        code: missing.length === 1 ? missing[0]! : missing.join(','),
+        missing,
+        serverMessage: null,
+      })
       setErrorMessage(
-        'Link de retorno do GitHub incompleto. Tente conectar novamente pelo painel.',
+        missing.length === 2
+          ? 'Link de retorno do GitHub incompleto: faltam installation_id e state na URL.'
+          : missing[0] === 'missing_installation_id'
+            ? 'Link de retorno do GitHub incompleto: falta installation_id na URL.'
+            : 'Link de retorno do GitHub incompleto: falta state na URL.',
       )
       return
     }
@@ -123,15 +141,20 @@ export function GithubSetupClient() {
         code: result.code,
         step: result.step,
         status: result.debug.status,
+        serverMessage: result.serverMessage,
       })
       console.error('[Team Link · GitHub setup] complete failed', {
         function: GITHUB_COMPLETE_INSTALLATION_FUNCTION,
-        code: result.code,
-        step: result.step,
         status: result.debug.status,
+        step: result.step,
+        code: result.code,
+        message: result.message,
+        serverMessage: result.serverMessage,
         details: result.details,
-        errorMessage: result.debug.errorMessage,
         responseBody: result.debug.responseBody,
+        ...(result.debug.rawText
+          ? { rawText: result.debug.rawText }
+          : {}),
       })
       return
     }
@@ -155,10 +178,27 @@ export function GithubSetupClient() {
   useEffect(() => {
     if (sessionLoading) return
 
-    if (!installationId || !stateParam?.trim()) {
+    const hasInstallationId = installationId != null
+    const hasState = Boolean(stateParam?.trim())
+
+    if (!hasInstallationId || !hasState) {
+      const missing: string[] = []
+      if (!hasInstallationId) missing.push('missing_installation_id')
+      if (!hasState) missing.push('missing_state')
+      console.error('[Team Link · GitHub setup] incomplete callback URL', { missing })
       setPhase('error')
+      setErrorDiag({
+        step: 'parse_body',
+        code: missing.length === 1 ? missing[0]! : missing.join(','),
+        missing,
+        serverMessage: null,
+      })
       setErrorMessage(
-        'Link de retorno do GitHub incompleto. Tente conectar novamente pelo painel.',
+        missing.length === 2
+          ? 'Link de retorno do GitHub incompleto: faltam installation_id e state na URL.'
+          : missing[0] === 'missing_installation_id'
+            ? 'Link de retorno do GitHub incompleto: falta installation_id na URL.'
+            : 'Link de retorno do GitHub incompleto: falta state na URL.',
       )
       return
     }
@@ -276,11 +316,32 @@ export function GithubSetupClient() {
             description={errorMessage ?? GITHUB_COMPLETE_USER_MESSAGE}
             className="mx-auto max-w-lg"
           />
-          {process.env.NODE_ENV !== 'production' && errorDiag ? (
-            <p className="mx-auto mt-3 max-w-lg text-center font-mono text-xs text-muted-foreground">
-              code: {errorDiag.code ?? '—'} · step: {errorDiag.step ?? '—'} · status:{' '}
-              {errorDiag.status ?? '—'}
-            </p>
+          {errorDiag ? (
+            <div className="mx-auto mt-4 max-w-lg rounded-2xl border border-border bg-muted/30 px-4 py-3 text-left text-xs text-muted-foreground space-y-1.5">
+              {errorDiag.missing?.length ? (
+                <p className="font-mono text-[11px]">
+                  missing: {errorDiag.missing.join(', ')}
+                </p>
+              ) : null}
+              <p>
+                <span className="font-semibold text-foreground">Step:</span>{' '}
+                {errorDiag.step ?? '—'}
+              </p>
+              <p>
+                <span className="font-semibold text-foreground">Code:</span>{' '}
+                {errorDiag.code ?? '—'}
+              </p>
+              <p>
+                <span className="font-semibold text-foreground">Message:</span>{' '}
+                {errorDiag.serverMessage?.trim() || '—'}
+              </p>
+              {typeof errorDiag.status === 'number' ? (
+                <p>
+                  <span className="font-semibold text-foreground">HTTP:</span>{' '}
+                  {errorDiag.status}
+                </p>
+              ) : null}
+            </div>
           ) : null}
           {showAlreadyInstalledHint && canRetry ? (
             <p className="mx-auto mb-4 max-w-lg text-center text-xs text-muted-foreground">

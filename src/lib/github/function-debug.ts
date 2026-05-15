@@ -5,6 +5,8 @@ export interface GithubFunctionDebugInfo {
   status?: number
   responseBody?: unknown
   requestBody?: unknown
+  /** Resposta não-JSON ou corpo bruto (truncado pelo chamador se necessário). */
+  rawText?: string | null
 }
 
 type InvokeErrorLike = {
@@ -55,7 +57,10 @@ export function logGithubFunctionDebug(
   }
 
   if (process.env.NODE_ENV === 'development') {
-    console.error('[Team Link · GitHub]', payload)
+    console.error('[Team Link · GitHub]', {
+      ...payload,
+      rawText: debug.rawText,
+    })
     return
   }
 
@@ -66,6 +71,7 @@ export function logGithubFunctionDebug(
       code: extra.code,
       step: extra.step,
       details: extra.details,
+      rawText: debug.rawText,
     })
   }
 }
