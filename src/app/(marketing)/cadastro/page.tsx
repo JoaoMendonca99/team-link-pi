@@ -26,6 +26,143 @@ type FieldErrors = {
   course?: string
 }
 
+type OrientationMiniCardProps = {
+  title: string
+  description: string
+  active?: boolean
+}
+
+function OrientationMiniCard({ title, description, active = false }: OrientationMiniCardProps) {
+  return (
+    <div
+      className={cn(
+        'rounded-2xl border px-4 py-3.5',
+        active
+          ? 'border-primary/45 bg-primary/10 shadow-sm'
+          : 'border-card-outline/70 bg-muted/15',
+      )}
+    >
+      <p className="text-sm font-semibold text-foreground">{title}</p>
+      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{description}</p>
+    </div>
+  )
+}
+
+function SignupStepProgress({ step }: { step: SignupStep }) {
+  const percent = step === 1 ? 50 : 100
+
+  return (
+    <div className="space-y-2" aria-label={`Progresso: etapa ${step} de 2`}>
+      <div className="flex items-center justify-between gap-3 text-xs font-medium">
+        <span className="text-muted-foreground">Progresso do cadastro</span>
+        <span className="shrink-0 text-primary">{step} de 2</span>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-muted/80">
+        <div
+          className="h-full rounded-full bg-primary transition-[width] duration-300 ease-out"
+          style={{ width: `${percent}%` }}
+          role="progressbar"
+          aria-valuenow={percent}
+          aria-valuemin={0}
+          aria-valuemax={100}
+        />
+      </div>
+    </div>
+  )
+}
+
+function SignupOrientationPanel({ step }: { step: SignupStep }) {
+  if (step === 1) {
+    return (
+      <aside
+        className="flex flex-col gap-6 rounded-[1.75rem] border border-card-outline bg-card/80 p-6 shadow-xl sm:p-7 md:h-full md:justify-between"
+        aria-label="Orientação do cadastro"
+      >
+        <div className="space-y-6">
+          <div className="space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">
+              Etapa 1 de 2
+            </p>
+            <h1 className="text-balance text-2xl font-bold leading-tight sm:text-[1.65rem] lg:text-3xl">
+              Crie sua conta no Team Link
+            </h1>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Primeiro criamos seu acesso. Depois você pode completar seu perfil acadêmico com
+              curso, habilidades e áreas de interesse.
+            </p>
+          </div>
+
+          <SignupStepProgress step={1} />
+
+          <div className="space-y-3">
+            <OrientationMiniCard
+              title="Acesso"
+              description="Nome, e-mail e senha."
+              active
+            />
+            <OrientationMiniCard
+              title="Perfil"
+              description="Curso, habilidades e interesses depois."
+            />
+            <OrientationMiniCard
+              title="Projetos"
+              description="Publique ideias ou participe de equipes."
+            />
+          </div>
+        </div>
+
+        <p className="text-xs leading-relaxed text-muted-foreground/90">
+          Você poderá editar essas informações depois no perfil.
+        </p>
+      </aside>
+    )
+  }
+
+  return (
+    <aside
+      className="flex flex-col gap-6 rounded-[1.75rem] border border-card-outline bg-card/80 p-6 shadow-xl sm:p-7 md:h-full md:justify-between"
+      aria-label="Orientação do cadastro"
+    >
+      <div className="space-y-6">
+        <div className="space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">
+            Etapa 2 de 2
+          </p>
+          <h1 className="text-balance text-2xl font-bold leading-tight sm:text-[1.65rem] lg:text-3xl">
+            Complete seu perfil acadêmico
+          </h1>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            Essas informações ajudam outros usuários a encontrarem seu perfil, mas podem ser
+            preenchidas depois.
+          </p>
+        </div>
+
+        <SignupStepProgress step={2} />
+
+        <div className="space-y-3">
+          <OrientationMiniCard
+            title="Curso"
+            description="Ajuda a identificar sua área."
+            active
+          />
+          <OrientationMiniCard
+            title="Habilidades"
+            description="Mostra como você pode contribuir."
+          />
+          <OrientationMiniCard
+            title="Interesses"
+            description="Ajuda a sugerir projetos compatíveis."
+          />
+        </div>
+      </div>
+
+      <p className="rounded-2xl border border-primary/35 bg-primary/10 px-4 py-3 text-sm font-semibold text-primary">
+        Habilidades e áreas de interesse são opcionais.
+      </p>
+    </aside>
+  )
+}
+
 export default function CadastroPage() {
   const router = useRouter()
   const { isAuthenticated, loading } = useSupabaseSession()
@@ -203,26 +340,10 @@ export default function CadastroPage() {
 
   return (
     <div className="bg-gradient-to-b from-muted/50 via-background to-background py-12 sm:py-14">
-      <Container className="grid items-start gap-8 md:grid-cols-[minmax(0,0.95fr)_minmax(0,1fr)] md:gap-10">
-        <div
-          className={cn(
-            'space-y-3 rounded-[1.75rem] border border-card-outline bg-card/80 p-6 shadow-xl sm:p-7',
-            step === 1 ? 'md:py-7' : '',
-          )}
-        >
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">
-            {step === 1 ? 'Etapa 1 de 2' : 'Etapa 2 de 2'}
-          </p>
-          <h1 className="text-2xl font-bold sm:text-3xl">
-            {step === 1 ? 'Crie sua conta' : 'Complete seu perfil'}
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            {step === 1
-              ? 'Comece com o essencial. Leva menos de um minuto.'
-              : 'Conte um pouco sobre você para encontrar projetos compatíveis.'}
-          </p>
-        </div>
+      <Container className="grid items-stretch gap-6 md:grid-cols-2 md:gap-8 lg:gap-10">
+        <SignupOrientationPanel step={step} />
 
+        <div className="flex min-h-0 w-full min-w-0 flex-col">
         <AuthCard
           eyebrow={step === 1 ? 'Cadastro' : 'Perfil'}
           title={step === 1 ? 'Criar conta' : 'Completar perfil'}
@@ -231,12 +352,7 @@ export default function CadastroPage() {
               ? 'Nome, e-mail e senha para começar.'
               : 'Curso obrigatório. Habilidades e interesses são opcionais.'
           }
-          className={cn(
-            'w-full md:ml-auto',
-            step === 1
-              ? 'max-w-md p-6 sm:p-7 [&>div:first-child]:mb-5'
-              : 'max-w-lg p-6 sm:p-7 [&>div:first-child]:mb-5',
-          )}
+          className="h-full w-full max-w-none p-6 sm:p-7 [&>div:first-child]:mb-5"
           footer={
             step === 2 ? (
               <p className="text-xs text-muted-foreground">
@@ -490,6 +606,7 @@ export default function CadastroPage() {
             </Link>
           </p>
         </AuthCard>
+        </div>
       </Container>
     </div>
   )
