@@ -8,9 +8,15 @@ import {
   GitHubPrivateKeyError,
   listInstallationRepositories,
 } from '../_shared/github-app.ts'
-import { assertProjectManager, insertSyncLog, RepositoryCommitsSaveError } from '../_shared/github-db.ts'
+import {
+  assertProjectManager,
+  insertSyncLog,
+  RepositoryCommitsSaveError,
+  RepositoryReleasesSaveError,
+} from '../_shared/github-db.ts'
 import { linkProjectRepositoryCore } from '../_shared/github-link-core.ts'
 import type { CommitVisibility } from '../_shared/github-db.ts'
+import { parseActivitySource } from '../_shared/github-schema.ts'
 import { errorResponse, handleCors, jsonResponse } from '../_shared/http.ts'
 import {
   createAdminClient,
@@ -23,6 +29,7 @@ interface LinkSelectedBody {
   installation_id?: number
   github_repository_id?: number
   commit_visibility?: string
+  activity_source?: string
 }
 
 function safeJwtRelatedDetail(e: unknown, maxLen = 400): string {
@@ -77,6 +84,15 @@ Deno.serve(async (req) => {
 
   const commitVisibility: CommitVisibility =
     body.commit_visibility === 'public' ? 'public' : 'members'
+
+  const activitySource = parseActivitySource(body.activity_source)
+  if (body.activity_source != null && body.activity_source !== '' && !activitySource) {
+    return errorResponse(
+      'activity_source inválido. Use commits, releases ou both.',
+      400,
+    )
+  }
+  const resolvedActivitySource = activitySource ?? 'commits'
 
   const userClient = createUserClientFromRequest(req)
   const canManage = await assertProjectManager(admin, projectId, user.id, userClient)
@@ -146,12 +162,16 @@ Deno.serve(async (req) => {
       installation_id: installationId,
       repository,
       commit_visibility: commitVisibility,
+      activity_source: resolvedActivitySource,
       linked_via: 'github-link-selected-repository',
     })
 
     return jsonResponse(result)
   } catch (error) {
-    if (error instanceof RepositoryCommitsSaveError) {
+    if (
+      error instanceof RepositoryCommitsSaveError ||
+      error instanceof RepositoryReleasesSaveError
+    ) {
       await insertSyncLog(admin, {
         project_id: projectId,
         action: 'link',
@@ -159,7 +179,7 @@ Deno.serve(async (req) => {
         message: error.message,
       }).catch(() => undefined)
 
-      console.error('[github-link-selected-repository] save_repository_commits_failed', {
+      console.error('[github-link-selected-repository] save_repository_activity_failed', {
         code: error.code,
         details_keys: Object.keys(error.details),
       })

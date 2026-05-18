@@ -13,6 +13,7 @@ import {
 } from '@/lib/github/actions'
 import { savePendingGithubProject } from '@/lib/github/pending-project'
 import type {
+  GithubActivitySource,
   GithubAvailableRepository,
   GithubCommitVisibility,
 } from '@/lib/github/types'
@@ -44,6 +45,7 @@ export function ConnectGithubDialog({
 
   const [selectedRepoId, setSelectedRepoId] = useState<number | null>(null)
   const [visibility, setVisibility] = useState<GithubCommitVisibility>('members')
+  const [activitySource, setActivitySource] = useState<GithubActivitySource>('commits')
 
   const selectableRepositories = useMemo(
     () => repositories.filter((repo) => !repo.linked_to_current_project),
@@ -95,6 +97,7 @@ export function ConnectGithubDialog({
     if (!open) return
     setRedirecting(false)
     setVisibility('members')
+    setActivitySource('commits')
     void loadAvailable()
   }, [open, loadAvailable])
 
@@ -147,6 +150,7 @@ export function ConnectGithubDialog({
       installation_id: selectedRepository.installation_id,
       github_repository_id: selectedRepository.github_repository_id,
       commit_visibility: visibility,
+      activity_source: activitySource,
     })
 
     if (!result.ok) {
@@ -155,10 +159,14 @@ export function ConnectGithubDialog({
       return
     }
 
-    const message =
-      result.total_commits_imported > 0
-        ? `Repositório ${result.full_name} vinculado. ${result.total_commits_imported} commit(s) importado(s).`
-        : `Repositório ${result.full_name} vinculado com sucesso.`
+    const parts: string[] = [`Repositório ${result.full_name} vinculado`]
+    if (result.total_commits_imported > 0) {
+      parts.push(`${result.total_commits_imported} commit(s) importado(s)`)
+    }
+    if (result.total_releases_imported > 0) {
+      parts.push(`${result.total_releases_imported} release(s) importada(s)`)
+    }
+    const message = parts.length > 1 ? `${parts[0]}. ${parts.slice(1).join('. ')}.` : `${parts[0]}.`
 
     onLinked?.(message)
     onClose()
@@ -188,6 +196,7 @@ export function ConnectGithubDialog({
           selectableRepositories={selectableRepositories}
           selectedRepoId={selectedRepoId}
           visibility={visibility}
+          activitySource={activitySource}
           busy={busy}
           redirecting={redirecting}
           showInvalidWarning={showInvalidWarning}
@@ -195,6 +204,7 @@ export function ConnectGithubDialog({
           onRetry={() => void loadAvailable()}
           onSelectRepo={setSelectedRepoId}
           onVisibilityChange={setVisibility}
+          onActivitySourceChange={setActivitySource}
           onLink={() => void handleLink()}
           onAuthorizeMore={() => void handleAuthorizeMore()}
         />
@@ -211,6 +221,7 @@ function ConnectGithubDialogBody({
   selectableRepositories,
   selectedRepoId,
   visibility,
+  activitySource,
   busy,
   redirecting,
   showInvalidWarning,
@@ -218,6 +229,7 @@ function ConnectGithubDialogBody({
   onRetry,
   onSelectRepo,
   onVisibilityChange,
+  onActivitySourceChange,
   onLink,
   onAuthorizeMore,
 }: {
@@ -228,6 +240,7 @@ function ConnectGithubDialogBody({
   selectableRepositories: GithubAvailableRepository[]
   selectedRepoId: number | null
   visibility: GithubCommitVisibility
+  activitySource: GithubActivitySource
   busy: boolean
   redirecting: boolean
   showInvalidWarning: boolean
@@ -235,6 +248,7 @@ function ConnectGithubDialogBody({
   onRetry: () => void
   onSelectRepo: (id: number) => void
   onVisibilityChange: (value: GithubCommitVisibility) => void
+  onActivitySourceChange: (value: GithubActivitySource) => void
   onLink: () => void
   onAuthorizeMore: () => void
 }) {
@@ -345,6 +359,60 @@ function ConnectGithubDialogBody({
             )}
 
             {selectableRepositories.length > 0 ? (
+              <>
+              <fieldset className="space-y-2 rounded-2xl border border-card-outline bg-muted/20 p-4">
+                <legend className="px-1 text-sm font-semibold">
+                  O que deseja acompanhar?
+                </legend>
+                <label className="flex cursor-pointer items-start gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="activity_source"
+                    className="mt-1"
+                    checked={activitySource === 'commits'}
+                    onChange={() => onActivitySourceChange('commits')}
+                    disabled={phase === 'linking'}
+                  />
+                  <span>
+                    <span className="font-medium">Commits</span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      Mostra alterações técnicas do código.
+                    </span>
+                  </span>
+                </label>
+                <label className="flex cursor-pointer items-start gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="activity_source"
+                    className="mt-1"
+                    checked={activitySource === 'releases'}
+                    onChange={() => onActivitySourceChange('releases')}
+                    disabled={phase === 'linking'}
+                  />
+                  <span>
+                    <span className="font-medium">Releases / versões</span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      Mostra versões publicadas, descrição da atualização e arquivos de download.
+                    </span>
+                  </span>
+                </label>
+                <label className="flex cursor-pointer items-start gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name="activity_source"
+                    className="mt-1"
+                    checked={activitySource === 'both'}
+                    onChange={() => onActivitySourceChange('both')}
+                    disabled={phase === 'linking'}
+                  />
+                  <span>
+                    <span className="font-medium">Commits e releases</span>
+                    <span className="mt-0.5 block text-xs text-muted-foreground">
+                      Mostra commits e versões publicadas.
+                    </span>
+                  </span>
+                </label>
+              </fieldset>
               <fieldset className="space-y-2 rounded-2xl border border-card-outline bg-muted/20 p-4">
                 <legend className="px-1 text-sm font-semibold">
                   Visibilidade dos commits no Team Link
@@ -370,6 +438,7 @@ function ConnectGithubDialogBody({
                   Público (página do projeto)
                 </label>
               </fieldset>
+              </>
             ) : null}
           </div>
         ) : null}

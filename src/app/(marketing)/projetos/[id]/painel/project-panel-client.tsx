@@ -19,13 +19,20 @@ import { Container } from '@/components/layout/container'
 import {
   syncProjectGithubRepository,
   unlinkProjectGithubRepository,
+  updateGithubActivitySource,
   updateGithubCommitVisibility,
 } from '@/lib/github/actions'
 import {
   loadProjectGithubCommits,
+  loadProjectGithubReleases,
   loadProjectGithubRepository,
 } from '@/lib/github/loaders'
-import type { GithubCommitItem, GithubRepositoryLink } from '@/lib/github/types'
+import type {
+  GithubActivitySource,
+  GithubCommitItem,
+  GithubReleaseItem,
+  GithubRepositoryLink,
+} from '@/lib/github/types'
 import { mapPublicDetailToDisplay, type ProjectDisplay } from '@/lib/projects/display'
 import {
   canAccessProjectPanel,
@@ -60,8 +67,10 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
 
   const [repository, setRepository] = useState<GithubRepositoryLink | null>(null)
   const [commits, setCommits] = useState<GithubCommitItem[]>([])
+  const [releases, setReleases] = useState<GithubReleaseItem[]>([])
   const [repoLoading, setRepoLoading] = useState(false)
   const [commitsLoading, setCommitsLoading] = useState(false)
+  const [releasesLoading, setReleasesLoading] = useState(false)
   const [githubError, setGithubError] = useState<string | null>(null)
   const [actionLoading, setActionLoading] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
@@ -178,23 +187,37 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
     if (!project || !hasPanelAccess) return
     setRepoLoading(true)
     setCommitsLoading(true)
+    setReleasesLoading(true)
     setGithubError(null)
     try {
-      const [repo, commitRows] = await Promise.all([
-        loadProjectGithubRepository(project.id),
-        loadProjectGithubCommits(project.id, 5),
-      ])
+      const repo = await loadProjectGithubRepository(project.id)
       setRepository(repo)
+
+      const showCommits =
+        repo != null &&
+        (repo.activity_source === 'commits' || repo.activity_source === 'both')
+      const showReleases =
+        repo != null &&
+        (repo.activity_source === 'releases' || repo.activity_source === 'both')
+
+      const [commitRows, releaseRows] = await Promise.all([
+        showCommits ? loadProjectGithubCommits(project.id, 5) : Promise.resolve([]),
+        showReleases ? loadProjectGithubReleases(project.id, 5) : Promise.resolve([]),
+      ])
+
       setCommits(commitRows)
+      setReleases(releaseRows)
     } catch (error) {
       setGithubError(
         error instanceof Error ? error.message : 'Não foi possível carregar dados do GitHub.',
       )
       setRepository(null)
       setCommits([])
+      setReleases([])
     } finally {
       setRepoLoading(false)
       setCommitsLoading(false)
+      setReleasesLoading(false)
     }
   }, [hasPanelAccess, project])
 
@@ -213,11 +236,35 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
       setFeedback(result.message)
       return
     }
+    const parts: string[] = []
+    if (repository.activity_source !== 'releases' && result.commits_synced > 0) {
+      parts.push(`${result.commits_synced} commit(s)`)
+    }
+    if (repository.activity_source !== 'commits' && result.releases_synced > 0) {
+      parts.push(`${result.releases_synced} release(s)`)
+    }
     setFeedback(
-      result.commits_synced > 0
-        ? `${result.commits_synced} commit(s) sincronizado(s).`
+      parts.length > 0
+        ? `${parts.join(' e ')} sincronizado(s).`
         : 'Repositório já estava atualizado.',
     )
+    await refreshGithub()
+  }
+
+  async function handleChangeActivitySource(next: GithubActivitySource) {
+    if (!repository || repository.activity_source === next) return
+    setActionLoading(true)
+    setFeedback(null)
+    const result = await updateGithubActivitySource(repository.id, next)
+    setActionLoading(false)
+    if (!result.ok) {
+      setFeedback(result.message)
+      return
+    }
+    const parts: string[] = [`Acompanhamento alterado para ${next === 'both' ? 'commits e releases' : next === 'releases' ? 'releases' : 'commits'}.`]
+    if (result.commits_synced > 0) parts.push(`${result.commits_synced} commit(s) sincronizado(s)`)
+    if (result.releases_synced > 0) parts.push(`${result.releases_synced} release(s) sincronizada(s)`)
+    setFeedback(parts.join(' '))
     await refreshGithub()
   }
 
@@ -380,8 +427,10 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
         <PanelGithubSection
           repository={repository}
           commits={commits}
+          releases={releases}
           repoLoading={repoLoading}
           commitsLoading={commitsLoading}
+          releasesLoading={releasesLoading}
           actionLoading={actionLoading}
           isManager={isManager}
           feedback={feedback}
@@ -389,6 +438,7 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
           onSync={() => void handleSync()}
           onUnlink={() => void handleUnlink()}
           onToggleVisibility={() => void handleToggleVisibility()}
+          onChangeActivitySource={(source) => void handleChangeActivitySource(source)}
           onOpenCommit={setSelectedCommit}
         />
       </Container>

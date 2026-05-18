@@ -6,6 +6,7 @@ import {
   type GithubFunctionDebugInfo,
 } from './function-debug'
 import type {
+  GithubActivitySource,
   GithubAvailableInstallation,
   GithubAvailableRepository,
   GithubCommitVisibility,
@@ -19,6 +20,9 @@ export const GITHUB_START_INSTALLATION_FUNCTION = 'github-start-installation'
 
 export const GITHUB_LIST_AVAILABLE_REPOSITORIES_FUNCTION =
   'github-list-available-repositories'
+
+export const GITHUB_UPDATE_ACTIVITY_SOURCE_FUNCTION =
+  'github-update-repository-activity-source'
 
 export const GITHUB_LIST_AVAILABLE_USER_MESSAGE =
   'Não foi possível carregar repositórios do GitHub.'
@@ -616,6 +620,7 @@ export async function linkSelectedGithubRepository(input: {
   installation_id: number
   github_repository_id: number
   commit_visibility?: GithubCommitVisibility
+  activity_source?: GithubActivitySource
 }): Promise<
   | {
       ok: true
@@ -623,7 +628,9 @@ export async function linkSelectedGithubRepository(input: {
       full_name: string
       private: boolean
       default_branch: string
+      activity_source: GithubActivitySource
       total_commits_imported: number
+      total_releases_imported: number
     }
   | { ok: false; message: string }
 > {
@@ -634,6 +641,7 @@ export async function linkSelectedGithubRepository(input: {
       installation_id: input.installation_id,
       github_repository_id: input.github_repository_id,
       commit_visibility: input.commit_visibility ?? 'members',
+      activity_source: input.activity_source ?? 'commits',
     },
   })
 
@@ -668,9 +676,17 @@ export async function linkSelectedGithubRepository(input: {
     private: Boolean(payload?.private),
     default_branch:
       typeof payload?.default_branch === 'string' ? payload.default_branch : 'main',
+    activity_source:
+      payload?.activity_source === 'releases' || payload?.activity_source === 'both'
+        ? payload.activity_source
+        : 'commits',
     total_commits_imported:
       typeof payload?.total_commits_imported === 'number'
         ? payload.total_commits_imported
+        : 0,
+    total_releases_imported:
+      typeof payload?.total_releases_imported === 'number'
+        ? payload.total_releases_imported
         : 0,
   }
 }
@@ -744,7 +760,10 @@ export async function linkProjectGithubRepository(input: {
 
 export async function syncProjectGithubRepository(
   projectRepositoryId: string,
-): Promise<{ ok: true; commits_synced: number } | { ok: false; message: string }> {
+): Promise<
+  | { ok: true; commits_synced: number; releases_synced: number }
+  | { ok: false; message: string }
+> {
   const client = getSupabaseClient()
   const { data, error } = await client.functions.invoke('github-sync-repository', {
     body: { project_repository_id: projectRepositoryId },
@@ -764,6 +783,65 @@ export async function syncProjectGithubRepository(
     ok: true,
     commits_synced:
       typeof payload?.commits_synced === 'number' ? payload.commits_synced : 0,
+    releases_synced:
+      typeof payload?.releases_synced === 'number' ? payload.releases_synced : 0,
+  }
+}
+
+export async function updateGithubActivitySource(
+  projectRepositoryId: string,
+  activitySource: GithubActivitySource,
+): Promise<
+  | {
+      ok: true
+      activity_source: GithubActivitySource
+      commits_synced: number
+      releases_synced: number
+    }
+  | { ok: false; message: string }
+> {
+  const client = getSupabaseClient()
+  const { data, error } = await client.functions.invoke(
+    GITHUB_UPDATE_ACTIVITY_SOURCE_FUNCTION,
+    {
+      body: {
+        project_repository_id: projectRepositoryId,
+        activity_source: activitySource,
+      },
+    },
+  )
+
+  if (error) {
+    return {
+      ok: false,
+      message: friendlyFunctionError(
+        error.message,
+        'Não foi possível alterar o acompanhamento.',
+      ),
+    }
+  }
+
+  const payload = data as Record<string, unknown> | null
+  const fnError = readFunctionError(payload)
+  if (fnError) {
+    return {
+      ok: false,
+      message: friendlyFunctionError(fnError, 'Não foi possível alterar o acompanhamento.'),
+    }
+  }
+
+  const source =
+    payload?.activity_source === 'releases' || payload?.activity_source === 'both'
+      ? payload.activity_source
+      : 'commits'
+
+  return {
+    ok: true,
+    activity_source: source,
+    commits_synced:
+      typeof payload?.commits_synced === 'number' ? payload.commits_synced : 0,
+    releases_synced:
+      typeof payload?.releases_synced === 'number' ? payload.releases_synced : 0,
   }
 }
 

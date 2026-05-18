@@ -473,6 +473,94 @@ export function branchFromRef(ref: string): string {
   return ref.replace(/^refs\/heads\//, '')
 }
 
+export interface GitHubReleaseAsset {
+  id?: number
+  name?: string
+  label?: string | null
+  content_type?: string | null
+  size?: number
+  download_count?: number
+  browser_download_url?: string | null
+}
+
+export interface GitHubReleaseItem {
+  id: number
+  tag_name: string
+  name?: string | null
+  body?: string | null
+  html_url: string
+  draft?: boolean
+  prerelease?: boolean
+  author?: { login?: string | null } | null
+  published_at?: string | null
+  created_at?: string | null
+  updated_at?: string | null
+  assets?: GitHubReleaseAsset[]
+}
+
+export interface NormalizedRelease {
+  github_release_id: number
+  tag_name: string
+  name: string | null
+  body: string | null
+  html_url: string
+  draft: boolean
+  prerelease: boolean
+  author_login: string | null
+  published_at: string | null
+  created_at_github: string | null
+  updated_at_github: string | null
+  assets: GitHubReleaseAsset[]
+  raw_release: Record<string, unknown>
+}
+
+export async function listRepositoryReleases(
+  accessToken: string,
+  ownerLogin: string,
+  repoName: string,
+  perPage = 30,
+): Promise<GitHubReleaseItem[]> {
+  const params = new URLSearchParams({ per_page: String(perPage) })
+  const response = await githubFetch(
+    `/repos/${ownerLogin}/${repoName}/releases?${params.toString()}`,
+    accessToken,
+  )
+  if (!response.ok) {
+    throw await mapGitHubError(response)
+  }
+  const data = (await response.json()) as GitHubReleaseItem[]
+  return Array.isArray(data) ? data : []
+}
+
+export function normalizeApiReleases(releases: GitHubReleaseItem[]): NormalizedRelease[] {
+  return releases
+    .filter((item) => Number.isFinite(item.id) && item.id > 0)
+    .map((item) => normalizeReleaseItem(item))
+}
+
+export function normalizeWebhookRelease(release: GitHubReleaseItem): NormalizedRelease {
+  return normalizeReleaseItem(release)
+}
+
+function normalizeReleaseItem(item: GitHubReleaseItem): NormalizedRelease {
+  const assets = Array.isArray(item.assets) ? item.assets : []
+  return {
+    github_release_id: item.id,
+    tag_name: item.tag_name?.trim() ? item.tag_name.trim() : `release-${item.id}`,
+    name: item.name?.trim() ? item.name.trim() : null,
+    body: item.body ?? null,
+    html_url: item.html_url ?? '',
+    draft: Boolean(item.draft),
+    prerelease: Boolean(item.prerelease),
+    author_login: item.author?.login?.trim() ? item.author.login.trim() : null,
+    published_at: item.published_at ?? null,
+    created_at_github: item.created_at ?? null,
+    updated_at_github: item.updated_at ?? null,
+    assets,
+    raw_release: item as unknown as Record<string, unknown>,
+  }
+}
+
 export async function verifyWebhookSignature(
   rawBody: string,
   signatureHeader: string | null,

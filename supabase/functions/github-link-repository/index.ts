@@ -6,6 +6,7 @@ import {
 import { assertProjectManager, insertSyncLog } from '../_shared/github-db.ts'
 import { linkProjectRepositoryCore } from '../_shared/github-link-core.ts'
 import type { CommitVisibility } from '../_shared/github-db.ts'
+import { parseActivitySource } from '../_shared/github-schema.ts'
 import { errorResponse, handleCors, jsonResponse } from '../_shared/http.ts'
 import {
   createAdminClient,
@@ -19,6 +20,7 @@ interface LinkRepositoryBody {
   owner?: string
   repo?: string
   commit_visibility?: string
+  activity_source?: string
 }
 
 Deno.serve(async (req) => {
@@ -54,6 +56,15 @@ Deno.serve(async (req) => {
   const commitVisibility: CommitVisibility =
     body.commit_visibility === 'public' ? 'public' : 'members'
 
+  const activitySource = parseActivitySource(body.activity_source)
+  if (body.activity_source != null && body.activity_source !== '' && !activitySource) {
+    return errorResponse(
+      'activity_source inválido. Use commits, releases ou both.',
+      400,
+    )
+  }
+  const resolvedActivitySource = activitySource ?? 'commits'
+
   const userClient = createUserClientFromRequest(req)
   const canManage = await assertProjectManager(admin, projectId, user.id, userClient)
   if (!canManage) {
@@ -76,6 +87,7 @@ Deno.serve(async (req) => {
       installation_id: installationId,
       repository,
       commit_visibility: commitVisibility,
+      activity_source: resolvedActivitySource,
       linked_via: 'github-link-repository',
     })
 

@@ -4,8 +4,10 @@ import {
   getProjectRepositoryById,
   insertSyncLog,
   touchRepositorySync,
+  updateRepositoryActivitySource,
 } from '../_shared/github-db.ts'
 import { syncRepositoryByActivitySource } from '../_shared/github-sync-core.ts'
+import { parseActivitySource } from '../_shared/github-schema.ts'
 import { errorResponse, handleCors, jsonResponse } from '../_shared/http.ts'
 import {
   createAdminClient,
@@ -13,8 +15,9 @@ import {
   getUserFromRequest,
 } from '../_shared/supabase-admin.ts'
 
-interface SyncRepositoryBody {
+interface UpdateActivitySourceBody {
   project_repository_id?: string
+  activity_source?: string
 }
 
 Deno.serve(async (req) => {
@@ -31,16 +34,24 @@ Deno.serve(async (req) => {
     return errorResponse('Autenticação obrigatória.', 401)
   }
 
-  let body: SyncRepositoryBody
+  let body: UpdateActivitySourceBody
   try {
-    body = (await req.json()) as SyncRepositoryBody
+    body = (await req.json()) as UpdateActivitySourceBody
   } catch {
     return errorResponse('JSON inválido.', 400)
   }
 
   const projectRepositoryId = body.project_repository_id?.trim()
+  const activitySource = parseActivitySource(body.activity_source)
+
   if (!projectRepositoryId) {
     return errorResponse('project_repository_id é obrigatório.', 400)
+  }
+  if (!activitySource) {
+    return errorResponse(
+      'activity_source inválido. Use commits, releases ou both.',
+      400,
+    )
   }
 
   const repository = await getProjectRepositoryById(admin, projectRepositoryId)
@@ -56,42 +67,54 @@ Deno.serve(async (req) => {
     userClient,
   )
   if (!canManage) {
-    return errorResponse('Sem permissão para sincronizar este repositório.', 403)
+    return errorResponse('Sem permissão para alterar este repositório.', 403)
   }
 
   try {
-    const accessToken = await createInstallationAccessToken(repository.installation_id)
-    const { commits_synced, releases_synced } = await syncRepositoryByActivitySource(
+    const updated = await updateRepositoryActivitySource(
       admin,
-      repository,
-      accessToken,
+      repository.id,
+      activitySource,
     )
 
-    await touchRepositorySync(admin, repository.id)
+    const accessToken = await createInstallationAccessToken(updated.installation_id)
+    const { commits_synced, releases_synced } = await syncRepositoryByActivitySource(
+      admin,
+      updated,
+      accessToken,
+      activitySource,
+    )
+
+    await touchRepositorySync(admin, updated.id)
 
     await insertSyncLog(admin, {
-      project_id: repository.project_id,
-      project_repository_id: repository.id,
-      action: 'sync',
+      project_id: updated.project_id,
+      project_repository_id: updated.id,
+      action: 'update_activity_source',
       status: 'success',
-      message: 'Sincronização concluída.',
+      message: 'Acompanhamento atualizado.',
+      commits_synced,
+      releases_synced,
+      metadata: { activity_source: activitySource },
+    })
+
+    return jsonResponse({
+      activity_source: activitySource,
       commits_synced,
       releases_synced,
     })
-
-    return jsonResponse({ commits_synced, releases_synced })
   } catch (error) {
     const message =
       error instanceof GitHubApiError
         ? error.message
         : error instanceof Error
           ? error.message
-          : 'Não foi possível sincronizar o repositório.'
+          : 'Não foi possível atualizar o acompanhamento.'
 
     await insertSyncLog(admin, {
       project_id: repository.project_id,
       project_repository_id: repository.id,
-      action: 'sync',
+      action: 'update_activity_source',
       status: 'error',
       message,
     }).catch(() => undefined)

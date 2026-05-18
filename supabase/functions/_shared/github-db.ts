@@ -1,18 +1,22 @@
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1'
 
-import type { GitHubInstallationMeta, NormalizedCommit } from './github-app.ts'
+import type { GitHubInstallationMeta, NormalizedCommit, NormalizedRelease } from './github-app.ts'
 import {
   buildGithubInstallationRow,
   buildGithubSyncLogRow,
   buildGithubWebhookEventRow,
   buildProjectGithubCommitRow,
+  buildProjectGithubReleaseRow,
   buildProjectGithubRepositoryRow,
+  defaultActivitySource,
   PROJECT_GITHUB_REPOSITORY_SELECT,
+  type ActivitySource,
   type CommitVisibility,
   type ProjectGithubRepositoryRow,
 } from './github-schema.ts'
 
-export type { CommitVisibility, ProjectGithubRepositoryRow }
+export type { ActivitySource, CommitVisibility, ProjectGithubRepositoryRow }
+export { defaultActivitySource }
 
 export async function assertProjectManager(
   admin: SupabaseClient,
@@ -138,6 +142,7 @@ export async function upsertProjectRepository(
     private: boolean
     html_url: string
     commit_visibility: CommitVisibility
+    activity_source?: ActivitySource
     linked_by: string
     metadata?: Record<string, unknown>
   },
@@ -154,6 +159,7 @@ export async function upsertProjectRepository(
     private: input.private,
     html_url: input.html_url,
     commit_visibility: input.commit_visibility,
+    activity_source: input.activity_source ?? 'commits',
     is_active: true,
     linked_by: input.linked_by,
     linked_at: now,
@@ -197,6 +203,18 @@ export class RepositoryCommitsSaveError extends Error {
   constructor(details: Record<string, unknown>) {
     super('Não foi possível salvar os commits do repositório.')
     this.name = 'RepositoryCommitsSaveError'
+    this.details = details
+  }
+}
+
+export class RepositoryReleasesSaveError extends Error {
+  readonly step = 'save_repository_releases' as const
+  readonly code = 'repository_releases_save_failed' as const
+  readonly details: Record<string, unknown>
+
+  constructor(details: Record<string, unknown>) {
+    super('Não foi possível salvar as releases do repositório.')
+    this.name = 'RepositoryReleasesSaveError'
     this.details = details
   }
 }
@@ -314,6 +332,133 @@ export async function upsertProjectCommits(
   return { ok: true, count: commits.length }
 }
 
+export type UpsertRepositoryReleasesResult =
+  | { ok: true; count: number }
+  | {
+      ok: false
+      supabase_error_code: string | null
+      supabase_error_message: string | null
+      supabase_error_details: string | null
+      supabase_error_hint: string | null
+      payload_keys: string[]
+      build_error: string | null
+    }
+
+export async function upsertRepositoryReleases(
+  admin: SupabaseClient,
+  ctx: {
+    project_repository_id: string
+    project_id: string
+    github_repository_id: number
+  },
+  releases: NormalizedRelease[],
+): Promise<UpsertRepositoryReleasesResult> {
+  if (releases.length === 0) {
+    return { ok: true, count: 0 }
+  }
+
+  let rows: Record<string, unknown>[]
+  try {
+    rows = releases.map((release) =>
+      buildProjectGithubReleaseRow({
+        project_repository_id: ctx.project_repository_id,
+        project_id: ctx.project_id,
+        github_repository_id: ctx.github_repository_id,
+        github_release_id: release.github_release_id,
+        tag_name: release.tag_name,
+        name: release.name,
+        body: release.body,
+        html_url: release.html_url,
+        draft: release.draft,
+        prerelease: release.prerelease,
+        is_active: true,
+        author_login: release.author_login,
+        published_at: release.published_at,
+        created_at_github: release.created_at_github,
+        updated_at_github: release.updated_at_github,
+        assets: release.assets,
+        raw_release: release.raw_release,
+      }),
+    )
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : 'unknown_build_error'
+    return {
+      ok: false,
+      supabase_error_code: null,
+      supabase_error_message: msg,
+      supabase_error_details: null,
+      supabase_error_hint: null,
+      payload_keys: [],
+      build_error: msg,
+    }
+  }
+
+  const { error } = await admin.from('project_github_releases').upsert(rows, {
+    onConflict: 'project_repository_id,github_release_id',
+  })
+
+  if (error) {
+    console.error('[github-db] project_github_releases upsert failed', {
+      code: error.code,
+      message: error.message,
+    })
+    return {
+      ok: false,
+      supabase_error_code: error.code ?? null,
+      supabase_error_message: error.message ?? null,
+      supabase_error_details:
+        typeof error.details === 'string' ? error.details : error.details != null
+          ? String(error.details)
+          : null,
+      supabase_error_hint: error.hint ?? null,
+      payload_keys: Object.keys(rows[0] ?? {}),
+      build_error: null,
+    }
+  }
+
+  return { ok: true, count: releases.length }
+}
+
+export async function deactivateRepositoryRelease(
+  admin: SupabaseClient,
+  projectRepositoryId: string,
+  githubReleaseId: number,
+): Promise<void> {
+  await admin
+    .from('project_github_releases')
+    .update({ is_active: false })
+    .eq('project_repository_id', projectRepositoryId)
+    .eq('github_release_id', githubReleaseId)
+}
+
+export async function updateRepositoryActivitySource(
+  admin: SupabaseClient,
+  projectRepositoryId: string,
+  activitySource: ActivitySource,
+): Promise<ProjectGithubRepositoryRow> {
+  const { data, error } = await admin
+    .from('project_github_repositories')
+    .update({ activity_source: activitySource })
+    .eq('id', projectRepositoryId)
+    .eq('is_active', true)
+    .select(PROJECT_GITHUB_REPOSITORY_SELECT)
+    .single()
+
+  if (error || !data) {
+    throw new Error('Não foi possível atualizar o acompanhamento do repositório.')
+  }
+
+  return data as ProjectGithubRepositoryRow
+}
+
+export function repositoryTracksCommits(activitySource: ActivitySource): boolean {
+  return activitySource === 'commits' || activitySource === 'both'
+}
+
+export function repositoryTracksReleases(activitySource: ActivitySource): boolean {
+  return activitySource === 'releases' || activitySource === 'both'
+}
+
 export async function touchRepositorySync(
   admin: SupabaseClient,
   projectRepositoryId: string,
@@ -337,12 +482,16 @@ export async function insertSyncLog(
     status: string
     message?: string | null
     commits_synced?: number
+    releases_synced?: number
     metadata?: Record<string, unknown>
   },
 ): Promise<void> {
   const metadata: Record<string, unknown> = { ...(input.metadata ?? {}) }
   if (input.commits_synced !== undefined) {
     metadata.commits_synced = input.commits_synced
+  }
+  if (input.releases_synced !== undefined) {
+    metadata.releases_synced = input.releases_synced
   }
 
   const row = buildGithubSyncLogRow({

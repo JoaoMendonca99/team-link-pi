@@ -2,6 +2,17 @@
 
 export type CommitVisibility = 'members' | 'public'
 
+export type ActivitySource = 'commits' | 'releases' | 'both'
+
+export function parseActivitySource(value: unknown): ActivitySource | null {
+  if (value === 'commits' || value === 'releases' || value === 'both') return value
+  return null
+}
+
+export function defaultActivitySource(value: unknown): ActivitySource {
+  return parseActivitySource(value) ?? 'commits'
+}
+
 export interface GithubInstallationInsert {
   installation_id: number
   app_id: number
@@ -25,10 +36,31 @@ export interface ProjectGithubRepositoryInsert {
   private: boolean
   html_url: string
   commit_visibility: CommitVisibility
+  activity_source: ActivitySource
   is_active: boolean
   linked_by: string
   linked_at: string
   metadata: Record<string, unknown>
+}
+
+export interface ProjectGithubReleaseInsert {
+  project_repository_id: string
+  project_id: string
+  github_repository_id: number
+  github_release_id: number
+  tag_name: string
+  name: string | null
+  body: string | null
+  html_url: string
+  draft: boolean
+  prerelease: boolean
+  is_active: boolean
+  author_login: string | null
+  published_at: string | null
+  created_at_github: string | null
+  updated_at_github: string | null
+  assets: unknown[] | Record<string, unknown> | null
+  raw_release: Record<string, unknown>
 }
 
 export interface ProjectGithubCommitInsert {
@@ -83,6 +115,7 @@ export interface ProjectGithubRepositoryRow {
   private: boolean
   html_url: string
   commit_visibility: CommitVisibility
+  activity_source: ActivitySource
   is_active: boolean
   last_synced_at: string | null
   linked_by: string | null
@@ -112,10 +145,31 @@ const REPOSITORY_KEYS = new Set([
   'private',
   'html_url',
   'commit_visibility',
+  'activity_source',
   'is_active',
   'linked_by',
   'linked_at',
   'metadata',
+] as const)
+
+const RELEASE_KEYS = new Set([
+  'project_repository_id',
+  'project_id',
+  'github_repository_id',
+  'github_release_id',
+  'tag_name',
+  'name',
+  'body',
+  'html_url',
+  'draft',
+  'prerelease',
+  'is_active',
+  'author_login',
+  'published_at',
+  'created_at_github',
+  'updated_at_github',
+  'assets',
+  'raw_release',
 ] as const)
 
 const COMMIT_KEYS = new Set([
@@ -236,5 +290,38 @@ export function buildGithubWebhookEventRow(
   return pickAllowed(input as unknown as Record<string, unknown>, WEBHOOK_EVENT_KEYS)
 }
 
+export function buildProjectGithubReleaseRow(
+  input: ProjectGithubReleaseInsert,
+): Record<string, unknown> {
+  if (!Number.isFinite(input.github_release_id) || input.github_release_id <= 0) {
+    throw new Error('Release inválida: github_release_id ausente.')
+  }
+
+  const tagName = input.tag_name?.trim() ? input.tag_name.trim() : `release-${input.github_release_id}`
+
+  return pickAllowed(
+    {
+      project_repository_id: input.project_repository_id,
+      project_id: input.project_id,
+      github_repository_id: input.github_repository_id,
+      github_release_id: input.github_release_id,
+      tag_name: tagName,
+      name: input.name,
+      body: input.body,
+      html_url: input.html_url,
+      draft: input.draft,
+      prerelease: input.prerelease,
+      is_active: input.is_active,
+      author_login: input.author_login,
+      published_at: input.published_at,
+      created_at_github: input.created_at_github,
+      updated_at_github: input.updated_at_github,
+      assets: input.assets ?? [],
+      raw_release: input.raw_release ?? {},
+    } as unknown as Record<string, unknown>,
+    RELEASE_KEYS,
+  )
+}
+
 export const PROJECT_GITHUB_REPOSITORY_SELECT =
-  'id, project_id, installation_id, github_repository_id, owner_login, repo_name, full_name, default_branch, private, html_url, commit_visibility, is_active, last_synced_at, linked_by, linked_at'
+  'id, project_id, installation_id, github_repository_id, owner_login, repo_name, full_name, default_branch, private, html_url, commit_visibility, activity_source, is_active, last_synced_at, linked_by, linked_at'

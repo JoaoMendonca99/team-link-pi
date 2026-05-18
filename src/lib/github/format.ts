@@ -42,6 +42,39 @@ export function commitVisibilityLabel(visibility: string | null | undefined): st
   return 'Somente membros'
 }
 
+export function activitySourceLabel(source: string | null | undefined): string {
+  if (source === 'releases') return 'Releases'
+  if (source === 'both') return 'Commits e releases'
+  return 'Commits'
+}
+
+export function releaseDisplayName(release: {
+  tag_name: string
+  name: string | null
+}): string {
+  const name = release.name?.trim()
+  if (name && name !== release.tag_name) return name
+  return release.tag_name
+}
+
+export function releaseBodyPreview(body: string | null, maxLength = 220): string {
+  if (!body?.trim()) return ''
+  const normalized = body.trim().replace(/\s+/g, ' ')
+  if (normalized.length <= maxLength) return normalized
+  return `${normalized.slice(0, maxLength)}…`
+}
+
+export function releaseAuthorLabel(release: { author_login: string | null }): string {
+  return release.author_login?.trim() || 'Autor desconhecido'
+}
+
+export function formatReleaseAssetSize(bytes: number | undefined): string {
+  if (bytes == null || !Number.isFinite(bytes) || bytes <= 0) return ''
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
 export function listChangedFiles(files: Record<string, unknown> | null): string[] {
   if (!files) return []
   const added = Array.isArray(files.added)

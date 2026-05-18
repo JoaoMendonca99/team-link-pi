@@ -1,5 +1,7 @@
 export type GithubCommitVisibility = 'members' | 'public'
 
+export type GithubActivitySource = 'commits' | 'releases' | 'both'
+
 export interface GithubRepositoryLink {
   id: string
   project_id: string
@@ -12,9 +14,36 @@ export interface GithubRepositoryLink {
   private: boolean
   html_url: string
   commit_visibility: GithubCommitVisibility
+  activity_source: GithubActivitySource
   is_active: boolean
   last_synced_at: string | null
   linked_at: string | null
+}
+
+export interface GithubReleaseAsset {
+  id?: number
+  name?: string
+  size?: number
+  browser_download_url?: string | null
+  download_count?: number
+  content_type?: string | null
+}
+
+export interface GithubReleaseItem {
+  id: string | null
+  project_repository_id: string | null
+  project_id: string | null
+  repository_full_name: string | null
+  github_release_id: number
+  tag_name: string
+  name: string | null
+  body: string | null
+  html_url: string | null
+  draft: boolean
+  prerelease: boolean
+  author_login: string | null
+  published_at: string | null
+  assets: GithubReleaseAsset[]
 }
 
 export interface GithubCommitItem {
