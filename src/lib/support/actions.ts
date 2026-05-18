@@ -1,6 +1,11 @@
 import { getSupabaseClient } from '@/lib/supabase/client'
 
-import type { SupportTicketDetail, SupportTicketListItem, SupportTicketStatus } from './types'
+import type {
+  SupportProjectTicketStats,
+  SupportTicketDetail,
+  SupportTicketListItem,
+  SupportTicketStatus,
+} from './types'
 
 function readFunctionError(payload: Record<string, unknown> | null): string | null {
   if (typeof payload?.message === 'string') return payload.message
@@ -33,6 +38,52 @@ export async function generateSupportApiKey(
     ok: true,
     api_key: apiKey,
     last4: typeof payload?.last4 === 'string' ? payload.last4 : apiKey.slice(-4),
+  }
+}
+
+export async function getProjectSupportTicketStats(
+  projectId: string,
+): Promise<{ ok: true; stats: SupportProjectTicketStats } | { ok: false; message: string }> {
+  const client = getSupabaseClient()
+  const { data, error } = await client.functions.invoke('support-get-project-ticket-stats', {
+    body: { project_id: projectId },
+  })
+  const payload = data as Record<string, unknown> | null
+  const fnError = readFunctionError(payload)
+  if (payload?.ok === false || (error && fnError)) {
+    return {
+      ok: false,
+      message: friendly(fnError ?? undefined, 'Não foi possível carregar estatísticas.'),
+    }
+  }
+  if (error) {
+    return {
+      ok: false,
+      message: friendly(error.message, 'Não foi possível carregar estatísticas.'),
+    }
+  }
+  const waiting =
+    typeof payload?.waiting_support === 'number' ? payload.waiting_support : null
+  const inProgress = typeof payload?.in_progress === 'number' ? payload.in_progress : null
+  const resolvedToday =
+    typeof payload?.resolved_today === 'number' ? payload.resolved_today : null
+  const totalOpen = typeof payload?.total_open === 'number' ? payload.total_open : null
+  if (
+    waiting === null ||
+    inProgress === null ||
+    resolvedToday === null ||
+    totalOpen === null
+  ) {
+    return { ok: false, message: 'Resposta inválida ao carregar estatísticas.' }
+  }
+  return {
+    ok: true,
+    stats: {
+      waiting_support: waiting,
+      in_progress: inProgress,
+      resolved_today: resolvedToday,
+      total_open: totalOpen,
+    },
   }
 }
 

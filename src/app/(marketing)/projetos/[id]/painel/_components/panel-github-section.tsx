@@ -30,6 +30,7 @@ import type {
   GithubReleaseItem,
   GithubRepositoryLink,
 } from '@/lib/github/types'
+import { cn } from '@/lib/utils'
 
 interface PanelGithubSectionProps {
   repository: GithubRepositoryLink | null
@@ -47,6 +48,7 @@ interface PanelGithubSectionProps {
   onToggleVisibility: () => void
   onChangeActivitySource: (source: GithubActivitySource) => void
   onOpenCommit: (commit: GithubCommitItem) => void
+  className?: string
 }
 
 export function PanelGithubSection({
@@ -65,6 +67,7 @@ export function PanelGithubSection({
   onToggleVisibility,
   onChangeActivitySource,
   onOpenCommit,
+  className,
 }: PanelGithubSectionProps) {
   const showCommits =
     repository != null &&
@@ -74,7 +77,12 @@ export function PanelGithubSection({
     (repository.activity_source === 'releases' || repository.activity_source === 'both')
 
   return (
-    <section className="space-y-6 rounded-[1.85rem] border border-card-outline bg-card p-6 shadow-sm sm:p-8">
+    <section
+      className={cn(
+        'space-y-6 rounded-[1.85rem] border border-card-outline bg-card p-6 shadow-sm sm:p-8',
+        className,
+      )}
+    >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex min-w-0 items-start gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">

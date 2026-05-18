@@ -36,9 +36,12 @@ import type {
 import { mapPublicDetailToDisplay, type ProjectDisplay } from '@/lib/projects/display'
 import {
   canAccessProjectPanel,
+  canAccessProjectSupport,
   isProjectManager,
   type ProjectMembership,
 } from '@/lib/projects/membership'
+import { loadProjectSupportTicketStats } from '@/lib/support/loaders'
+import type { SupportProjectTicketStats } from '@/lib/support/types'
 import { getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useSupabaseSession } from '@/hooks/use-supabase-session'
 import type { MemberBadgeColor, ProjectPublicDetailRow } from '@/types/database'
@@ -48,6 +51,7 @@ import { CommitDetailModal } from './_components/commit-detail-modal'
 import { ConnectGithubDialog } from './_components/connect-github-dialog'
 import { PanelAccessDenied } from './_components/panel-access-denied'
 import { PanelGithubSection } from './_components/panel-github-section'
+import { PanelSupportSection } from './_components/panel-support-section'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -77,6 +81,9 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
 
   const [linkOpen, setLinkOpen] = useState(false)
   const [selectedCommit, setSelectedCommit] = useState<GithubCommitItem | null>(null)
+
+  const [supportStats, setSupportStats] = useState<SupportProjectTicketStats | null>(null)
+  const [supportStatsLoading, setSupportStatsLoading] = useState(false)
 
   const loadProject = useCallback(async () => {
     if (!isSupabaseConfigured()) {
@@ -143,7 +150,7 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
       const client = getSupabaseClient()
       const { data } = await client
         .from('project_public_members')
-        .select('role, display_role, badge_color')
+        .select('role, display_role, badge_color, support_access')
         .eq('project_id', project.id)
         .eq('user_id', user.id)
         .eq('status', 'active')
@@ -156,9 +163,15 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
           badgeColor: isValidBadgeColor((data.badge_color as string | null) ?? null)
             ? ((data.badge_color as MemberBadgeColor) ?? null)
             : null,
+          supportAccess: data.support_access === true,
         })
       } else if (user.id === project.ownerId) {
-        setMembership({ role: 'owner', displayRole: null, badgeColor: null })
+        setMembership({
+          role: 'owner',
+          displayRole: null,
+          badgeColor: null,
+          supportAccess: true,
+        })
       } else {
         setMembership(null)
       }
@@ -182,6 +195,29 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
     if (!project) return false
     return isProjectManager(user?.id, project.ownerId, membership)
   }, [membership, project, user?.id])
+
+  const canViewSupport = useMemo(() => {
+    if (!project) return false
+    return canAccessProjectSupport(user?.id, project.ownerId, membership)
+  }, [membership, project, user?.id])
+
+  const refreshSupportStats = useCallback(async () => {
+    if (!project || !hasPanelAccess || !canViewSupport) {
+      setSupportStats(null)
+      setSupportStatsLoading(false)
+      return
+    }
+
+    setSupportStatsLoading(true)
+    try {
+      const result = await loadProjectSupportTicketStats(project.id)
+      setSupportStats(result.ok ? result.stats : null)
+    } catch {
+      setSupportStats(null)
+    } finally {
+      setSupportStatsLoading(false)
+    }
+  }, [canViewSupport, hasPanelAccess, project])
 
   const refreshGithub = useCallback(async () => {
     if (!project || !hasPanelAccess) return
@@ -225,6 +261,11 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
     if (!hasPanelAccess || !project) return
     void refreshGithub()
   }, [hasPanelAccess, project, refreshGithub])
+
+  useEffect(() => {
+    if (!hasPanelAccess || !project) return
+    void refreshSupportStats()
+  }, [hasPanelAccess, project, refreshSupportStats])
 
   async function handleSync() {
     if (!repository) return
@@ -381,7 +422,7 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
           <PageHeader
             eyebrow="Área da equipe"
             title={project.title}
-            description="Resumo do projeto, integração com GitHub e atividade recente."
+            description="Resumo do projeto, GitHub, suporte e atividade recente."
           />
         </Container>
       </div>
@@ -424,23 +465,34 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
           </p>
         ) : null}
 
-        <PanelGithubSection
-          repository={repository}
-          commits={commits}
-          releases={releases}
-          repoLoading={repoLoading}
-          commitsLoading={commitsLoading}
-          releasesLoading={releasesLoading}
-          actionLoading={actionLoading}
-          isManager={isManager}
-          feedback={feedback}
-          onConnect={() => setLinkOpen(true)}
-          onSync={() => void handleSync()}
-          onUnlink={() => void handleUnlink()}
-          onToggleVisibility={() => void handleToggleVisibility()}
-          onChangeActivitySource={(source) => void handleChangeActivitySource(source)}
-          onOpenCommit={setSelectedCommit}
-        />
+        <section className="grid gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)] lg:items-stretch">
+          <PanelGithubSection
+            className="min-w-0"
+            repository={repository}
+            commits={commits}
+            releases={releases}
+            repoLoading={repoLoading}
+            commitsLoading={commitsLoading}
+            releasesLoading={releasesLoading}
+            actionLoading={actionLoading}
+            isManager={isManager}
+            feedback={feedback}
+            onConnect={() => setLinkOpen(true)}
+            onSync={() => void handleSync()}
+            onUnlink={() => void handleUnlink()}
+            onToggleVisibility={() => void handleToggleVisibility()}
+            onChangeActivitySource={(source) => void handleChangeActivitySource(source)}
+            onOpenCommit={setSelectedCommit}
+          />
+          <PanelSupportSection
+            className="min-w-0"
+            projectId={project.id}
+            stats={supportStats}
+            statsLoading={supportStatsLoading}
+            canViewSupport={canViewSupport}
+            onRefreshStats={refreshSupportStats}
+          />
+        </section>
       </Container>
 
       <ConnectGithubDialog

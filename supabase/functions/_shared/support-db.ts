@@ -359,6 +359,50 @@ export async function listExternalUserTickets(
   return data as SupportTicketRow[]
 }
 
+export async function getProjectTicketStats(
+  admin: SupabaseClient,
+  projectId: string,
+): Promise<{
+  waiting_support: number
+  in_progress: number
+  resolved_today: number
+  total_open: number
+}> {
+  const todayStart = new Date()
+  todayStart.setUTCHours(0, 0, 0, 0)
+  const todayIso = todayStart.toISOString()
+
+  const [waitingRes, inProgressRes, resolvedTodayRes] = await Promise.all([
+    admin
+      .from('support_tickets')
+      .select('id', { count: 'exact', head: true })
+      .eq('project_id', projectId)
+      .eq('status', 'waiting_support'),
+    admin
+      .from('support_tickets')
+      .select('id', { count: 'exact', head: true })
+      .eq('project_id', projectId)
+      .eq('status', 'in_progress'),
+    admin
+      .from('support_tickets')
+      .select('id', { count: 'exact', head: true })
+      .eq('project_id', projectId)
+      .eq('status', 'resolved')
+      .gte('updated_at', todayIso),
+  ])
+
+  const waiting_support = waitingRes.count ?? 0
+  const in_progress = inProgressRes.count ?? 0
+  const resolved_today = resolvedTodayRes.count ?? 0
+
+  return {
+    waiting_support,
+    in_progress,
+    resolved_today,
+    total_open: waiting_support + in_progress,
+  }
+}
+
 export function mapTicketListItem(
   ticket: SupportTicketRow,
   lastMessage: SupportTicketMessageRow | null,

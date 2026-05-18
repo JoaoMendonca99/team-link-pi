@@ -1,3 +1,17 @@
+export type SupportProjectTicketStats = {
+  waiting_support: number
+  in_progress: number
+  resolved_today: number
+  total_open: number
+}
+
+export type SupportTicketFilter =
+  | 'all'
+  | 'waiting_support'
+  | 'in_progress'
+  | 'resolved'
+  | 'closed'
+
 export type SupportTicketStatus =
   | 'waiting_support'
   | 'in_progress'
