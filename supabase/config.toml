@@ -64,6 +64,9 @@ verify_jwt = false
 [functions.support-list-external-tickets]
 verify_jwt = false
 
+[functions.support-get-external-ticket]
+verify_jwt = false
+
 [functions.support-get-project-ticket-stats]
 verify_jwt = false
 

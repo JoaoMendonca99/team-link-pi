@@ -445,6 +445,47 @@ export function mapTicketListItem(
   }
 }
 
+function previewTicketMessage(text: string, max = 120): string {
+  const trimmed = text.trim()
+  if (!trimmed) return ''
+  if (trimmed.length <= max) return trimmed
+  return `${trimmed.slice(0, max - 1)}…`
+}
+
+/** Payload estável para clientes externos (WPF) — sem dados internos do projeto. */
+export function mapExternalTicketDetail(
+  ticket: SupportTicketRow,
+  messages: SupportTicketMessageRow[],
+) {
+  const lastMessage = messages.length > 0 ? messages[messages.length - 1] : null
+
+  return {
+    ticket: {
+      id: ticket.id,
+      ticket_number: ticket.ticket_number,
+      title: ticket.title,
+      status: ticket.status,
+      priority: ticket.priority,
+      category: ticket.category,
+      created_at: ticket.created_at,
+      updated_at: ticket.updated_at,
+      last_message_at: lastMessage?.created_at ?? ticket.updated_at,
+      last_message_preview: lastMessage ? previewTicketMessage(lastMessage.message) : '',
+      app_version: ticket.app_version,
+      app_platform: ticket.app_platform,
+      app_module: ticket.app_module,
+      filial: ticket.filial,
+    },
+    messages: messages.map((message) => ({
+      id: message.id,
+      sender_role: message.sender_role,
+      message: message.message,
+      created_at: message.created_at,
+      sender_user_id: message.sender_user_id,
+    })),
+  }
+}
+
 export function mapTicketDetail(ticket: SupportTicketRow, messages: SupportTicketMessageRow[]) {
   return {
     ticket: {
