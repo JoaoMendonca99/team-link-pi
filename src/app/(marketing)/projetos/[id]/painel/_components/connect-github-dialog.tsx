@@ -165,11 +165,11 @@ export function ConnectGithubDialog({
   }
 
   return (
-    <>
+    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 sm:p-6">
       <button
         type="button"
         aria-label="Fechar"
-        className="fixed inset-0 z-[80] bg-background/70 backdrop-blur-sm"
+        className="absolute inset-0 bg-background/70 backdrop-blur-sm"
         onClick={() => {
           if (!busy) onClose()
         }}
@@ -178,7 +178,7 @@ export function ConnectGithubDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="connect-github-title"
-        className="fixed inset-x-4 top-[8vh] z-[90] mx-auto flex max-h-[85vh] w-full max-w-lg flex-col rounded-[1.75rem] border border-card-outline bg-card p-6 shadow-2xl sm:inset-x-auto"
+        className="relative z-[90] flex w-full max-w-lg max-h-[90vh] flex-col overflow-hidden rounded-[1.75rem] border border-card-outline bg-card p-6 shadow-2xl"
       >
         <ConnectGithubDialogBody
           phase={phase}
@@ -199,7 +199,7 @@ export function ConnectGithubDialog({
           onAuthorizeMore={() => void handleAuthorizeMore()}
         />
       </div>
-    </>
+    </div>
   )
 }
 
@@ -239,7 +239,7 @@ function ConnectGithubDialogBody({
   onAuthorizeMore: () => void
 }) {
   return (
-    <>
+    <div className="flex min-h-0 flex-1 flex-col">
       <div className="mb-4 flex shrink-0 items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 id="connect-github-title" className="font-heading text-lg font-bold">
@@ -433,7 +433,7 @@ function ConnectGithubDialogBody({
           Cancelar
         </Button>
       </div>
-    </>
+    </div>
   )
 }
 
