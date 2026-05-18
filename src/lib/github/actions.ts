@@ -801,6 +801,7 @@ export async function updateGithubActivitySource(
   | { ok: false; message: string }
 > {
   const client = getSupabaseClient()
+  const fallback = 'Não foi possível alterar o acompanhamento.'
   const { data, error } = await client.functions.invoke(
     GITHUB_UPDATE_ACTIVITY_SOURCE_FUNCTION,
     {
@@ -811,22 +812,23 @@ export async function updateGithubActivitySource(
     },
   )
 
+  const payload = data as Record<string, unknown> | null
+  const fnError = readFunctionError(payload)
+
+  if (payload?.ok === false || (error && fnError)) {
+    return {
+      ok: false,
+      message: friendlyFunctionError(fnError ?? undefined, fallback),
+    }
+  }
+
   if (error) {
     return {
       ok: false,
       message: friendlyFunctionError(
-        error.message,
-        'Não foi possível alterar o acompanhamento.',
+        error instanceof Error ? error.message : undefined,
+        fallback,
       ),
-    }
-  }
-
-  const payload = data as Record<string, unknown> | null
-  const fnError = readFunctionError(payload)
-  if (fnError) {
-    return {
-      ok: false,
-      message: friendlyFunctionError(fnError, 'Não foi possível alterar o acompanhamento.'),
     }
   }
 
