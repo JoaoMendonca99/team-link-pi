@@ -6,12 +6,22 @@ import {
   type GithubFunctionDebugInfo,
 } from './function-debug'
 import type {
+  GithubAvailableInstallation,
+  GithubAvailableRepository,
   GithubCommitVisibility,
   GithubCompleteInstallationResult,
+  GithubInvalidInstallation,
   GithubSelectableRepository,
+  ListAvailableGithubRepositoriesResult,
 } from './types'
 
 export const GITHUB_START_INSTALLATION_FUNCTION = 'github-start-installation'
+
+export const GITHUB_LIST_AVAILABLE_REPOSITORIES_FUNCTION =
+  'github-list-available-repositories'
+
+export const GITHUB_LIST_AVAILABLE_USER_MESSAGE =
+  'Não foi possível carregar repositórios do GitHub.'
 
 export const GITHUB_START_USER_MESSAGE =
   'Não foi possível iniciar a conexão com o GitHub. Verifique se a integração foi publicada e configurada.'
@@ -176,6 +186,150 @@ export async function startGithubInstallation(
   }
 
   return fail(GITHUB_START_USER_MESSAGE)
+}
+
+function parseAvailableInstallation(value: unknown): GithubAvailableInstallation | null {
+  if (!value || typeof value !== 'object') return null
+  const row = value as Record<string, unknown>
+  const installation_id =
+    typeof row.installation_id === 'number' && Number.isFinite(row.installation_id)
+      ? row.installation_id
+      : null
+  const account_login = typeof row.account_login === 'string' ? row.account_login : null
+  if (!installation_id || !account_login) return null
+  return {
+    installation_id,
+    account_login,
+    account_type: typeof row.account_type === 'string' ? row.account_type : 'User',
+    status: typeof row.status === 'string' ? row.status : 'active',
+  }
+}
+
+function parseAvailableRepository(value: unknown): GithubAvailableRepository | null {
+  if (!value || typeof value !== 'object') return null
+  const row = value as Record<string, unknown>
+  const installation_id =
+    typeof row.installation_id === 'number' && Number.isFinite(row.installation_id)
+      ? row.installation_id
+      : null
+  const github_repository_id =
+    typeof row.github_repository_id === 'number' &&
+    Number.isFinite(row.github_repository_id)
+      ? row.github_repository_id
+      : null
+  const full_name = typeof row.full_name === 'string' ? row.full_name : null
+  if (!installation_id || !github_repository_id || !full_name) return null
+
+  return {
+    installation_id,
+    github_repository_id,
+    owner_login: typeof row.owner_login === 'string' ? row.owner_login : '',
+    repo_name: typeof row.repo_name === 'string' ? row.repo_name : '',
+    full_name,
+    private: Boolean(row.private),
+    default_branch:
+      typeof row.default_branch === 'string' ? row.default_branch : 'main',
+    html_url: typeof row.html_url === 'string' ? row.html_url : '',
+    linked_to_current_project: Boolean(row.linked_to_current_project),
+    current_project_repository_id:
+      typeof row.current_project_repository_id === 'string'
+        ? row.current_project_repository_id
+        : null,
+    linked_elsewhere: Boolean(row.linked_elsewhere),
+  }
+}
+
+function parseInvalidInstallation(value: unknown): GithubInvalidInstallation | null {
+  if (!value || typeof value !== 'object') return null
+  const row = value as Record<string, unknown>
+  const installation_id =
+    typeof row.installation_id === 'number' && Number.isFinite(row.installation_id)
+      ? row.installation_id
+      : null
+  if (!installation_id) return null
+  return {
+    installation_id,
+    account_login:
+      typeof row.account_login === 'string' ? row.account_login : 'GitHub',
+    reason:
+      typeof row.reason === 'string'
+        ? row.reason
+        : 'Não foi possível acessar esta instalação no GitHub.',
+  }
+}
+
+export async function listAvailableGithubRepositories(
+  projectId: string,
+): Promise<ListAvailableGithubRepositoriesResult> {
+  const client = getSupabaseClient()
+  const requestBody = { project_id: projectId }
+  const { data, error } = await client.functions.invoke(
+    GITHUB_LIST_AVAILABLE_REPOSITORIES_FUNCTION,
+    { body: requestBody },
+  )
+
+  const fail = (message: string): ListAvailableGithubRepositoriesResult => {
+    const debug = buildGithubFunctionDebug(
+      GITHUB_LIST_AVAILABLE_REPOSITORIES_FUNCTION,
+      error,
+      data,
+      requestBody,
+    )
+    logGithubFunctionDebug(debug)
+    return { ok: false, message }
+  }
+
+  const payload = data as Record<string, unknown> | null
+
+  if (payload?.ok === false) {
+    const fnError = readFunctionError(payload)
+    return fail(
+      friendlyFunctionError(fnError ?? undefined, GITHUB_LIST_AVAILABLE_USER_MESSAGE),
+    )
+  }
+
+  if (error) {
+    return fail(
+      friendlyFunctionError(
+        error && typeof error === 'object' && 'message' in error
+          ? String((error as { message?: string }).message)
+          : undefined,
+        GITHUB_LIST_AVAILABLE_USER_MESSAGE,
+      ),
+    )
+  }
+
+  if (payload?.ok !== true) {
+    const fnError = readFunctionError(payload)
+    return fail(
+      friendlyFunctionError(fnError ?? undefined, GITHUB_LIST_AVAILABLE_USER_MESSAGE),
+    )
+  }
+
+  const installations = Array.isArray(payload.installations)
+    ? payload.installations
+        .map(parseAvailableInstallation)
+        .filter((row): row is GithubAvailableInstallation => row !== null)
+    : []
+
+  const repositories = Array.isArray(payload.repositories)
+    ? payload.repositories
+        .map(parseAvailableRepository)
+        .filter((row): row is GithubAvailableRepository => row !== null)
+    : []
+
+  const invalid_installations = Array.isArray(payload.invalid_installations)
+    ? payload.invalid_installations
+        .map(parseInvalidInstallation)
+        .filter((row): row is GithubInvalidInstallation => row !== null)
+    : []
+
+  return {
+    ok: true,
+    installations,
+    repositories,
+    invalid_installations,
+  }
 }
 
 export type CompleteGithubInstallationResult =

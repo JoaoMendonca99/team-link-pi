@@ -22,6 +22,9 @@ verify_jwt = false
 [functions.github-complete-installation]
 verify_jwt = false
 
+[functions.github-list-available-repositories]
+verify_jwt = false
+
 [functions.github-link-selected-repository]
 verify_jwt = false
 

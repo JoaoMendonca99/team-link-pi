@@ -84,6 +84,53 @@ Deno.serve(async (req) => {
     return errorResponse('Você não tem permissão para vincular repositórios neste projeto.', 403)
   }
 
+  const { data: installationRow, error: installationLookupError } = await admin
+    .from('github_installations')
+    .select('installation_id, status, created_by, account_id, account_login')
+    .eq('installation_id', installationId)
+    .maybeSingle()
+
+  if (installationLookupError) {
+    return errorResponse(
+      'Esta conexão GitHub não está disponível para este usuário. Conecte o GitHub novamente.',
+      403,
+    )
+  }
+
+  if (!installationRow) {
+    return errorResponse(
+      'Esta conexão GitHub não está disponível para este usuário. Conecte o GitHub novamente.',
+      404,
+    )
+  }
+
+  const row = installationRow as {
+    status?: string | null
+    created_by?: string | null
+    account_id?: number | null
+  }
+
+  if (row.created_by !== user.id) {
+    return errorResponse(
+      'Esta conexão GitHub não está disponível para este usuário. Conecte o GitHub novamente.',
+      403,
+    )
+  }
+
+  if (row.status !== 'active') {
+    return errorResponse(
+      'Esta conexão GitHub não está disponível para este usuário. Conecte o GitHub novamente.',
+      403,
+    )
+  }
+
+  if (row.account_id == null) {
+    return errorResponse(
+      'Esta conexão GitHub não está disponível para este usuário. Conecte o GitHub novamente.',
+      403,
+    )
+  }
+
   try {
     const accessToken = await createInstallationAccessToken(installationId)
     const repository = await fetchRepositoryById(accessToken, githubRepositoryId)

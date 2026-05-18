@@ -55,3 +55,41 @@ export interface GithubCompleteInstallationResult {
   setup_action: string | null
   repositories: GithubSelectableRepository[]
 }
+
+/** Instalação GitHub ativa disponível para o usuário logado. */
+export interface GithubAvailableInstallation {
+  installation_id: number
+  account_login: string
+  account_type: string
+  status: string
+}
+
+/** Repositório autorizado em uma instalação, com flags de vínculo no Team Link. */
+export interface GithubAvailableRepository {
+  installation_id: number
+  github_repository_id: number
+  owner_login: string
+  repo_name: string
+  full_name: string
+  private: boolean
+  default_branch: string
+  html_url: string
+  linked_to_current_project: boolean
+  current_project_repository_id: string | null
+  linked_elsewhere: boolean
+}
+
+export interface GithubInvalidInstallation {
+  installation_id: number
+  account_login: string
+  reason: string
+}
+
+export type ListAvailableGithubRepositoriesResult =
+  | {
+      ok: true
+      installations: GithubAvailableInstallation[]
+      repositories: GithubAvailableRepository[]
+      invalid_installations: GithubInvalidInstallation[]
+    }
+  | { ok: false; message: string }

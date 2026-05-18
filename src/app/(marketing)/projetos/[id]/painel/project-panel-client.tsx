@@ -398,6 +398,11 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
         onClose={() => setLinkOpen(false)}
         projectId={project.id}
         projectSlug={project.slug}
+        onLinked={(message) => {
+          setLinkOpen(false)
+          setFeedback(message)
+          void refreshGithub()
+        }}
       />
 
       <CommitDetailModal
