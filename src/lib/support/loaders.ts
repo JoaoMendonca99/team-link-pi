@@ -1,5 +1,13 @@
-import { getProjectSupportTicketStats } from './actions'
-import type { SupportProjectTicketStats } from './types'
+import { getProjectSupportIntegration, getProjectSupportTicketStats } from './actions'
+import type { SupportIntegrationInfo, SupportProjectTicketStats } from './types'
+
+export async function loadProjectSupportIntegration(
+  projectId: string,
+): Promise<{ ok: true; integration: SupportIntegrationInfo } | { ok: false }> {
+  const result = await getProjectSupportIntegration(projectId)
+  if (!result.ok) return { ok: false }
+  return { ok: true, integration: result.integration }
+}
 
 export async function loadProjectSupportTicketStats(
   projectId: string,

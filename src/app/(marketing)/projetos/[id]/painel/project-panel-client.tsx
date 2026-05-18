@@ -40,8 +40,16 @@ import {
   isProjectManager,
   type ProjectMembership,
 } from '@/lib/projects/membership'
-import { loadProjectSupportTicketStats } from '@/lib/support/loaders'
-import type { SupportProjectTicketStats } from '@/lib/support/types'
+import {
+  loadProjectSupportIntegration,
+  loadProjectSupportTicketStats,
+} from '@/lib/support/loaders'
+import {
+  isSupportSacActive,
+  type SupportIntegrationInfo,
+  type SupportProjectTicketStats,
+} from '@/lib/support/types'
+import { cn } from '@/lib/utils'
 import { getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useSupabaseSession } from '@/hooks/use-supabase-session'
 import type { MemberBadgeColor, ProjectPublicDetailRow } from '@/types/database'
@@ -82,6 +90,10 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
   const [linkOpen, setLinkOpen] = useState(false)
   const [selectedCommit, setSelectedCommit] = useState<GithubCommitItem | null>(null)
 
+  const [supportIntegration, setSupportIntegration] = useState<SupportIntegrationInfo | null>(
+    null,
+  )
+  const [supportIntegrationLoading, setSupportIntegrationLoading] = useState(false)
   const [supportStats, setSupportStats] = useState<SupportProjectTicketStats | null>(null)
   const [supportStatsLoading, setSupportStatsLoading] = useState(false)
 
@@ -201,8 +213,31 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
     return canAccessProjectSupport(user?.id, project.ownerId, membership)
   }, [membership, project, user?.id])
 
+  const refreshSupportIntegration = useCallback(async () => {
+    if (!project || !hasPanelAccess) {
+      setSupportIntegration(null)
+      setSupportIntegrationLoading(false)
+      return
+    }
+
+    setSupportIntegrationLoading(true)
+    try {
+      const result = await loadProjectSupportIntegration(project.id)
+      setSupportIntegration(result.ok ? result.integration : null)
+    } catch {
+      setSupportIntegration(null)
+    } finally {
+      setSupportIntegrationLoading(false)
+    }
+  }, [hasPanelAccess, project])
+
   const refreshSupportStats = useCallback(async () => {
-    if (!project || !hasPanelAccess || !canViewSupport) {
+    if (
+      !project ||
+      !hasPanelAccess ||
+      !canViewSupport ||
+      !isSupportSacActive(supportIntegration)
+    ) {
       setSupportStats(null)
       setSupportStatsLoading(false)
       return
@@ -217,7 +252,12 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
     } finally {
       setSupportStatsLoading(false)
     }
-  }, [canViewSupport, hasPanelAccess, project])
+  }, [canViewSupport, hasPanelAccess, project, supportIntegration])
+
+  const showSupportColumn = useMemo(() => {
+    if (!hasPanelAccess) return false
+    return isManager || isSupportSacActive(supportIntegration)
+  }, [hasPanelAccess, isManager, supportIntegration])
 
   const refreshGithub = useCallback(async () => {
     if (!project || !hasPanelAccess) return
@@ -264,8 +304,13 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
 
   useEffect(() => {
     if (!hasPanelAccess || !project) return
+    void refreshSupportIntegration()
+  }, [hasPanelAccess, project, refreshSupportIntegration])
+
+  useEffect(() => {
+    if (!hasPanelAccess || !project || !isSupportSacActive(supportIntegration)) return
     void refreshSupportStats()
-  }, [hasPanelAccess, project, refreshSupportStats])
+  }, [hasPanelAccess, project, supportIntegration, refreshSupportStats])
 
   async function handleSync() {
     if (!repository) return
@@ -465,7 +510,12 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
           </p>
         ) : null}
 
-        <section className="grid gap-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)] lg:items-stretch">
+        <section
+          className={cn(
+            'grid gap-6 lg:items-stretch',
+            showSupportColumn && 'lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]',
+          )}
+        >
           <PanelGithubSection
             className="min-w-0"
             repository={repository}
@@ -484,14 +534,20 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
             onChangeActivitySource={(source) => void handleChangeActivitySource(source)}
             onOpenCommit={setSelectedCommit}
           />
-          <PanelSupportSection
-            className="min-w-0"
-            projectId={project.id}
-            stats={supportStats}
-            statsLoading={supportStatsLoading}
-            canViewSupport={canViewSupport}
-            onRefreshStats={refreshSupportStats}
-          />
+          {showSupportColumn ? (
+            <PanelSupportSection
+              className="min-w-0"
+              projectId={project.id}
+              isManager={isManager}
+              integration={supportIntegration}
+              integrationLoading={supportIntegrationLoading}
+              onIntegrationChange={() => void refreshSupportIntegration()}
+              stats={supportStats}
+              statsLoading={supportStatsLoading}
+              canViewSupport={canViewSupport}
+              onRefreshStats={refreshSupportStats}
+            />
+          ) : null}
         </section>
       </Container>
 

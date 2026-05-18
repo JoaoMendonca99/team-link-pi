@@ -42,6 +42,11 @@ export function formatSupportRelativeTime(iso: string): string {
   return formatSupportDateTime(iso)
 }
 
+export function formatIntegrationUpdatedAt(iso: string | null | undefined): string {
+  if (!iso) return '—'
+  return formatSupportRelativeTime(iso)
+}
+
 export function truncateSupportPreview(text: string, max = 72): string {
   const trimmed = text.trim()
   if (trimmed.length <= max) return trimmed

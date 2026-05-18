@@ -110,6 +110,32 @@ export async function assertCanUpdateTicketStatus(
   return member?.support_access === true
 }
 
+/** Dono ou membro ativo — leitura de status da integração no painel. */
+export async function assertProjectPanelAccess(
+  admin: SupabaseClient,
+  projectId: string,
+  userId: string,
+  _userClient?: SupabaseClient | null,
+): Promise<boolean> {
+  const { data: project } = await admin
+    .from('projects')
+    .select('owner_id')
+    .eq('id', projectId)
+    .maybeSingle()
+
+  if (project?.owner_id === userId) return true
+
+  const { data: member } = await admin
+    .from('project_members')
+    .select('id')
+    .eq('project_id', projectId)
+    .eq('user_id', userId)
+    .eq('status', 'active')
+    .maybeSingle()
+
+  return Boolean(member)
+}
+
 export async function requireAuthenticatedUser(req: Request) {
   const user = await getUserFromRequest(req)
   if (!user) {
@@ -144,11 +170,11 @@ export async function validateExternalApiAccess(
     return { ok: false, status: 500, message: 'Não foi possível validar a integração SAC.' }
   }
 
-  if (!installation) {
+  if (!integration) {
     return { ok: false, status: 404, message: 'Integração SAC não encontrada para este projeto.' }
   }
 
-  const row = installation as SupportIntegrationRow
+  const row = integration as SupportIntegrationRow
 
   if (!row.enabled) {
     return { ok: false, status: 403, message: 'Integração SAC desativada para este projeto.' }

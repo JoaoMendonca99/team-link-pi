@@ -1,3 +1,16 @@
+export type SupportIntegrationInfo = {
+  configured: boolean
+  enabled: boolean
+  last4: string | null
+  updated_at: string | null
+}
+
+export function isSupportSacActive(
+  integration: SupportIntegrationInfo | null | undefined,
+): boolean {
+  return Boolean(integration?.configured && integration.enabled)
+}
+
 export type SupportProjectTicketStats = {
   waiting_support: number
   in_progress: number

@@ -359,6 +359,26 @@ export async function listExternalUserTickets(
   return data as SupportTicketRow[]
 }
 
+export async function setIntegrationEnabled(
+  admin: SupabaseClient,
+  projectId: string,
+  enabled: boolean,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const { error } = await admin
+    .from('project_support_integrations')
+    .update({
+      enabled,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('project_id', projectId)
+
+  if (error) {
+    return { ok: false, message: 'Não foi possível atualizar a integração SAC.' }
+  }
+
+  return { ok: true }
+}
+
 export async function getProjectTicketStats(
   admin: SupabaseClient,
   projectId: string,

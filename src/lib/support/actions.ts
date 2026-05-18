@@ -1,6 +1,7 @@
 import { getSupabaseClient } from '@/lib/supabase/client'
 
 import type {
+  SupportIntegrationInfo,
   SupportProjectTicketStats,
   SupportTicketDetail,
   SupportTicketListItem,
@@ -39,6 +40,86 @@ export async function generateSupportApiKey(
     api_key: apiKey,
     last4: typeof payload?.last4 === 'string' ? payload.last4 : apiKey.slice(-4),
   }
+}
+
+export async function getProjectSupportIntegration(
+  projectId: string,
+): Promise<{ ok: true; integration: SupportIntegrationInfo } | { ok: false; message: string }> {
+  const client = getSupabaseClient()
+  const { data, error } = await client.functions.invoke('support-get-project-integration', {
+    body: { project_id: projectId },
+  })
+  const payload = data as Record<string, unknown> | null
+  const fnError = readFunctionError(payload)
+  if (payload?.ok === false || (error && fnError)) {
+    return {
+      ok: false,
+      message: friendly(fnError ?? undefined, 'Não foi possível carregar a integração SAC.'),
+    }
+  }
+  if (error) {
+    return {
+      ok: false,
+      message: friendly(error.message, 'Não foi possível carregar a integração SAC.'),
+    }
+  }
+  return {
+    ok: true,
+    integration: {
+      configured: payload?.configured === true,
+      enabled: payload?.enabled === true,
+      last4: typeof payload?.last4 === 'string' ? payload.last4 : null,
+      updated_at: typeof payload?.updated_at === 'string' ? payload.updated_at : null,
+    },
+  }
+}
+
+export async function regenerateSupportApiKey(
+  projectId: string,
+): Promise<{ ok: true; api_key: string; last4: string } | { ok: false; message: string }> {
+  const client = getSupabaseClient()
+  const { data, error } = await client.functions.invoke('support-regenerate-api-key', {
+    body: { project_id: projectId },
+  })
+  const payload = data as Record<string, unknown> | null
+  const fnError = readFunctionError(payload)
+  if (error && fnError) {
+    return { ok: false, message: friendly(fnError, 'Não foi possível regenerar a API key.') }
+  }
+  if (error) {
+    return { ok: false, message: friendly(error.message, 'Não foi possível regenerar a API key.') }
+  }
+  if (fnError || payload?.ok === false) {
+    return { ok: false, message: friendly(fnError ?? undefined, 'Não foi possível regenerar a API key.') }
+  }
+  const apiKey = typeof payload?.api_key === 'string' ? payload.api_key : null
+  if (!apiKey) return { ok: false, message: 'Resposta inválida ao regenerar API key.' }
+  return {
+    ok: true,
+    api_key: apiKey,
+    last4: typeof payload?.last4 === 'string' ? payload.last4 : apiKey.slice(-4),
+  }
+}
+
+export async function disableSupportIntegration(
+  projectId: string,
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const client = getSupabaseClient()
+  const { data, error } = await client.functions.invoke('support-disable-integration', {
+    body: { project_id: projectId },
+  })
+  const payload = data as Record<string, unknown> | null
+  const fnError = readFunctionError(payload)
+  if (payload?.ok === false || (error && fnError)) {
+    return {
+      ok: false,
+      message: friendly(fnError ?? undefined, 'Não foi possível desativar o SAC.'),
+    }
+  }
+  if (error) {
+    return { ok: false, message: friendly(error.message, 'Não foi possível desativar o SAC.') }
+  }
+  return { ok: true }
 }
 
 export async function getProjectSupportTicketStats(
