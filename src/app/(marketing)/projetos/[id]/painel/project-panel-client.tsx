@@ -46,6 +46,7 @@ import {
 } from '@/lib/support/loaders'
 import {
   isSupportSacActive,
+  isSupportSacConfigured,
   type SupportIntegrationInfo,
   type SupportProjectTicketStats,
 } from '@/lib/support/types'
@@ -94,6 +95,7 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
     null,
   )
   const [supportIntegrationLoading, setSupportIntegrationLoading] = useState(false)
+  const [supportIntegrationError, setSupportIntegrationError] = useState<string | null>(null)
   const [supportStats, setSupportStats] = useState<SupportProjectTicketStats | null>(null)
   const [supportStatsLoading, setSupportStatsLoading] = useState(false)
 
@@ -216,6 +218,7 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
   const refreshSupportIntegration = useCallback(async () => {
     if (!project || !hasPanelAccess) {
       setSupportIntegration(null)
+      setSupportIntegrationError(null)
       setSupportIntegrationLoading(false)
       return
     }
@@ -223,13 +226,31 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
     setSupportIntegrationLoading(true)
     try {
       const result = await loadProjectSupportIntegration(project.id)
-      setSupportIntegration(result.ok ? result.integration : null)
+      if (result.ok) {
+        setSupportIntegration(result.integration)
+        setSupportIntegrationError(null)
+      } else {
+        setSupportIntegrationError(result.message)
+        setSupportIntegration((prev) => (isSupportSacConfigured(prev) ? prev : null))
+      }
     } catch {
-      setSupportIntegration(null)
+      setSupportIntegrationError('Não foi possível carregar a integração SAC.')
+      setSupportIntegration((prev) => (isSupportSacConfigured(prev) ? prev : null))
     } finally {
       setSupportIntegrationLoading(false)
     }
   }, [hasPanelAccess, project])
+
+  const handleSupportIntegrationChange = useCallback(
+    (snapshot?: SupportIntegrationInfo) => {
+      if (snapshot) {
+        setSupportIntegration(snapshot)
+        setSupportIntegrationError(null)
+      }
+      void refreshSupportIntegration()
+    },
+    [refreshSupportIntegration],
+  )
 
   const refreshSupportStats = useCallback(async () => {
     if (
@@ -258,6 +279,12 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
     if (!hasPanelAccess) return false
     return isManager || isSupportSacActive(supportIntegration)
   }, [hasPanelAccess, isManager, supportIntegration])
+
+  useEffect(() => {
+    if (!isSupportSacActive(supportIntegration)) {
+      setSupportStats(null)
+    }
+  }, [supportIntegration])
 
   const refreshGithub = useCallback(async () => {
     if (!project || !hasPanelAccess) return
@@ -541,7 +568,8 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
               isManager={isManager}
               integration={supportIntegration}
               integrationLoading={supportIntegrationLoading}
-              onIntegrationChange={() => void refreshSupportIntegration()}
+              integrationError={supportIntegrationError}
+              onIntegrationChange={handleSupportIntegrationChange}
               stats={supportStats}
               statsLoading={supportStatsLoading}
               canViewSupport={canViewSupport}

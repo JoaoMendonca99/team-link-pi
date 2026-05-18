@@ -12,7 +12,9 @@ import {
 } from '@/lib/support/actions'
 import { formatIntegrationUpdatedAt } from '@/lib/support/format'
 import {
+  buildSupportIntegrationSnapshot,
   isSupportSacActive,
+  isSupportSacConfigured,
   type SupportIntegrationInfo,
   type SupportProjectTicketStats,
 } from '@/lib/support/types'
@@ -25,7 +27,8 @@ export interface PanelSupportSectionProps {
   isManager: boolean
   integration: SupportIntegrationInfo | null
   integrationLoading: boolean
-  onIntegrationChange: () => void
+  integrationError: string | null
+  onIntegrationChange: (snapshot?: SupportIntegrationInfo) => void
   stats: SupportProjectTicketStats | null
   statsLoading: boolean
   canViewSupport: boolean
@@ -43,6 +46,7 @@ export function PanelSupportSection({
   isManager,
   integration,
   integrationLoading,
+  integrationError,
   onIntegrationChange,
   stats,
   statsLoading,
@@ -50,30 +54,33 @@ export function PanelSupportSection({
   onRefreshStats,
   className,
 }: PanelSupportSectionProps) {
+  const configured = isSupportSacConfigured(integration)
   const sacActive = isSupportSacActive(integration)
 
   if (!isManager && !sacActive) {
     return null
   }
 
-  if (isManager && !sacActive) {
+  if (!configured) {
     return (
       <SupportSetupCard
         className={className}
         projectId={projectId}
-        integration={integration}
         loading={integrationLoading}
+        integrationError={integrationError}
         onIntegrationChange={onIntegrationChange}
       />
     )
   }
 
   return (
-    <SupportActiveCard
+    <SupportIntegratedCard
       className={className}
       projectId={projectId}
       isManager={isManager}
       integration={integration}
+      sacActive={sacActive}
+      integrationError={integrationError}
       stats={stats}
       statsLoading={statsLoading}
       canViewSupport={canViewSupport}
@@ -104,42 +111,41 @@ function SupportCardShell({
 
 function SupportSetupCard({
   projectId,
-  integration,
   loading,
+  integrationError,
   onIntegrationChange,
   className,
 }: {
   projectId: string
-  integration: SupportIntegrationInfo | null
   loading: boolean
-  onIntegrationChange: () => void
+  integrationError: string | null
+  onIntegrationChange: (snapshot?: SupportIntegrationInfo) => void
   className?: string
 }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [apiKeyModal, setApiKeyModal] = useState<{ apiKey: string; last4: string } | null>(null)
 
-  const wasDisabled = Boolean(integration?.configured && !integration.enabled)
-
   async function handleGenerate() {
     setBusy(true)
     setError(null)
-    const result = wasDisabled
-      ? await regenerateSupportApiKey(projectId)
-      : await generateSupportApiKey(projectId)
+    const result = await generateSupportApiKey(projectId)
     setBusy(false)
     if (!result.ok) {
       setError(result.message)
       return
     }
+    const snapshot = buildSupportIntegrationSnapshot({ last4: result.last4 })
+    onIntegrationChange(snapshot)
     setApiKeyModal({ apiKey: result.api_key, last4: result.last4 })
-    onIntegrationChange()
   }
 
   function closeKeyModal() {
     setApiKeyModal(null)
     onIntegrationChange()
   }
+
+  const displayError = error ?? integrationError
 
   return (
     <>
@@ -150,11 +156,7 @@ function SupportSetupCard({
           </span>
           <div className="min-w-0 flex-1">
             <h2 className="text-lg font-semibold tracking-wide">SUPORTE / SAC</h2>
-            <p className="text-sm text-muted-foreground">
-              {wasDisabled
-                ? 'Integração SAC desativada para este projeto.'
-                : 'Nenhuma integração SAC configurada.'}
-            </p>
+            <p className="text-sm text-muted-foreground">Nenhuma integração SAC configurada.</p>
           </div>
         </div>
 
@@ -162,14 +164,9 @@ function SupportSetupCard({
           <p className="text-center text-sm text-muted-foreground">
             Gere uma API para habilitar tickets e atendimento no app externo.
           </p>
-          {wasDisabled && integration?.last4 ? (
-            <p className="text-center text-xs text-muted-foreground">
-              Chave anterior: ••••{integration.last4}
-            </p>
-          ) : null}
-          {error ? (
+          {displayError ? (
             <p className="rounded-2xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-center text-xs text-destructive">
-              {error}
+              {displayError}
             </p>
           ) : null}
           <Button
@@ -192,17 +189,19 @@ function SupportSetupCard({
         open={apiKeyModal != null}
         apiKey={apiKeyModal?.apiKey ?? null}
         last4={apiKeyModal?.last4 ?? null}
-        title={wasDisabled ? 'Nova API SAC' : 'API SAC gerada'}
+        title="API SAC gerada"
         onClose={closeKeyModal}
       />
     </>
   )
 }
 
-function SupportActiveCard({
+function SupportIntegratedCard({
   projectId,
   isManager,
   integration,
+  sacActive,
+  integrationError,
   stats,
   statsLoading,
   canViewSupport,
@@ -213,11 +212,13 @@ function SupportActiveCard({
   projectId: string
   isManager: boolean
   integration: SupportIntegrationInfo | null
+  sacActive: boolean
+  integrationError: string | null
   stats: SupportProjectTicketStats | null
   statsLoading: boolean
   canViewSupport: boolean
   onRefreshStats: () => void
-  onIntegrationChange: () => void
+  onIntegrationChange: (snapshot?: SupportIntegrationInfo) => void
   className?: string
 }) {
   const [drawerOpen, setDrawerOpen] = useState(false)
@@ -226,11 +227,12 @@ function SupportActiveCard({
   const [apiKeyModal, setApiKeyModal] = useState<{ apiKey: string; last4: string } | null>(null)
 
   const waitingCount = stats?.waiting_support ?? 0
-  const showBadge = canViewSupport && !statsLoading && waitingCount > 0
+  const showBadge = sacActive && canViewSupport && !statsLoading && waitingCount > 0
+  const displayError = error ?? integrationError
 
   function handleCloseDrawer() {
     setDrawerOpen(false)
-    if (canViewSupport) onRefreshStats()
+    if (canViewSupport && sacActive) onRefreshStats()
   }
 
   async function handleRegenerate() {
@@ -246,14 +248,13 @@ function SupportActiveCard({
       setError(result.message)
       return
     }
+    const snapshot = buildSupportIntegrationSnapshot({ last4: result.last4 })
+    onIntegrationChange(snapshot)
     setApiKeyModal({ apiKey: result.api_key, last4: result.last4 })
-    onIntegrationChange()
   }
 
   async function handleDisable() {
-    const confirmed = window.confirm(
-      'Desativar o SAC deste projeto? A equipe deixará de ver tickets até gerar ou reativar a API.',
-    )
+    const confirmed = window.confirm('A API atual deixará de funcionar.')
     if (!confirmed) return
     setBusy(true)
     setError(null)
@@ -263,12 +264,23 @@ function SupportActiveCard({
       setError(result.message)
       return
     }
-    onIntegrationChange()
+    if (integration?.last4) {
+      onIntegrationChange(
+        buildSupportIntegrationSnapshot({
+          last4: integration.last4,
+          enabled: false,
+          updated_at: new Date().toISOString(),
+        }),
+      )
+    } else {
+      onIntegrationChange()
+    }
   }
 
   function closeKeyModal() {
     setApiKeyModal(null)
-    onRefreshStats()
+    if (sacActive) onRefreshStats()
+    onIntegrationChange()
   }
 
   return (
@@ -280,67 +292,88 @@ function SupportActiveCard({
           </span>
           <div className="min-w-0 flex-1">
             <h2 className="text-lg font-semibold tracking-wide">SUPORTE</h2>
-            <p className="text-sm text-muted-foreground">
-              Atendimento e tickets do projeto.
-            </p>
-            {integration?.last4 ? (
-              <p className="mt-1 text-xs text-muted-foreground">
-                Integração ativa · API ••••{integration.last4}
-                {integration.updated_at
-                  ? ` · ${formatIntegrationUpdatedAt(integration.updated_at)}`
-                  : ''}
-              </p>
-            ) : null}
+            {isManager ? (
+              <div className="mt-2 rounded-2xl border border-primary/20 bg-primary/5 px-3 py-2.5">
+                <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                  API SAC configurada
+                </p>
+                {integration?.last4 ? (
+                  <p className="mt-1 font-mono text-sm font-semibold text-foreground">
+                    Final: ••••{integration.last4}
+                  </p>
+                ) : null}
+                {integration?.updated_at ? (
+                  <p className="mt-0.5 text-[10px] text-muted-foreground">
+                    Atualizada {formatIntegrationUpdatedAt(integration.updated_at)}
+                  </p>
+                ) : null}
+                {!sacActive ? (
+                  <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                    SAC desativado — regenere a API para reativar o atendimento.
+                  </p>
+                ) : null}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">Atendimento e tickets do projeto.</p>
+            )}
           </div>
         </div>
 
         <div className="flex flex-1 flex-col justify-center gap-4">
-          <div className="relative">
-            <Button
-              type="button"
-              className="h-14 w-full rounded-2xl text-base font-bold tracking-wide shadow-md shadow-primary/20"
-              onClick={() => setDrawerOpen(true)}
-            >
-              <Ticket className="mr-2 h-5 w-5" aria-hidden />
-              TICKETS
-            </Button>
-            {showBadge ? (
-              <span
-                className="absolute -right-1 -top-1 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground ring-2 ring-card"
-                aria-label={`${waitingCount} ticket(s) aguardando suporte`}
-              >
-                {formatWaitingBadge(waitingCount)}
-              </span>
-            ) : null}
-          </div>
+          {sacActive ? (
+            <>
+              <div className="relative">
+                <Button
+                  type="button"
+                  className="h-14 w-full rounded-2xl text-base font-bold tracking-wide shadow-md shadow-primary/20"
+                  onClick={() => setDrawerOpen(true)}
+                >
+                  <Ticket className="mr-2 h-5 w-5" aria-hidden />
+                  TICKETS
+                </Button>
+                {showBadge ? (
+                  <span
+                    className="absolute -right-1 -top-1 inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground ring-2 ring-card"
+                    aria-label={`${waitingCount} ticket(s) aguardando suporte`}
+                  >
+                    {formatWaitingBadge(waitingCount)}
+                  </span>
+                ) : null}
+              </div>
 
-          {canViewSupport && statsLoading ? (
-            <p className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-              <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
-              Atualizando fila…
-            </p>
-          ) : null}
+              {canViewSupport && statsLoading ? (
+                <p className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                  Atualizando fila…
+                </p>
+              ) : null}
 
-          {canViewSupport && !statsLoading && waitingCount > 0 ? (
-            <p className="text-center text-xs text-muted-foreground">
-              {waitingCount === 1
-                ? '1 ticket aguardando resposta da equipe.'
-                : `${waitingCount} tickets aguardando resposta da equipe.`}
-            </p>
-          ) : null}
+              {canViewSupport && !statsLoading && waitingCount > 0 ? (
+                <p className="text-center text-xs text-muted-foreground">
+                  {waitingCount === 1
+                    ? '1 ticket aguardando resposta da equipe.'
+                    : `${waitingCount} tickets aguardando resposta da equipe.`}
+                </p>
+              ) : null}
 
-          {!canViewSupport ? (
-            <p className="text-center text-xs text-muted-foreground">
-              Tickets e fila de atendimento são visíveis para responsáveis e equipe de
-              suporte.
+              {!canViewSupport ? (
+                <p className="text-center text-xs text-muted-foreground">
+                  Tickets e fila de atendimento são visíveis para responsáveis e equipe de
+                  suporte.
+                </p>
+              ) : null}
+            </>
+          ) : isManager ? (
+            <p className="text-center text-sm text-muted-foreground">
+              O atendimento está pausado. Use &quot;Regenerar API&quot; para reativar.
             </p>
           ) : null}
 
           {isManager ? (
             <div className="flex flex-col gap-2 border-t border-card-outline/60 pt-4">
-              {error ? (
+              {displayError ? (
                 <p className="rounded-2xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-center text-xs text-destructive">
-                  {error}
+                  {displayError}
                 </p>
               ) : null}
               <Button
@@ -356,7 +389,7 @@ function SupportActiveCard({
                 type="button"
                 variant="outline"
                 className="rounded-2xl font-semibold text-destructive hover:text-destructive"
-                disabled={busy}
+                disabled={busy || !sacActive}
                 onClick={() => void handleDisable()}
               >
                 Desativar SAC
@@ -366,15 +399,17 @@ function SupportActiveCard({
         </div>
       </SupportCardShell>
 
-      <SupportTicketDrawer
-        open={drawerOpen}
-        onClose={handleCloseDrawer}
-        projectId={projectId}
-        canViewSupport={canViewSupport}
-        stats={stats}
-        statsLoading={statsLoading}
-        onRefreshStats={onRefreshStats}
-      />
+      {sacActive ? (
+        <SupportTicketDrawer
+          open={drawerOpen}
+          onClose={handleCloseDrawer}
+          projectId={projectId}
+          canViewSupport={canViewSupport}
+          stats={stats}
+          statsLoading={statsLoading}
+          onRefreshStats={onRefreshStats}
+        />
+      ) : null}
 
       <SupportApiKeyModal
         open={apiKeyModal != null}

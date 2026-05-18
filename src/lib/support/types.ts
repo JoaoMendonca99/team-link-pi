@@ -5,10 +5,29 @@ export type SupportIntegrationInfo = {
   updated_at: string | null
 }
 
+export function isSupportSacConfigured(
+  integration: SupportIntegrationInfo | null | undefined,
+): boolean {
+  return integration?.configured === true
+}
+
 export function isSupportSacActive(
   integration: SupportIntegrationInfo | null | undefined,
 ): boolean {
   return Boolean(integration?.configured && integration.enabled)
+}
+
+export function buildSupportIntegrationSnapshot(input: {
+  last4: string
+  enabled?: boolean
+  updated_at?: string | null
+}): SupportIntegrationInfo {
+  return {
+    configured: true,
+    enabled: input.enabled ?? true,
+    last4: input.last4,
+    updated_at: input.updated_at ?? new Date().toISOString(),
+  }
 }
 
 export type SupportProjectTicketStats = {

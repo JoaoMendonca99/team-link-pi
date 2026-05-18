@@ -3,9 +3,11 @@ import type { SupportIntegrationInfo, SupportProjectTicketStats } from './types'
 
 export async function loadProjectSupportIntegration(
   projectId: string,
-): Promise<{ ok: true; integration: SupportIntegrationInfo } | { ok: false }> {
+): Promise<
+  { ok: true; integration: SupportIntegrationInfo } | { ok: false; message: string }
+> {
   const result = await getProjectSupportIntegration(projectId)
-  if (!result.ok) return { ok: false }
+  if (!result.ok) return { ok: false, message: result.message }
   return { ok: true, integration: result.integration }
 }
 
