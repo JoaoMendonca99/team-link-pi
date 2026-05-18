@@ -39,3 +39,27 @@ verify_jwt = false
 
 [functions.github-webhook]
 verify_jwt = false
+
+[functions.support-generate-api-key]
+verify_jwt = false
+
+[functions.support-regenerate-api-key]
+verify_jwt = false
+
+[functions.support-create-ticket]
+verify_jwt = false
+
+[functions.support-send-message]
+verify_jwt = false
+
+[functions.support-list-project-tickets]
+verify_jwt = false
+
+[functions.support-get-ticket]
+verify_jwt = false
+
+[functions.support-update-status]
+verify_jwt = false
+
+[functions.support-list-external-tickets]
+verify_jwt = false
