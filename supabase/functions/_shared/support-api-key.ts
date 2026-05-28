@@ -36,19 +36,25 @@ export async function hashApiKey(
   admin: SupabaseClient,
   apiKey: string,
 ): Promise<string> {
-  const attempts: Record<string, string>[] = [
-    { api_key: apiKey },
-    { p_api_key: apiKey },
-    { key_text: apiKey },
-    { text_input: apiKey },
-  ]
+  try {
+    const attempts: Record<string, string>[] = [
+      { api_key: apiKey },
+      { p_api_key: apiKey },
+      { key_text: apiKey },
+      { text_input: apiKey },
+    ]
 
-  for (const params of attempts) {
-    const { data, error } = await admin.rpc('support_hash_api_key', params)
-    if (!error) {
-      const normalized = normalizeHashValue(data)
-      if (normalized) return normalized
+    for (const params of attempts) {
+      const { data, error } = await admin.rpc('support_hash_api_key', params)
+      if (!error) {
+        const normalized = normalizeHashValue(data)
+        if (normalized) return normalized
+      }
     }
+  } catch (error) {
+    console.error('[support-api-key] hash rpc failed, using sha256 fallback', {
+      message: error instanceof Error ? error.message : String(error),
+    })
   }
 
   return sha256Hex(apiKey)

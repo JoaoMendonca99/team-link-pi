@@ -194,7 +194,7 @@ export function ExploreCatalog() {
         </Container>
       </div>
 
-      <Container className="space-y-8 overflow-x-hidden py-12 lg:py-14">
+      <Container className="min-w-0 space-y-8 py-12 lg:py-14">
         {envMissing ? (
           <div
             role="status"

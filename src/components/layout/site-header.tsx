@@ -102,16 +102,16 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
   return (
     <>
       <header className="sticky top-0 z-[60] w-full border-b border-border/70 bg-background/85 backdrop-blur-xl supports-[backdrop-filter]:bg-background/75">
-        <HeaderShell fullBleed={fullBleed} className="flex h-[72px] items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-4 lg:gap-6">
+        <HeaderShell fullBleed={fullBleed} className="flex h-[72px] min-w-0 items-center justify-between gap-2 sm:gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4 lg:gap-6">
             <Link
               href="/"
-              className="flex shrink-0 items-center gap-2 font-bold tracking-tight text-foreground"
+              className="flex min-w-0 shrink items-center gap-2 font-bold tracking-tight text-foreground"
             >
-              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary sm:h-10 sm:w-10">
                 <Link2 className="h-5 w-5" aria-hidden />
               </span>
-              <span className="text-lg">Team Link</span>
+              <span className="truncate text-base sm:text-lg">Team Link</span>
             </Link>
 
             <nav
@@ -130,13 +130,13 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
             </nav>
           </div>
 
-          <div className="ml-auto flex shrink-0 items-center gap-2">
+          <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
           <Button
             type="button"
             variant="ghost"
             size="icon"
             onClick={toggleTheme}
-            className="h-10 w-10"
+            className="h-9 w-9 sm:h-10 sm:w-10"
             aria-label="Alternar tema claro ou escuro"
           >
             {darkMode ? <Sun className="h-5 w-5" aria-hidden /> : <Moon className="h-5 w-5" aria-hidden />}

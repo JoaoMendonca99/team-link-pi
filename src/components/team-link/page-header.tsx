@@ -20,13 +20,13 @@ export function PageHeader({
         className,
       )}
     >
-      <div className="mx-auto max-w-3xl space-y-3 md:mx-0">
+      <div className="mx-auto min-w-0 max-w-3xl space-y-3 md:mx-0">
         {eyebrow ? (
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-primary">
             {eyebrow}
           </p>
         ) : null}
-        <h1 className="text-balance text-4xl font-bold tracking-tight text-foreground sm:text-5xl">
+        <h1 className="text-balance text-3xl font-bold tracking-tight text-foreground sm:text-4xl md:text-5xl">
           {title}
         </h1>
         {description ? (
@@ -34,7 +34,9 @@ export function PageHeader({
         ) : null}
       </div>
       {actions ? (
-        <div className="flex shrink-0 flex-wrap justify-center gap-3 md:justify-end">{actions}</div>
+        <div className="flex w-full min-w-0 shrink-0 flex-wrap justify-center gap-3 md:w-auto md:justify-end">
+          {actions}
+        </div>
       ) : null}
     </div>
   )

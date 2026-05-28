@@ -36,12 +36,18 @@ export function ProjectCard({
 
   const cardBody = (
     <>
-      <div className="flex items-start justify-between gap-4">
-        {project.category ? <CategoryBadge label={project.category} className="shrink" /> : <span />}
-        <ProjectStatusBadge status={project.status} />
+      <div className="flex min-w-0 items-start justify-between gap-3">
+        {project.category ? (
+          <CategoryBadge label={project.category} className="min-w-0 shrink" />
+        ) : (
+          <span />
+        )}
+        <ProjectStatusBadge status={project.status} className="shrink-0" />
       </div>
 
-      <h3 className="mt-4 text-balance text-xl font-semibold leading-snug text-foreground">{project.title}</h3>
+      <h3 className="mt-4 break-words text-balance text-lg font-semibold leading-snug text-foreground sm:text-xl">
+        {project.title}
+      </h3>
 
       {project.shortDescription ? (
         <p className="mt-3 line-clamp-3 text-sm text-muted-foreground">{project.shortDescription}</p>

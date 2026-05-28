@@ -473,7 +473,9 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
                 </Link>
               </li>
               <li aria-hidden>/</li>
-              <li className="truncate font-semibold text-foreground">{project.title}</li>
+              <li className="min-w-0 max-w-full truncate font-semibold text-foreground">
+                {project.title}
+              </li>
             </ol>
           </nav>
 

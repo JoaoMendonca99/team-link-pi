@@ -15,6 +15,17 @@ export const SUPPORT_PRIORITIES = ['low', 'normal', 'high', 'urgent'] as const
 
 export type SupportPriority = (typeof SUPPORT_PRIORITIES)[number]
 
+export const SUPPORT_CATEGORIES = [
+  'bug',
+  'duvida',
+  'erro_sistema',
+  'solicitacao',
+  'melhoria',
+  'outro',
+] as const
+
+export type SupportCategory = (typeof SUPPORT_CATEGORIES)[number]
+
 export function parseTicketStatus(value: unknown): SupportTicketStatus | null {
   if (typeof value !== 'string') return null
   const normalized = value.trim() as SupportTicketStatus
@@ -28,6 +39,13 @@ export function parsePriority(value: unknown): SupportPriority | null {
   return SUPPORT_PRIORITIES.includes(normalized) ? normalized : null
 }
 
+export function parseCategory(value: unknown): SupportCategory | null {
+  if (value == null || value === '') return null
+  if (typeof value !== 'string') return null
+  const normalized = value.trim().toLowerCase() as SupportCategory
+  return SUPPORT_CATEGORIES.includes(normalized) ? normalized : null
+}
+
 export function parseSenderRole(value: unknown): SupportSenderRole | null {
   if (typeof value !== 'string') return null
   const normalized = value.trim() as SupportSenderRole
@@ -35,6 +53,7 @@ export function parseSenderRole(value: unknown): SupportSenderRole | null {
 }
 
 export interface SupportIntegrationRow {
+  id: string
   project_id: string
   api_key_hash: string | null
   api_key_last4: string | null
@@ -62,6 +81,15 @@ export interface SupportTicketRow {
   closed_at: string | null
   created_at: string
   updated_at: string
+  last_message_at?: string | null
+  last_message_preview?: string | null
+}
+
+export type SupportDbFailure = {
+  ok: false
+  message: string
+  detail: string
+  code: string
 }
 
 export interface SupportTicketMessageRow {

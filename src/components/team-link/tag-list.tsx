@@ -20,7 +20,7 @@ export function TagList({
         <span
           key={tag}
           className={cn(
-            "rounded-full border border-border bg-muted/60 px-2.5 py-1 font-medium text-muted-foreground dark:border-border dark:bg-muted/40",
+            "max-w-full break-words rounded-full border border-border bg-muted/60 px-2.5 py-1 font-medium text-muted-foreground dark:border-border dark:bg-muted/40",
             size === "sm" ? "text-[12px]" : "text-[13px]",
           )}
         >

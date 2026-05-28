@@ -140,7 +140,7 @@ export function ChipInput({
               role="listitem"
               className="inline-flex max-w-full items-center gap-1 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-xs font-semibold text-blue-700 dark:text-blue-300"
             >
-              <span className="max-w-[14rem] truncate">{item}</span>
+              <span className="max-w-[min(14rem,100%)] truncate break-all">{item}</span>
               <button
                 type="button"
                 onClick={() => remove(item)}

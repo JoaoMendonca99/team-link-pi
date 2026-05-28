@@ -34,12 +34,12 @@ const steps = [
 
 export function HowItWorks() {
   return (
-    <section id="como-funciona" className="border-b border-card-outline bg-card py-20">
-      <Container className="space-y-12">
+    <section id="como-funciona" className="border-b border-card-outline bg-card py-14 sm:py-20">
+      <Container className="space-y-10 sm:space-y-12">
         <div className="mx-auto max-w-3xl text-center">
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">Passo a passo</p>
-          <h2 className="mt-4 text-balance text-4xl font-bold">Como o Team Link funciona</h2>
-          <p className="mt-4 text-lg text-muted-foreground">
+          <h2 className="mt-4 text-balance text-3xl font-bold sm:text-4xl">Como o Team Link funciona</h2>
+          <p className="mt-4 text-base text-muted-foreground sm:text-lg">
             Em poucos passos, você sai de uma ideia solta para um projeto com pessoas envolvidas.
           </p>
         </div>

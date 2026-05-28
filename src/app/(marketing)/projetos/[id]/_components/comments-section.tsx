@@ -99,7 +99,7 @@ export function CommentsSection({
   const initialLabel = !loading && comments.length === 0 ? initialCount : comments.length
 
   return (
-    <section className="space-y-6 rounded-[1.85rem] border border-dashed border-primary/40 bg-primary/5 p-8">
+    <section className="space-y-6 rounded-[1.85rem] border border-dashed border-primary/40 bg-primary/5 p-5 sm:p-8">
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.26em] text-primary">Discussões</p>
         <h3 className="text-2xl font-bold">Comentários ({initialLabel})</h3>
@@ -149,7 +149,7 @@ export function CommentsSection({
                     </Button>
                   ) : null}
                 </header>
-                <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
+                <p className="mt-4 break-words whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
                   {comment.content}
                 </p>
               </article>

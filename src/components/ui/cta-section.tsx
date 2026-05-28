@@ -27,7 +27,7 @@ const highlights = [
 
 export function CTASection() {
   return (
-    <section className="relative overflow-hidden border-b border-transparent bg-[#081021] py-24 text-white">
+    <section className="relative overflow-hidden border-b border-transparent bg-[#081021] py-16 text-white sm:py-24">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute left-[10%] top-[-20%] h-[24rem] w-[24rem] rounded-full bg-[radial-gradient(circle,#2563EB_0%,transparent_70%)] blur-3xl opacity-85" />
         <div className="absolute bottom-[-30%] right-[5%] h-[26rem] w-[26rem] rounded-full bg-[radial-gradient(circle,#14B8A6_0%,transparent_70%)] blur-3xl opacity-85" />
@@ -45,8 +45,10 @@ export function CTASection() {
           <span className="inline-flex rounded-full border border-white/40 bg-white/10 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.32em] text-white/85">
             Próximo passo
           </span>
-          <h2 className="text-balance text-4xl font-bold md:text-5xl">Pronto para tirar sua ideia do papel?</h2>
-          <p className="text-lg text-white/80 md:text-xl">
+          <h2 className="text-balance text-3xl font-bold sm:text-4xl md:text-5xl">
+            Pronto para tirar sua ideia do papel?
+          </h2>
+          <p className="text-base text-white/80 sm:text-lg md:text-xl">
             Publique seu projeto, encontre pessoas com habilidades complementares e mantenha tudo organizado em um só lugar.
           </p>
         </motion.div>

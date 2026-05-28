@@ -385,7 +385,7 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
                 </p>
               ) : null}
             </div>
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3 lg:max-w-[50%] lg:justify-end">
+            <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:gap-3 lg:max-w-[50%] lg:justify-end">
               {project.category ? <CategoryBadge label={project.category} /> : null}
               <ProjectStatusBadge status={project.status} />
               {updatedAtLabel ? (
@@ -442,23 +442,24 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
             ) : null}
           </div>
 
-          <div className="flex flex-wrap items-center justify-end gap-2 border-t border-card-outline/70 pt-6 sm:gap-3">
+          <div className="flex flex-col gap-2 border-t border-card-outline/70 pt-6 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-3">
             <LikeButton
               projectId={project.id}
               initialCount={likesCount}
               onCountChange={setLikesCount}
+              className="w-full sm:w-auto"
             />
             <Button
               type="button"
               variant="outline"
-              className="rounded-2xl font-semibold"
+              className="w-full rounded-2xl font-semibold sm:w-auto"
               onClick={() => void handleShare()}
             >
               <Share2 className="h-4 w-4" aria-hidden />
               Compartilhar
             </Button>
             {isMember ? (
-              <Button asChild variant="outline" className="rounded-2xl font-semibold">
+              <Button asChild variant="outline" className="w-full rounded-2xl font-semibold sm:w-auto">
                 <Link href={`/projetos/${project.slug}/painel`}>
                   <LayoutDashboard className="h-4 w-4" aria-hidden />
                   Painel do projeto
@@ -466,7 +467,7 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
               </Button>
             ) : null}
             {isManager ? (
-              <Button asChild variant="outline" className="rounded-2xl font-semibold">
+              <Button asChild variant="outline" className="w-full rounded-2xl font-semibold sm:w-auto">
                 <Link href={`/projetos/${project.slug}/editar`}>
                   <Pencil className="h-4 w-4" aria-hidden />
                   Editar projeto

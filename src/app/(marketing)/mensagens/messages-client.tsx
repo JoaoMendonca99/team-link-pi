@@ -548,8 +548,8 @@ export function MessagesClient() {
     : 'Conversa'
 
   return (
-    <main className="flex min-h-0 flex-1 flex-col bg-background text-foreground">
-      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+    <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background text-foreground">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
         <ProjectsRail
           projects={projects}
           selectedProjectId={selectedProjectId}
@@ -557,7 +557,10 @@ export function MessagesClient() {
           loading={projectsLoading}
           error={projectsError}
           onRetry={() => void reloadProjects()}
-          className={cn(showProjectsOnMobile ? 'flex' : 'hidden', 'lg:flex')}
+          className={cn(
+            showProjectsOnMobile ? 'flex min-h-0 flex-1' : 'hidden',
+            'lg:flex lg:h-auto lg:max-h-none lg:flex-none',
+          )}
         />
 
         <ConversationsRail
@@ -581,8 +584,8 @@ export function MessagesClient() {
           }
           onDismissProject={handleCloseProjectSelection}
           className={cn(
-            showConversationsOnMobile ? 'flex' : 'hidden',
-            selectedProjectId ? 'lg:flex' : 'lg:hidden',
+            showConversationsOnMobile ? 'flex min-h-0 flex-1' : 'hidden',
+            selectedProjectId ? 'lg:flex lg:h-auto lg:flex-none' : 'lg:hidden',
           )}
         />
 
@@ -611,7 +614,7 @@ export function MessagesClient() {
           currentUserName={currentUserName}
           currentUserAvatar={profile?.avatar_url ?? undefined}
           className={cn(
-            showThreadOnMobile ? 'flex' : 'hidden',
+            showThreadOnMobile ? 'flex min-h-0 min-w-0 flex-1' : 'hidden',
             'lg:flex lg:min-w-0 lg:flex-1',
           )}
         />

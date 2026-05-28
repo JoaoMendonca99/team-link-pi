@@ -226,7 +226,7 @@ export function ThreadPanel({
                   ) : null}
                   <div
                     className={cn(
-                      'max-w-[78%] rounded-2xl px-3.5 py-2.5 text-sm shadow-sm',
+                      'max-w-[min(78%,calc(100vw-5rem))] rounded-2xl px-3.5 py-2.5 text-sm shadow-sm',
                       isOwn
                         ? 'rounded-br-md bg-primary text-primary-foreground'
                         : 'rounded-bl-md bg-card text-card-foreground border border-border/60',
@@ -264,7 +264,7 @@ export function ThreadPanel({
             {sendError}
           </p>
         ) : null}
-        <div className="flex items-end gap-2">
+        <div className="flex min-w-0 items-end gap-2">
           <Textarea
             value={draft}
             onChange={(event) => onDraftChange(event.target.value)}
@@ -273,7 +273,7 @@ export function ThreadPanel({
             rows={1}
             maxLength={MESSAGE_MAX_LENGTH + 200}
             aria-label="Mensagem"
-            className="max-h-32 min-h-10 resize-none rounded-2xl"
+            className="min-h-10 min-w-0 max-h-32 flex-1 resize-none rounded-2xl"
           />
           <Button
             type="button"

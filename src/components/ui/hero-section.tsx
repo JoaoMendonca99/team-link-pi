@@ -15,7 +15,7 @@ const platformPreviewRows = [
 
 export function HeroSection() {
   return (
-    <section className="relative overflow-hidden border-b border-white/15 bg-[#071028] pb-24 pt-16 text-white">
+    <section className="relative overflow-hidden border-b border-white/15 bg-[#071028] pb-16 pt-12 text-white sm:pb-20 sm:pt-14 lg:pb-24 lg:pt-16">
       <div className="pointer-events-none absolute inset-0 opacity-95">
         <div className="absolute -left-[10%] top-[-20%] h-[28rem] w-[28rem] rounded-full bg-[radial-gradient(circle,#2563EB_0%,transparent_65%)] blur-3xl" />
         <div className="absolute right-[-5%] top-[10%] h-[30rem] w-[30rem] rounded-full bg-[radial-gradient(circle,#4F46E5_0%,transparent_70%)] blur-3xl" />
@@ -31,15 +31,15 @@ export function HeroSection() {
             transition={{ duration: 0.35, ease: 'easeOut' }}
             className="space-y-8 text-center lg:text-left"
           >
-            <span className="inline-flex rounded-full border border-white/25 bg-white/10 px-4 py-1 text-[11px] font-semibold uppercase tracking-[0.28em] text-white/85">
+            <span className="inline-flex max-w-full rounded-full border border-white/25 bg-white/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/85 sm:px-4 sm:text-[11px] sm:tracking-[0.28em]">
               Plataforma de projetos
             </span>
 
-            <div className="space-y-6">
-              <h1 className="text-balance text-4xl font-extrabold leading-tight sm:text-5xl lg:text-[3.85rem] lg:leading-[1.05] xl:text-[4.25rem]">
+            <div className="space-y-4 sm:space-y-6">
+              <h1 className="text-balance text-3xl font-extrabold leading-tight sm:text-5xl lg:text-[3.85rem] lg:leading-[1.05] xl:text-[4.25rem]">
                 Conecte ideias a pessoas.
               </h1>
-              <p className="text-balance text-lg text-white/80 sm:text-xl">
+              <p className="text-balance text-base text-white/80 sm:text-lg md:text-xl">
                 Publique projetos, encontre colaboradores e forme equipes para transformar ideias em soluções reais.
               </p>
             </div>
@@ -107,13 +107,13 @@ export function HeroSection() {
                   return (
                     <li
                       key={row.label}
-                      className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-[#071028]/50 px-4 py-3"
+                      className="flex flex-col gap-2 rounded-xl border border-white/10 bg-[#071028]/50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
                     >
-                      <span className="flex items-center gap-3 text-sm text-white/85">
-                        <Icon className="h-4 w-4 text-[#F59E0B]" aria-hidden />
-                        {row.label}
+                      <span className="flex min-w-0 items-center gap-3 text-sm text-white/85">
+                        <Icon className="h-4 w-4 shrink-0 text-[#F59E0B]" aria-hidden />
+                        <span className="min-w-0">{row.label}</span>
                       </span>
-                      <span className="rounded-full border border-white/15 bg-white/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/80">
+                      <span className="w-fit shrink-0 rounded-full border border-white/15 bg-white/10 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/80">
                         {row.tag}
                       </span>
                     </li>

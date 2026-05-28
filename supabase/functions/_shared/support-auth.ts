@@ -1,6 +1,7 @@
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.49.1'
 
 import { apiKeyMatches } from './support-api-key.ts'
+import { getIntegrationByProjectId } from './support-db.ts'
 import type { SupportIntegrationRow } from './support-schema.ts'
 import { getUserFromRequest } from './supabase-admin.ts'
 
@@ -159,22 +160,11 @@ export async function validateExternalApiAccess(
     return { ok: false, status: 401, message: 'Cabeçalho x-api-key é obrigatório.' }
   }
 
-  const { data: integration, error } = await admin
-    .from('project_support_integrations')
-    .select('project_id, api_key_hash, api_key_last4, enabled, created_at, updated_at')
-    .eq('project_id', projectId)
-    .maybeSingle()
+  const row = await getIntegrationByProjectId(admin, projectId)
 
-  if (error) {
-    console.error('[support-auth] integration lookup failed', { code: error.code })
-    return { ok: false, status: 500, message: 'Não foi possível validar a integração SAC.' }
-  }
-
-  if (!integration) {
+  if (!row) {
     return { ok: false, status: 404, message: 'Integração SAC não encontrada para este projeto.' }
   }
-
-  const row = integration as SupportIntegrationRow
 
   if (!row.enabled) {
     return { ok: false, status: 403, message: 'Integração SAC desativada para este projeto.' }

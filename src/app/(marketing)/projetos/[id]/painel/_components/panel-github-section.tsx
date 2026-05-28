@@ -131,7 +131,7 @@ export function PanelGithubSection({
         <div className="space-y-5 rounded-2xl border border-card-outline/70 bg-muted/20 p-4 sm:p-5">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="font-mono text-sm font-semibold text-foreground">
+              <p className="break-all font-mono text-sm font-semibold text-foreground">
                 {repository.full_name || `${repository.owner_login}/${repository.repo_name}`}
               </p>
               <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -161,12 +161,12 @@ export function PanelGithubSection({
 
           {isManager ? (
             <div className="flex flex-col gap-3">
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="rounded-xl font-semibold"
+                  className="w-full rounded-xl font-semibold sm:w-auto"
                   onClick={onSync}
                   disabled={actionLoading}
                 >
@@ -181,7 +181,7 @@ export function PanelGithubSection({
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="rounded-xl font-semibold"
+                  className="w-full rounded-xl font-semibold sm:w-auto"
                   onClick={onToggleVisibility}
                   disabled={actionLoading}
                 >
@@ -191,7 +191,7 @@ export function PanelGithubSection({
                   type="button"
                   variant="outline"
                   size="sm"
-                  className="rounded-xl font-semibold text-destructive hover:text-destructive"
+                  className="w-full rounded-xl font-semibold text-destructive hover:text-destructive sm:w-auto"
                   onClick={onUnlink}
                   disabled={actionLoading}
                 >

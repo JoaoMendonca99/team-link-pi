@@ -9,10 +9,30 @@ import type {
 } from './support-schema.ts'
 
 const TICKET_SELECT =
-  'id, project_id, ticket_number, status, external_user_id, external_user_email, external_user_name, title, category, priority, app_version, app_platform, app_module, filial, external_ticket_ref, closed_at, created_at, updated_at'
+  'id, project_id, ticket_number, status, external_user_id, external_user_email, external_user_name, title, category, priority, app_version, app_platform, app_module, filial, external_ticket_ref, closed_at, created_at, updated_at, last_message_at, last_message_preview'
 
 const MESSAGE_SELECT =
-  'id, ticket_id, project_id, sender_role, message, sender_user_id, created_at'
+  'id, ticket_id, project_id, sender_role, message, sender_user_id, sender_external_id, sender_email, sender_name, created_at'
+
+function previewTicketMessage(text: string, max = 120): string {
+  const trimmed = text.trim()
+  if (!trimmed) return ''
+  if (trimmed.length <= max) return trimmed
+  return `${trimmed.slice(0, max - 1)}…`
+}
+
+function formatPostgrestFailure(
+  error: { message?: string; code?: string; details?: string; hint?: string } | null,
+  fallbackMessage: string,
+): import('./support-schema.ts').SupportDbFailure {
+  const detail = [error?.message, error?.details, error?.hint].filter(Boolean).join(' — ')
+  return {
+    ok: false,
+    message: fallbackMessage,
+    detail: detail || fallbackMessage,
+    code: error?.code ?? 'db_error',
+  }
+}
 
 export async function getIntegrationByProjectId(
   admin: SupabaseClient,
@@ -20,12 +40,14 @@ export async function getIntegrationByProjectId(
 ): Promise<SupportIntegrationRow | null> {
   const { data, error } = await admin
     .from('project_support_integrations')
-    .select('project_id, api_key_hash, api_key_last4, enabled, created_at, updated_at')
+    .select('id, project_id, api_key_hash, api_key_last4, enabled, created_at, updated_at')
     .eq('project_id', projectId)
     .maybeSingle()
 
   if (error || !data) return null
-  return data as SupportIntegrationRow
+  const row = data as SupportIntegrationRow
+  if (!row.id) return null
+  return row
 }
 
 export async function saveIntegrationApiKey(
@@ -98,6 +120,8 @@ export async function getTicketForProject(
 
 export interface CreateTicketInput {
   project_id: string
+  integration_id: string
+  source_app: string
   external_user_id: string
   external_user_email?: string | null
   external_user_name?: string | null
@@ -117,14 +141,17 @@ export async function createTicketWithInitialMessage(
   input: CreateTicketInput,
 ): Promise<
   | { ok: true; ticket: SupportTicketRow; message: SupportTicketMessageRow }
-  | { ok: false; message: string }
+  | import('./support-schema.ts').SupportDbFailure
 > {
   const now = new Date().toISOString()
+  const preview = previewTicketMessage(input.message)
 
   const { data: ticket, error: ticketError } = await admin
     .from('support_tickets')
     .insert({
       project_id: input.project_id,
+      integration_id: input.integration_id,
+      source_app: input.source_app,
       status: 'waiting_support',
       external_user_id: input.external_user_id,
       external_user_email: input.external_user_email ?? null,
@@ -137,6 +164,8 @@ export async function createTicketWithInitialMessage(
       app_module: input.app_module ?? null,
       filial: input.filial ?? null,
       external_ticket_ref: input.external_ticket_ref ?? null,
+      last_message_at: now,
+      last_message_preview: preview,
       created_at: now,
       updated_at: now,
     })
@@ -144,8 +173,13 @@ export async function createTicketWithInitialMessage(
     .single()
 
   if (ticketError || !ticket) {
-    console.error('[support-db] create ticket failed', { code: ticketError?.code })
-    return { ok: false, message: 'Não foi possível criar o ticket.' }
+    console.error('[support-db] create ticket failed', {
+      code: ticketError?.code,
+      message: ticketError?.message,
+      details: ticketError?.details,
+      hint: ticketError?.hint,
+    })
+    return formatPostgrestFailure(ticketError, 'Não foi possível criar o ticket.')
   }
 
   const messageResult = await insertTicketMessage(admin, {
@@ -154,10 +188,13 @@ export async function createTicketWithInitialMessage(
     sender_role: 'user',
     message: input.message,
     sender_user_id: null,
+    sender_external_id: input.external_user_id,
+    sender_email: input.external_user_email ?? null,
+    sender_name: input.external_user_name ?? null,
   })
 
   if (!messageResult.ok) {
-    return { ok: false, message: messageResult.message }
+    return messageResult
   }
 
   return {
@@ -175,12 +212,16 @@ export async function insertTicketMessage(
     sender_role: 'user' | 'support'
     message: string
     sender_user_id?: string | null
+    sender_external_id?: string | null
+    sender_email?: string | null
+    sender_name?: string | null
   },
 ): Promise<
   | { ok: true; message: SupportTicketMessageRow }
-  | { ok: false; message: string }
+  | import('./support-schema.ts').SupportDbFailure
 > {
   const now = new Date().toISOString()
+  const preview = previewTicketMessage(input.message)
   const { data, error } = await admin
     .from('support_ticket_messages')
     .insert({
@@ -189,17 +230,29 @@ export async function insertTicketMessage(
       sender_role: input.sender_role,
       message: input.message,
       sender_user_id: input.sender_user_id ?? null,
+      sender_external_id: input.sender_external_id ?? null,
+      sender_email: input.sender_email ?? null,
+      sender_name: input.sender_name ?? null,
       created_at: now,
     })
     .select(MESSAGE_SELECT)
     .single()
 
   if (error || !data) {
-    console.error('[support-db] insert message failed', { code: error?.code })
-    return { ok: false, message: 'Não foi possível enviar a mensagem.' }
+    console.error('[support-db] insert message failed', {
+      code: error?.code,
+      message: error?.message,
+      details: error?.details,
+      hint: error?.hint,
+    })
+    return formatPostgrestFailure(error, 'Não foi possível enviar a mensagem.')
   }
 
-  const ticketPatch: Record<string, unknown> = { updated_at: now }
+  const ticketPatch: Record<string, unknown> = {
+    updated_at: now,
+    last_message_at: now,
+    last_message_preview: preview,
+  }
   if (input.sender_role === 'support') {
     const ticket = await getTicketById(admin, input.ticket_id)
     if (ticket?.status === 'waiting_support') {
@@ -207,7 +260,17 @@ export async function insertTicketMessage(
     }
   }
 
-  await admin.from('support_tickets').update(ticketPatch).eq('id', input.ticket_id)
+  const { error: patchError } = await admin
+    .from('support_tickets')
+    .update(ticketPatch)
+    .eq('id', input.ticket_id)
+
+  if (patchError) {
+    console.error('[support-db] ticket patch after message failed', {
+      code: patchError.code,
+      message: patchError.message,
+    })
+  }
 
   return { ok: true, message: data as SupportTicketMessageRow }
 }
@@ -443,13 +506,6 @@ export function mapTicketListItem(
         }
       : null,
   }
-}
-
-function previewTicketMessage(text: string, max = 120): string {
-  const trimmed = text.trim()
-  if (!trimmed) return ''
-  if (trimmed.length <= max) return trimmed
-  return `${trimmed.slice(0, max - 1)}…`
 }
 
 /** Payload estável para clientes externos (WPF) — sem dados internos do projeto. */

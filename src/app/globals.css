@@ -128,8 +128,19 @@
   * {
     @apply border-border outline-ring/50;
   }
+  html {
+    overflow-x: clip;
+  }
   body {
     @apply bg-background text-foreground;
+    overflow-x: clip;
+    max-width: 100%;
+  }
+  img,
+  video,
+  svg {
+    max-width: 100%;
+    height: auto;
   }
 }
 

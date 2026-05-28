@@ -138,7 +138,7 @@ export function PublicProfileClient({ userId }: { userId: string }) {
                   </p>
                 ) : null}
               </div>
-              <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
+              <p className="break-words whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
                 {bio}
               </p>
               {isOwnProfile ? (

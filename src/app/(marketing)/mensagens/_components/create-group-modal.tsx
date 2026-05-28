@@ -246,11 +246,12 @@ export function CreateGroupModal({
                 {error}
               </p>
             ) : null}
-            <div className="flex items-center justify-end gap-2">
+            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
               <Button
                 type="button"
                 variant="ghost"
                 size="sm"
+                className="w-full sm:w-auto"
                 onClick={onCancel}
                 disabled={saving}
               >
@@ -259,7 +260,7 @@ export function CreateGroupModal({
               <Button
                 type="button"
                 size="sm"
-                className="font-semibold"
+                className="w-full font-semibold sm:w-auto"
                 onClick={() => void handleSubmit()}
                 disabled={saving}
               >

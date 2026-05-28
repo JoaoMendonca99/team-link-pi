@@ -24,7 +24,11 @@ export interface ContainerProps extends React.ComponentProps<"div"> {
 export function Container({ className, size = "site", ...props }: ContainerProps) {
   return (
     <div
-      className={cn("w-full px-4 sm:px-6 lg:px-8", sizeClass[size], "mx-auto", className)}
+      className={cn(
+        "mx-auto w-full min-w-0 max-w-full px-4 sm:px-6 lg:px-8",
+        sizeClass[size],
+        className,
+      )}
       {...props}
     />
   )

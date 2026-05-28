@@ -211,23 +211,23 @@ export default function ProfilePage() {
 
   return (
     <main className="bg-muted/40 pb-20">
-      <div className="relative overflow-hidden rounded-b-[40px] border-b border-white/60 bg-[#081021] pb-24 pt-24 text-white">
+      <div className="relative overflow-hidden rounded-b-[40px] border-b border-white/60 bg-[#081021] pb-16 pt-16 text-white sm:pb-24 sm:pt-24">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute right-[-20%] top-[-35%] h-[28rem] w-[28rem] rounded-full bg-[radial-gradient(circle,#2563EB_0%,transparent_70%)] blur-3xl opacity-95" />
           <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(8,16,39,0.95),rgba(79,70,229,0.35))]" />
         </div>
-        <Container className="relative flex flex-col items-center gap-10 text-center md:flex-row md:items-end md:text-left">
-          <UserAvatar name={fullName} imageUrl={avatarUrl} ring sizeClassName="h-24 w-24" />
-          <div className="space-y-3">
+        <Container className="relative flex min-w-0 flex-col items-center gap-8 text-center sm:gap-10 md:flex-row md:items-end md:text-left">
+          <UserAvatar name={fullName} imageUrl={avatarUrl} ring sizeClassName="h-20 w-20 sm:h-24 sm:w-24" />
+          <div className="min-w-0 space-y-3">
             <p className="text-xs uppercase tracking-[0.3em] text-white/65">Seu perfil</p>
-            <div className="flex flex-wrap items-center justify-center gap-3 md:justify-start">
-              <h1 className="text-4xl font-bold">{fullName}</h1>
-              <span className="rounded-full border border-white/25 bg-white/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em]">
+            <div className="flex flex-col items-center gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center md:justify-start">
+              <h1 className="text-balance text-3xl font-bold sm:text-4xl">{fullName}</h1>
+              <span className="max-w-full break-words rounded-full border border-white/25 bg-white/10 px-3 py-1 text-center text-xs font-semibold uppercase tracking-[0.2em]">
                 {course}
               </span>
             </div>
-            <p className="mx-auto max-w-2xl text-white/85 md:mx-0">{bio}</p>
-            {email ? <p className="text-sm text-white/70">{email}</p> : null}
+            <p className="mx-auto max-w-2xl break-words text-white/85 md:mx-0">{bio}</p>
+            {email ? <p className="break-all text-sm text-white/70">{email}</p> : null}
             {joinedAt ? <p className="text-sm text-white/60">Perfil criado em {joinedAt}</p> : null}
             <div className="flex flex-wrap justify-center gap-3 md:justify-start">
               <Button asChild className="rounded-2xl font-semibold shadow-lg shadow-primary/30">

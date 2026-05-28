@@ -22,9 +22,15 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
 
   return (
     <ThemeProvider>
-      <div className="flex min-h-screen flex-col overflow-x-hidden bg-background text-foreground">
+      <div className="flex min-h-dvh flex-col overflow-x-clip bg-background text-foreground">
         <SiteHeader fullBleed={isMessagesPage} />
-        <div className={hideMarketingFooter ? "flex min-h-0 flex-1 flex-col" : "flex-1"}>
+        <div
+          className={
+            hideMarketingFooter
+              ? "flex min-h-0 min-h-[calc(100dvh-72px)] flex-1 flex-col"
+              : "min-w-0 flex-1"
+          }
+        >
           {children}
         </div>
         {hideMarketingFooter ? null : <SiteFooter />}

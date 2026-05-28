@@ -84,16 +84,16 @@ export function LoginClient() {
   }
 
   return (
-    <div className="relative overflow-hidden bg-gradient-to-br from-primary/25 via-background to-background py-24">
+    <div className="relative overflow-hidden bg-gradient-to-br from-primary/25 via-background to-background py-12 sm:py-20 lg:py-24">
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute left-[-20%] top-[-40%] h-[28rem] w-[28rem] rounded-full bg-[radial-gradient(circle,#4F46E5_0%,transparent_72%)] opacity-65 blur-3xl" />
         <div className="absolute bottom-[-35%] right-[-25%] h-[26rem] w-[26rem] rounded-full bg-[radial-gradient(circle,#14B8A6_0%,transparent_70%)] opacity-65 blur-3xl" />
       </div>
 
-      <Container className="relative z-10 grid gap-12 md:grid-cols-2">
-        <div className="space-y-6 text-balance rounded-[2rem] border border-white/60 bg-background/85 p-8 shadow-xl backdrop-blur-xl dark:bg-card/85">
+      <Container className="relative z-10 grid min-w-0 gap-8 md:grid-cols-2 md:gap-12">
+        <div className="order-2 space-y-5 text-balance rounded-[2rem] border border-white/60 bg-background/85 p-5 shadow-xl backdrop-blur-xl sm:space-y-6 sm:p-8 dark:bg-card/85 md:order-1">
           <p className="text-xs font-semibold uppercase tracking-[0.34em] text-primary">Acesso</p>
-          <h1 className="text-4xl font-bold md:text-[2.85rem]">Entre na sua conta Team Link.</h1>
+          <h1 className="text-3xl font-bold sm:text-4xl md:text-[2.85rem]">Entre na sua conta Team Link.</h1>
           <ul className="space-y-3 text-muted-foreground">
             <li>• Acompanhe e gerencie os projetos que você publicou.</li>
             <li>• Solicite participação em projetos compatíveis com suas habilidades.</li>
@@ -108,7 +108,9 @@ export function LoginClient() {
           </Link>
         </div>
 
+        <div className="order-1 min-w-0 md:order-2">
         <AuthCard
+          className="max-w-none md:max-w-md"
           eyebrow="Entrar"
           title="Faça login"
           description="Use o e-mail e a senha cadastrados no Team Link."
@@ -175,6 +177,7 @@ export function LoginClient() {
             </Link>
           </div>
         </AuthCard>
+        </div>
       </Container>
     </div>
   )
