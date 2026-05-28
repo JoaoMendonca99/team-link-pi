@@ -61,6 +61,7 @@ import { ConnectGithubDialog } from './_components/connect-github-dialog'
 import { PanelAccessDenied } from './_components/panel-access-denied'
 import { PanelGithubSection } from './_components/panel-github-section'
 import { PanelSupportSection } from './_components/panel-support-section'
+import { OwnerRequestsSection } from '../_components/owner-requests-section'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -537,6 +538,13 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
           <p className="rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             {githubError}
           </p>
+        ) : null}
+
+        {isManager ? (
+          <OwnerRequestsSection
+            projectId={project.id}
+            onChange={loadProject}
+          />
         ) : null}
 
         <section

@@ -192,6 +192,19 @@ export interface JoinRequestRow {
   created_at: string
 }
 
+export interface HandleJoinRequestArgs {
+  p_request_id: string
+  p_action: 'approve' | 'reject'
+}
+
+export interface HandleJoinRequestResult {
+  ok: boolean
+  request_id: string
+  status: JoinRequestStatus
+  project_id: string
+  user_id: string
+}
+
 // ============================================================================
 // Views públicas (apenas leitura)
 // ============================================================================

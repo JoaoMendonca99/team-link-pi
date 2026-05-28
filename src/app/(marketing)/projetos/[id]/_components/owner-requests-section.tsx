@@ -60,6 +60,7 @@ export function OwnerRequestsSection({
   const [loading, setLoading] = useState(true)
   const [processingId, setProcessingId] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [successMessage, setSuccessMessage] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -72,6 +73,7 @@ export function OwnerRequestsSection({
          profiles:user_id (id, full_name, email, course, bio, skills, interests, avatar_url)`,
       )
       .eq('project_id', projectId)
+      .eq('status', 'pending')
       .order('created_at', { ascending: false })
 
     if (error) {
@@ -87,35 +89,34 @@ export function OwnerRequestsSection({
     void load()
   }, [load])
 
-  const decide = async (requestId: string, newStatus: 'approved' | 'rejected') => {
+  const decide = async (requestId: string, action: 'approve' | 'reject') => {
     if (!user) return
     setErrorMessage(null)
+    setSuccessMessage(null)
     setProcessingId(requestId)
     const client = getSupabaseClient()
-    const { error } = await client
-      .from('join_requests')
-      .update({
-        status: newStatus,
-        decided_by: user.id,
-        decided_at: new Date().toISOString(),
-      })
-      .eq('id', requestId)
+    const { error } = await client.rpc('handle_join_request', {
+      p_request_id: requestId,
+      p_action: action,
+    })
 
     if (error) {
       setErrorMessage(
-        newStatus === 'approved'
+        action === 'approve'
           ? 'Não foi possível aprovar essa solicitação.'
           : 'Não foi possível recusar essa solicitação.',
       )
     } else {
-      await load()
+      setRequests((current) => current.filter((row) => row.id !== requestId))
+      setSuccessMessage(
+        action === 'approve'
+          ? 'Solicitação aprovada. O membro já faz parte da equipe.'
+          : 'Solicitação recusada.',
+      )
       await onChange?.()
     }
     setProcessingId(null)
   }
-
-  const pending = requests.filter((r) => r.status === 'pending')
-  const decided = requests.filter((r) => r.status !== 'pending')
 
   return (
     <section className="space-y-6 rounded-[1.85rem] border border-card-outline bg-card p-8 shadow-sm">
@@ -133,6 +134,15 @@ export function OwnerRequestsSection({
         </p>
       ) : null}
 
+      {successMessage ? (
+        <p
+          role="status"
+          className="rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-900 dark:text-emerald-200"
+        >
+          {successMessage}
+        </p>
+      ) : null}
+
       {loading ? (
         <div className="space-y-3">
           {Array.from({ length: 2 }).map((_, index) => (
@@ -141,35 +151,19 @@ export function OwnerRequestsSection({
         </div>
       ) : requests.length === 0 ? (
         <p className="rounded-2xl border border-dashed border-border bg-muted/40 px-4 py-6 text-center text-sm text-muted-foreground">
-          Nenhuma solicitação até agora.
+          Nenhuma solicitação pendente.
         </p>
       ) : (
-        <div className="space-y-6">
-          {pending.length > 0 ? (
-            <div className="space-y-3">
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-primary">
-                Pendentes ({pending.length})
-              </h4>
-              {pending.map((req) => (
-                <RequestCard
-                  key={req.id}
-                  request={req}
-                  processing={processingId === req.id}
-                  onApprove={() => void decide(req.id, 'approved')}
-                  onReject={() => void decide(req.id, 'rejected')}
-                />
-              ))}
-            </div>
-          ) : null}
-
-          {decided.length > 0 ? (
-            <div className="space-y-3">
-              <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Histórico</h4>
-              {decided.map((req) => (
-                <RequestCard key={req.id} request={req} processing={false} />
-              ))}
-            </div>
-          ) : null}
+        <div className="space-y-3">
+          {requests.map((req) => (
+            <RequestCard
+              key={req.id}
+              request={req}
+              processing={processingId === req.id}
+              onApprove={() => void decide(req.id, 'approve')}
+              onReject={() => void decide(req.id, 'reject')}
+            />
+          ))}
         </div>
       )}
     </section>
@@ -201,6 +195,9 @@ function RequestCard({
           <p className="truncate font-semibold text-foreground">{name}</p>
           {profile?.course ? (
             <p className="truncate text-xs text-muted-foreground">{profile.course}</p>
+          ) : null}
+          {profile?.bio ? (
+            <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{profile.bio}</p>
           ) : null}
           {profile?.email ? (
             <p className="truncate text-xs text-muted-foreground">{profile.email}</p>
