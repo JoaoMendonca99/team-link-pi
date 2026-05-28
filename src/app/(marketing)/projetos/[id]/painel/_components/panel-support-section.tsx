@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Headset, KeyRound, Loader2, Ticket } from 'lucide-react'
+import { FileText, Headset, KeyRound, Loader2, Ticket } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -21,6 +21,8 @@ import {
 
 import { SupportApiKeyModal } from './support/support-api-key-modal'
 import { SupportTicketDrawer } from './support/support-ticket-drawer'
+
+const SAC_API_DOCUMENTATION_HREF = '/docs/documentacao-api-sac-team-link.pdf'
 
 export interface PanelSupportSectionProps {
   projectId: string
@@ -90,6 +92,26 @@ export function PanelSupportSection({
   )
 }
 
+function SupportApiDocumentationLink() {
+  return (
+    <div className="border-t border-card-outline/60 pt-4">
+      <Button asChild variant="outline" className="h-10 w-full rounded-2xl font-semibold sm:h-11">
+        <a
+          href={SAC_API_DOCUMENTATION_HREF}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <FileText className="mr-2 h-4 w-4 shrink-0" aria-hidden />
+          Ver documentação da API
+        </a>
+      </Button>
+      <p className="mt-2 text-center text-xs leading-relaxed text-muted-foreground">
+        Guia de integração para sistemas externos criarem e acompanharem tickets.
+      </p>
+    </div>
+  )
+}
+
 function SupportCardShell({
   className,
   children,
@@ -100,7 +122,7 @@ function SupportCardShell({
   return (
     <section
       className={cn(
-        'flex h-full flex-col space-y-6 rounded-[1.85rem] border border-card-outline bg-card p-6 shadow-sm shadow-primary/5 sm:p-8',
+        'flex h-fit w-full flex-col space-y-6 self-start rounded-[1.85rem] border border-card-outline bg-card p-6 shadow-sm shadow-primary/5 sm:p-8',
         className,
       )}
     >
@@ -160,7 +182,7 @@ function SupportSetupCard({
           </div>
         </div>
 
-        <div className="flex flex-1 flex-col justify-center gap-4">
+        <div className="flex flex-col gap-4">
           <p className="text-center text-sm text-muted-foreground">
             Gere uma API para habilitar tickets e atendimento no app externo.
           </p>
@@ -182,6 +204,7 @@ function SupportSetupCard({
             )}
             Gerar API SAC
           </Button>
+          <SupportApiDocumentationLink />
         </div>
       </SupportCardShell>
 
@@ -319,7 +342,7 @@ function SupportIntegratedCard({
           </div>
         </div>
 
-        <div className="flex flex-1 flex-col justify-center gap-4">
+        <div className="flex flex-col gap-4">
           {sacActive ? (
             <>
               <div className="relative">
@@ -379,7 +402,7 @@ function SupportIntegratedCard({
               <Button
                 type="button"
                 variant="outline"
-                className="rounded-2xl font-semibold"
+                className="w-full rounded-2xl font-semibold"
                 disabled={busy}
                 onClick={() => void handleRegenerate()}
               >
@@ -388,7 +411,7 @@ function SupportIntegratedCard({
               <Button
                 type="button"
                 variant="outline"
-                className="rounded-2xl font-semibold text-destructive hover:text-destructive"
+                className="w-full rounded-2xl font-semibold text-destructive hover:text-destructive"
                 disabled={busy || !sacActive}
                 onClick={() => void handleDisable()}
               >
@@ -396,6 +419,8 @@ function SupportIntegratedCard({
               </Button>
             </div>
           ) : null}
+
+          <SupportApiDocumentationLink />
         </div>
       </SupportCardShell>
 

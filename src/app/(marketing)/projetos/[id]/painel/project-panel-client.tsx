@@ -541,7 +541,7 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
 
         <section
           className={cn(
-            'grid gap-6 lg:items-stretch',
+            'grid gap-6 lg:items-start',
             showSupportColumn && 'lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]',
           )}
         >
@@ -565,7 +565,7 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
           />
           {showSupportColumn ? (
             <PanelSupportSection
-              className="min-w-0"
+              className="h-fit min-w-0 self-start"
               projectId={project.id}
               isManager={isManager}
               integration={supportIntegration}
