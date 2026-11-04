@@ -1,12 +1,11 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import {
   ArrowLeft,
   CalendarDays,
-  Eye,
   LayoutDashboard,
   MessageCircle,
   Pencil,
@@ -24,12 +23,13 @@ import { mapPublicDetailToDisplay, type ProjectDisplay } from '@/lib/projects/di
 import type {
   MemberBadgeColor,
   ProjectPublicDetailRow,
+  ProjectPublicMemberRow,
 } from '@/types/database'
 import { useSupabaseSession } from '@/hooks/use-supabase-session'
 import { CommentsSection } from './_components/comments-section'
 import { JoinRequestSection } from './_components/join-request-section'
 import { LikeButton } from './_components/like-button'
-import { MembersPreviewCard, type MembersPreviewCardHandle } from './_components/members-preview-card'
+import { MembersPreviewCard } from './_components/members-preview-card'
 import { isProjectManager } from '@/lib/projects/membership'
 import { isValidBadgeColor } from './_components/member-badge'
 
@@ -57,7 +57,7 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
   // Membership do usuário atual no projeto (para gating de UI).
   const [membership, setMembership] = useState<CurrentMembership | null>(null)
 
-  const membersPreviewRef = useRef<MembersPreviewCardHandle | null>(null)
+  const [members, setMembers] = useState<ProjectPublicMemberRow[]>([])
 
   // -------------------------------------------------------------------------
   // Carregamento do projeto
@@ -355,19 +355,19 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
         </Container>
       </div>
 
-      <Container className="space-y-6 py-10">
+      <Container className="grid min-w-0 items-start gap-5 py-6 lg:grid-cols-[minmax(0,7fr)_minmax(17rem,3fr)] lg:grid-rows-[auto_1fr] lg:gap-6">
         <motion.section
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.28, ease: 'easeOut' }}
-          className="space-y-6 rounded-[1.85rem] border border-card-outline bg-card p-6 shadow-sm sm:p-8"
+          className="min-w-0 space-y-5 rounded-[1.85rem] border border-card-outline bg-card bg-gradient-to-br from-primary/10 to-transparent p-5 shadow-sm sm:p-7 lg:col-start-1 lg:row-start-1"
           aria-labelledby="project-data-heading"
         >
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex min-w-0 flex-col gap-4">
             <div className="min-w-0 flex-1 space-y-2">
               <h1
                 id="project-data-heading"
-                className="text-balance text-3xl font-bold tracking-tight text-foreground sm:text-4xl"
+                className="break-words text-balance text-3xl font-bold tracking-tight text-foreground sm:text-4xl"
               >
                 {project.title}
               </h1>
@@ -385,7 +385,7 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
                 </p>
               ) : null}
             </div>
-            <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:gap-3 lg:max-w-[50%] lg:justify-end">
+            <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:gap-3">
               {project.category ? <CategoryBadge label={project.category} /> : null}
               <ProjectStatusBadge status={project.status} />
               {updatedAtLabel ? (
@@ -402,7 +402,7 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
               Sobre o projeto
             </p>
             {aboutText ? (
-              <p className="whitespace-pre-line text-base leading-relaxed text-muted-foreground">
+              <p className="break-words whitespace-pre-line text-base leading-relaxed text-muted-foreground">
                 {aboutText}
               </p>
             ) : (
@@ -410,7 +410,7 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
             )}
           </div>
 
-          {project.openSpots > 0 ? (
+          {project.requiredSkills.length > 0 || project.openSpots > 0 ? (
             <div className="space-y-2">
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">
                 Habilidades procuradas
@@ -432,17 +432,22 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
             </div>
           ) : null}
 
-          <div className="max-w-sm">
-            {project.openSpots > 0 ? (
-              <QuickFact
-                icon={Eye}
-                label="Vagas disponíveis"
-                value={`${project.openSpots} ${project.openSpots === 1 ? 'vaga' : 'vagas'}`}
-              />
-            ) : null}
-          </div>
+          {project.tags.length > 0 ? (
+            <ul aria-label="Tags do projeto" className="flex flex-wrap gap-2">
+              {project.tags.map((tag) => (
+                <li key={tag} className="max-w-full break-words rounded-full border border-border px-3 py-1 text-xs text-muted-foreground">
+                  {tag}
+                </li>
+              ))}
+            </ul>
+          ) : null}
 
           <div className="flex flex-col gap-2 border-t border-card-outline/70 pt-6 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-3">
+            {project.openSpots > 0 && (isVisitor || isLoggedNonMember) ? (
+              <Button asChild className="w-full rounded-2xl font-semibold sm:w-auto">
+                <a href="#participar">Participar</a>
+              </Button>
+            ) : null}
             <LikeButton
               projectId={project.id}
               initialCount={likesCount}
@@ -459,7 +464,7 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
               Compartilhar
             </Button>
             {isMember ? (
-              <Button asChild variant="outline" className="w-full rounded-2xl font-semibold sm:w-auto">
+              <Button asChild className="w-full rounded-2xl font-semibold sm:w-auto">
                 <Link href={`/projetos/${project.slug}/painel`}>
                   <LayoutDashboard className="h-4 w-4" aria-hidden />
                   Painel do projeto
@@ -477,106 +482,94 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
           </div>
         </motion.section>
 
-        <MembersPreviewCard
-          ref={membersPreviewRef}
-          projectId={project.id}
-          projectOwnerId={project.ownerId}
-          currentUserId={user?.id ?? null}
-        />
-
-        {project.openSpots > 0 ? (
-        <section
-          id="participar"
-          className="scroll-mt-24 space-y-5 rounded-[1.85rem] border border-card-outline bg-card p-6 shadow-sm sm:p-8"
-        >
-          <div className="flex min-w-0 items-start gap-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-              <Users className="h-5 w-5" aria-hidden />
-            </div>
-            <div className="min-w-0">
-              <h2 className="text-lg font-semibold">
-                {project.openSpots}{' '}
-                {project.openSpots === 1 ? 'vaga disponível' : 'vagas disponíveis'}
-              </h2>
-              <p className="text-xs text-muted-foreground">
-                {isMember
-                  ? 'Conheça o perfil que a equipe está buscando para essa vaga.'
-                  : 'Solicite participação para colaborar com a equipe.'}
-              </p>
-            </div>
-          </div>
-          {project.desiredProfile ? (
-            <p className="whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
-              {project.desiredProfile}
-            </p>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              A equipe ainda não detalhou o perfil ideal para essa vaga.
-            </p>
-          )}
-
-          {isVisitor ? (
-            <div className="flex flex-col gap-2 border-t border-card-outline/70 pt-5 sm:flex-row sm:justify-end">
-              <Button asChild className="w-full rounded-2xl font-semibold sm:w-auto">
-                <Link href="/login">Entrar</Link>
-              </Button>
-              <Button asChild variant="outline" className="w-full rounded-2xl font-semibold sm:w-auto">
-                <Link href="/cadastro">Criar conta</Link>
-              </Button>
-            </div>
-          ) : null}
-
-          {isLoggedNonMember ? (
-            <JoinRequestSection
-              variant="inline"
+        <aside aria-label="Equipe e vagas" className="min-w-0 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:self-stretch">
+          <div className="space-y-5 lg:sticky lg:top-24 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto lg:p-1">
+            <MembersPreviewCard
+              key={project.id}
+              onMembersChange={setMembers}
               projectId={project.id}
-              ownerId={project.ownerId}
+              projectOwnerId={project.ownerId}
+              currentUserId={user?.id ?? null}
             />
-          ) : null}
 
-          {isMember && !isManager ? (
-            <p className="border-t border-card-outline/70 pt-5 text-sm text-muted-foreground">
-              Você já faz parte deste projeto.
-            </p>
-          ) : null}
-        </section>
-        ) : null}
+            {project.openSpots > 0 ? (
+            <section
+              id="participar"
+              className="scroll-mt-24 space-y-4 rounded-[1.75rem] border border-card-outline bg-card p-4 sm:p-5"
+            >
+              <div className="flex min-w-0 items-start gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <Users className="h-5 w-5" aria-hidden />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-lg font-semibold">
+                    {project.openSpots}{' '}
+                    {project.openSpots === 1 ? 'vaga disponível' : 'vagas disponíveis'}
+                  </h2>
+                  <p className="text-xs text-muted-foreground">
+                    {isMember
+                      ? 'Conheça o perfil que a equipe está buscando para essa vaga.'
+                      : 'Solicite participação para colaborar com a equipe.'}
+                  </p>
+                </div>
+              </div>
+              {project.requiredSkills.length > 0 ? (
+                <p className="break-words text-xs font-medium text-primary">{project.requiredSkills.join(' · ')}</p>
+              ) : null}
+              {project.desiredProfile ? (
+                <p className="break-words whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
+                  {project.desiredProfile}
+                </p>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  A equipe ainda não detalhou o perfil ideal para essa vaga.
+                </p>
+              )}
 
-        <CommentsSection
-          projectId={project.id}
-          initialCount={commentsCount}
-          onCountChange={setCommentsCount}
-        />
+              {isVisitor ? (
+                <div className="flex flex-col gap-2 border-t border-card-outline/70 pt-5 xl:flex-row">
+                  <Button asChild className="w-full rounded-2xl font-semibold sm:w-auto">
+                    <Link href="/login">Entrar</Link>
+                  </Button>
+                  <Button asChild variant="outline" className="w-full rounded-2xl font-semibold sm:w-auto">
+                    <Link href="/cadastro">Criar conta</Link>
+                  </Button>
+                </div>
+              ) : null}
+
+              {isLoggedNonMember ? (
+                <JoinRequestSection
+                  variant="inline"
+                  projectId={project.id}
+                  ownerId={project.ownerId}
+                />
+              ) : null}
+
+              {isMember && !isManager ? (
+                <p className="border-t border-card-outline/70 pt-5 text-sm text-muted-foreground">
+                  Você já faz parte deste projeto.
+                </p>
+              ) : null}
+            </section>
+            ) : (
+              <section className="rounded-[1.75rem] border border-card-outline bg-card p-5">
+                <h2 className="font-semibold">Vagas</h2>
+                <p className="mt-1 text-sm text-muted-foreground">Sem vagas disponíveis no momento.</p>
+              </section>
+            )}
+          </div>
+        </aside>
+
+        <div className="min-w-0 lg:col-start-1 lg:row-start-2">
+          <CommentsSection
+            members={members}
+            projectId={project.id}
+            initialCount={commentsCount}
+            onCountChange={setCommentsCount}
+          />
+        </div>
       </Container>
     </main>
   )
 
-}
-
-// ---------------------------------------------------------------------------
-// Subcomponentes locais
-// ---------------------------------------------------------------------------
-
-function QuickFact({
-  icon: Icon,
-  label,
-  value,
-}: {
-  icon: React.ComponentType<{ className?: string; 'aria-hidden'?: boolean }>
-  label: string
-  value: string
-}) {
-  return (
-    <div className="flex items-center gap-3 rounded-2xl border border-border/60 bg-background/60 px-3 py-2.5">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-        <Icon className="h-4 w-4" aria-hidden />
-      </span>
-      <div className="min-w-0">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-          {label}
-        </p>
-        <p className="truncate text-sm font-semibold text-foreground">{value}</p>
-      </div>
-    </div>
-  )
 }

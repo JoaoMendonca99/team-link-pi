@@ -8,19 +8,27 @@ import { Textarea } from '@/components/ui/textarea'
 import { UserAvatar } from '@/components/team-link/user-avatar'
 import { getSupabaseClient } from '@/lib/supabase/client'
 import { useSupabaseSession } from '@/hooks/use-supabase-session'
-import type { ProjectPublicCommentRow } from '@/types/database'
+import { computeMemberBadge, isValidBadgeColor } from './member-badge'
+import { cn } from '@/lib/utils'
+import type { MemberBadgeColor, ProjectPublicCommentRow, ProjectPublicMemberRow } from '@/types/database'
+
+type Comment = Pick<ProjectPublicCommentRow, 'id' | 'user_id' | 'content' | 'created_at'> & {
+  user_name: string | null
+}
 
 export function CommentsSection({
   projectId,
   initialCount,
+  members,
   onCountChange,
 }: {
   projectId: string
   initialCount: number
+  members: ProjectPublicMemberRow[]
   onCountChange?: (next: number) => void
 }) {
   const { isAuthenticated, user } = useSupabaseSession()
-  const [comments, setComments] = useState<ProjectPublicCommentRow[]>([])
+  const [comments, setComments] = useState<Comment[]>([])
   const [loading, setLoading] = useState(true)
   const [draft, setDraft] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -39,7 +47,7 @@ export function CommentsSection({
     const client = getSupabaseClient()
     const { data, error } = await client
       .from('project_public_comments')
-      .select('*')
+      .select('id, user_id, content, created_at, user_name')
       .eq('project_id', projectId)
       .order('created_at', { ascending: true })
 
@@ -47,7 +55,7 @@ export function CommentsSection({
       setErrorMessage('Não foi possível carregar comentários.')
       setComments([])
     } else {
-      const rows = (data ?? []) as ProjectPublicCommentRow[]
+      const rows = (data ?? []) as Comment[]
       setComments(rows)
       updateCount(rows.length)
     }
@@ -99,10 +107,10 @@ export function CommentsSection({
   const initialLabel = !loading && comments.length === 0 ? initialCount : comments.length
 
   return (
-    <section className="space-y-6 rounded-[1.85rem] border border-dashed border-primary/40 bg-primary/5 p-5 sm:p-8">
+    <section className="space-y-5 rounded-[1.85rem] border border-card-outline bg-card p-4 sm:p-6">
       <div>
         <p className="text-xs font-semibold uppercase tracking-[0.26em] text-primary">Discussões</p>
-        <h3 className="text-2xl font-bold">Comentários ({initialLabel})</h3>
+        <h2 className="text-xl font-bold">Comentários ({initialLabel})</h2>
       </div>
 
       {loading ? (
@@ -116,24 +124,36 @@ export function CommentsSection({
           Nenhum comentário ainda. Seja o primeiro a comentar.
         </p>
       ) : (
-        <div className="space-y-4">
+        <div className="divide-y divide-card-outline">
           {comments.map((comment) => {
-            const authorName = comment.author_name?.trim() || 'Anônimo'
+            const authorName = comment.user_name?.trim() || 'Autor não identificado'
+            const member = members.find((item) => item.user_id === comment.user_id && item.status === 'active')
+            const badge = member ? computeMemberBadge({
+              role: member.role,
+              display_role: member.display_role,
+              badge_color: isValidBadgeColor(member.badge_color ?? null) ? (member.badge_color as MemberBadgeColor) : null,
+            }) : null
             const date = new Date(comment.created_at)
-            const dateLabel = Number.isNaN(date.getTime()) ? '' : date.toLocaleString('pt-BR')
+            const dateLabel = Number.isNaN(date.getTime()) ? '' : date.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
             const isMine = user?.id === comment.user_id
             return (
-              <article key={comment.id} className="rounded-2xl border border-card-outline bg-card p-5 shadow-inner">
+              <article key={comment.id} className="min-w-0 py-3.5">
                 <header className="flex items-center gap-3">
                   <UserAvatar
                     name={authorName}
-                    imageUrl={comment.author_avatar_url ?? undefined}
-                    sizeClassName="h-10 w-10"
+                    sizeClassName="h-8 w-8"
                   />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate font-semibold text-foreground">{authorName}</p>
+                    <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <p className="min-w-0 break-words text-sm font-semibold text-foreground">{authorName}</p>
+                      {badge ? (
+                        <span className={cn('max-w-full break-words rounded-full border px-2 py-0.5 text-[10px] font-semibold', badge.className)}>
+                          {badge.label}
+                        </span>
+                      ) : null}
+                    </div>
                     {dateLabel ? (
-                      <p className="text-xs font-medium text-muted-foreground">{dateLabel}</p>
+                      <time dateTime={comment.created_at} className="text-xs text-muted-foreground">{dateLabel}</time>
                     ) : null}
                   </div>
                   {isMine ? (
@@ -149,7 +169,7 @@ export function CommentsSection({
                     </Button>
                   ) : null}
                 </header>
-                <p className="mt-4 break-words whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
+                <p className="mt-2 break-words whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
                   {comment.content}
                 </p>
               </article>

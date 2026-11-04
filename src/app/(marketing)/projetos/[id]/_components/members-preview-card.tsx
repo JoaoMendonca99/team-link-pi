@@ -33,6 +33,7 @@ interface Props {
   currentUserId?: string | null
   /** Disparado quando o cargo visual de algum membro é alterado por aqui. */
   onMemberUpdated?: () => void
+  onMembersChange?: (members: ProjectPublicMemberRow[]) => void
   onCountChange?: (next: number) => void
 }
 
@@ -43,11 +44,13 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
       projectOwnerId,
       currentUserId,
       onMemberUpdated,
+      onMembersChange,
       onCountChange,
     },
     ref,
   ) {
     const [members, setMembers] = useState<ProjectPublicMemberRow[]>([])
+    const [expanded, setExpanded] = useState(false)
     const [loading, setLoading] = useState(true)
     const [errorMessage, setErrorMessage] = useState<string | null>(null)
     const [editingUserId, setEditingUserId] = useState<string | null>(null)
@@ -80,6 +83,10 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
     }, [load])
 
     useImperativeHandle(ref, () => ({ reload: load }), [load])
+
+    useEffect(() => {
+      onMembersChange?.(members)
+    }, [members, onMembersChange])
 
     const canManage = useMemo(() => {
       if (!currentUserId) return false
@@ -163,7 +170,7 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
     return (
       <section
         id="equipe-do-projeto"
-        className="rounded-[1.75rem] border border-card-outline bg-card p-6 shadow-lg scroll-mt-24"
+        className="rounded-[1.75rem] border border-card-outline bg-card p-4 shadow-sm sm:p-5 scroll-mt-24"
       >
         <header className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -185,9 +192,9 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
         </header>
 
         {loading ? (
-          <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-28 animate-pulse rounded-2xl bg-muted" />
+          <div className="mt-4 space-y-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-14 animate-pulse rounded-2xl bg-muted" />
             ))}
           </div>
         ) : errorMessage ? (
@@ -202,8 +209,8 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
             Nenhum membro listado ainda.
           </p>
         ) : (
-          <ul className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            {members.map((member) => {
+          <ul className="mt-4 space-y-2">
+            {(expanded ? members : members.slice(0, 4)).map((member) => {
               const name = member.full_name?.trim() || 'Membro'
               const profileHref =
                 currentUserId && currentUserId === member.user_id
@@ -219,7 +226,7 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
               return (
                 <li
                   key={`${member.project_id}-${member.user_id}`}
-                  className="relative flex min-w-0 gap-3 overflow-hidden rounded-2xl border border-card-outline/70 bg-muted/20 p-4"
+                  className="relative flex min-w-0 gap-3 overflow-hidden rounded-2xl border border-card-outline/70 bg-muted/20 p-2.5"
                 >
                   {canManage ? (
                     <Button
@@ -237,8 +244,7 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
                   <div className="shrink-0 self-start">
                     <UserAvatar
                       name={name}
-                      imageUrl={member.avatar_url ?? undefined}
-                      sizeClassName="h-11 w-11"
+                      sizeClassName="h-9 w-9"
                       ring={false}
                     />
                   </div>
@@ -279,6 +285,13 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
             })}
           </ul>
         )}
+
+        {members.length > 4 ? (
+          <Button type="button" variant="ghost" className="mt-3 w-full" aria-expanded={expanded}
+            onClick={() => setExpanded((current) => !current)}>
+            {expanded ? 'Mostrar menos membros' : 'Ver todos os membros'}
+          </Button>
+        ) : null}
 
         <EditMemberRoleDialog
           open={editingMember !== null}
