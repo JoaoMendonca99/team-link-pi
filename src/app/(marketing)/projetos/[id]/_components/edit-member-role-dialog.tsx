@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { Check, Loader2, X } from 'lucide-react'
+import { Check, Loader2, Trash2, X } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -37,6 +37,7 @@ export interface EditMemberRoleDialogProps {
   showAccessLevel?: boolean
   accessLevel?: string
   accessOptions?: readonly string[]
+  onRemove?: () => Promise<{ ok: true } | { ok: false; message: string }>
   onSave: (input: {
     displayRole: string | null
     badgeColor: MemberBadgeColor | null
@@ -49,6 +50,7 @@ export function EditMemberRoleDialog({
   onClose,
   member,
   onSave,
+  onRemove,
   showAccessLevel = false,
   accessLevel,
   accessOptions = [],
@@ -58,6 +60,10 @@ export function EditMemberRoleDialog({
   const [badgeColor, setBadgeColor] = React.useState<MemberBadgeColor>('blue')
   const [saving, setSaving] = React.useState(false)
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null)
+  const [removing, setRemoving] = React.useState(false)
+  const [removeError, setRemoveError] = React.useState<string | null>(null)
+  const removeDialog = React.useRef<HTMLDialogElement>(null)
+  const pending = React.useRef(false)
   const inputRef = React.useRef<HTMLInputElement | null>(null)
 
   // Sincroniza o estado do form com o membro selecionado sempre que abrir.
@@ -82,7 +88,7 @@ export function EditMemberRoleDialog({
     const previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape' && !saving) {
+      if (event.key === 'Escape' && !pending.current && !removeDialog.current?.open) {
         onClose()
       }
     }
@@ -102,20 +108,41 @@ export function EditMemberRoleDialog({
   const memberName = member.full_name?.trim() || 'Membro'
 
   async function submit({ resetToDefault }: { resetToDefault: boolean }) {
-    if (saving) return
+    if (pending.current) return
+    pending.current = true
     setSaving(true)
     setErrorMessage(null)
     const result = await onSave({
       displayRole: resetToDefault ? null : trimmed.length > 0 ? trimmed : null,
       badgeColor: resetToDefault ? null : badgeColor,
-      ...(canChangeAccess ? { accessLevel: resetToDefault ? accessLevel : level } : {}),
+      ...(canChangeAccess && !resetToDefault && level !== accessLevel ? { accessLevel: level } : {}),
     })
     if (result.ok) {
       onClose()
     } else {
       setErrorMessage(result.message)
     }
+    pending.current = false
     setSaving(false)
+  }
+
+  async function confirmRemoval() {
+    if (pending.current || !onRemove) return
+    pending.current = true
+    setRemoving(true)
+    setRemoveError(null)
+    try {
+      const result = await onRemove()
+      if (result.ok) {
+        removeDialog.current?.close()
+        onClose()
+      } else {
+        setRemoveError(result.message)
+      }
+    } finally {
+      pending.current = false
+      setRemoving(false)
+    }
   }
 
   return (
@@ -175,7 +202,7 @@ export function EditMemberRoleDialog({
             </div>
             <span
               className={cn(
-                'inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide',
+                'max-w-[50%] rounded-xl border px-2.5 py-0.5 text-[11px] font-semibold [overflow-wrap:anywhere]',
                 previewClassName,
               )}
             >
@@ -287,6 +314,12 @@ export function EditMemberRoleDialog({
             </div>
           </div>
 
+          <Button type="button" variant="ghost" size="sm" disabled={saving}
+            className="mt-3 text-xs text-muted-foreground"
+            onClick={() => void submit({ resetToDefault: true })}>
+            Usar padrão
+          </Button>
+
           {errorMessage ? (
             <p role="alert" className="mt-4 rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">
               {errorMessage}
@@ -295,17 +328,15 @@ export function EditMemberRoleDialog({
         </div>
 
         <footer className="flex flex-wrap items-center justify-between gap-2 border-t border-border/70 bg-background/40 px-5 py-3">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => void submit({ resetToDefault: true })}
-            disabled={saving}
-            className="text-xs font-semibold text-muted-foreground hover:text-foreground"
-          >
-            Usar padrão
-          </Button>
-          <div className="flex items-center gap-2">
+          {onRemove && (
+            <Button type="button" variant="ghost" size="sm" disabled={saving || removing}
+              className="gap-2 text-destructive hover:text-destructive"
+              onClick={() => { setRemoveError(null); removeDialog.current?.showModal() }}>
+              <Trash2 className="size-4" aria-hidden />
+              Remover integrante
+            </Button>
+          )}
+          <div className="ml-auto flex items-center gap-2">
             <Button
               type="button"
               variant="ghost"
@@ -336,6 +367,27 @@ export function EditMemberRoleDialog({
             </Button>
           </div>
         </footer>
+        {onRemove && (
+          <dialog ref={removeDialog} aria-labelledby="remove-member-title"
+            className="fixed inset-0 m-auto w-[calc(100%_-_2rem)] max-w-md rounded-3xl border border-card-outline bg-card p-5 text-card-foreground shadow-2xl backdrop:bg-black/70"
+            onCancel={(event) => { if (pending.current) event.preventDefault() }}>
+            <div className="space-y-3">
+              <h2 id="remove-member-title" className="text-lg font-semibold">Remover integrante do projeto?</h2>
+              <p className="break-words text-sm text-muted-foreground">
+                {memberName} será removido da equipe e perderá o acesso aos recursos reservados aos integrantes deste projeto.
+              </p>
+              {removeError && <p role="alert" className="text-sm text-destructive">{removeError}</p>}
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button type="button" variant="outline" disabled={removing} onClick={() => removeDialog.current?.close()}>
+                  Cancelar
+                </Button>
+                <Button type="button" variant="destructive" disabled={removing} onClick={() => void confirmRemoval()}>
+                  {removing ? 'Removendo…' : 'Confirmar remoção'}
+                </Button>
+              </div>
+            </div>
+          </dialog>
+        )}
       </div>
     </div>
   )

@@ -57,7 +57,7 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
   const [membership, setMembership] = useState<CurrentMembership | null>(null)
 
   const [members, setMembers] = useState<ProjectPublicMemberRow[]>([])
-  const { vacancies, error: vacancyError } = useVacancies(project?.id)
+  const { vacancies, error: vacancyError, reload: reloadVacancies } = useVacancies(project?.id)
 
   // -------------------------------------------------------------------------
   // Carregamento do projeto
@@ -462,6 +462,7 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
             <MembersPreviewCard
               key={project.id}
               onMembersChange={setMembers}
+              onMemberRemoved={() => { void reloadVacancies(); void loadMembership() }}
               projectId={project.id}
               onAdminChange={setCanEditProject}
               currentUserId={user?.id ?? null}

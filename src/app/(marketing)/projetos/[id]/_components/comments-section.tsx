@@ -149,7 +149,7 @@ export function CommentsSection({
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <p className="min-w-0 break-words text-sm font-semibold text-foreground">{authorName}</p>
                       {badge ? (
-                        <span className={cn('max-w-full break-words rounded-full border px-2 py-0.5 text-[10px] font-semibold', badge.className)}>
+                        <span className={cn('max-w-full rounded-xl border px-2 py-0.5 text-[10px] font-semibold [overflow-wrap:anywhere]', badge.className)}>
                           {badge.label}
                         </span>
                       ) : null}

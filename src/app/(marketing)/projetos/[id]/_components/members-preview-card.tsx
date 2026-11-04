@@ -56,6 +56,7 @@ interface Props {
   currentUserId?: string | null
   /** Disparado quando o cargo visual de algum membro é alterado por aqui. */
   onMemberUpdated?: () => void
+  onMemberRemoved?: () => void
   onMembersChange?: (members: ProjectPublicMemberRow[]) => void
   onCountChange?: (next: number) => void
 }
@@ -67,6 +68,7 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
       onAdminChange,
       currentUserId,
       onMemberUpdated,
+      onMemberRemoved,
       onMembersChange,
       onCountChange,
     },
@@ -80,6 +82,7 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
     const [teamOpen, setTeamOpen] = useState(false)
     const [loading, setLoading] = useState(true)
     const [errorMessage, setErrorMessage] = useState<string | null>(null)
+    const [successMessage, setSuccessMessage] = useState('')
     const [editingUserId, setEditingUserId] = useState<string | null>(null)
 
     const [draggedId, setDraggedId] = useState<string | null>(null)
@@ -189,16 +192,26 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
         badgeColor: MemberBadgeColor | null
         accessLevel?: string
       }) => {
-        if (!editingMember || !accessLevel || !allowedLevels(editingMember.user_id).includes(accessLevel as Level)) {
+        if (!editingMember || !canChangeLevels || (accessLevel && !allowedLevels(editingMember.user_id).includes(accessLevel as Level))) {
           return { ok: false as const, message: 'Você não pode atribuir este nível.' }
         }
         const targetUserId = editingMember.user_id
         try {
-          await recruitmentRpc('recruitment_set_access', {
-            p_project: projectId, p_user: targetUserId, p_level: accessLevel,
-            p_display_role: displayRole, p_badge_color: badgeColor,
-          })
-          setLevels((previous) => ({ ...previous, [targetUserId]: accessLevel }))
+          if (accessLevel) {
+            await recruitmentRpc('recruitment_set_access', {
+              p_project: projectId, p_user: targetUserId, p_level: accessLevel,
+              p_display_role: displayRole, p_badge_color: badgeColor,
+            })
+            setLevels((previous) => ({ ...previous, [targetUserId]: accessLevel }))
+          } else {
+            const rows = await recruitmentRpc<Array<{ user_id: string }>>('update_project_member_visual_role', {
+              p_project_id: projectId, p_user_id: targetUserId,
+              p_display_role: displayRole, p_badge_color: badgeColor,
+            })
+            if (!rows.some((row) => row.user_id === targetUserId)) {
+              throw new Error('Não foi possível atualizar o cargo deste integrante.')
+            }
+          }
           setMembers((previous) => previous.map((member) => member.user_id === targetUserId
             ? { ...member, display_role: displayRole, badge_color: badgeColor } : member))
           setFilter('all')
@@ -208,8 +221,33 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
           return { ok: false as const, message: error instanceof Error ? error.message : 'Falha ao atualizar integrante.' }
         }
       },
-      [allowedLevels, editingMember, onMemberUpdated, projectId],
+      [allowedLevels, canChangeLevels, editingMember, onMemberUpdated, projectId],
     )
+
+    async function removeMember() {
+      if (!editingMember || !canChangeLevels) return { ok: false as const, message: 'Você não tem permissão para remover integrantes.' }
+      const target = editingMember.user_id
+      try {
+        await recruitmentRpc('remove_project_member', { p_project: projectId, p_user: target })
+        const remaining = members.filter((member) => member.user_id !== target)
+        setMembers(remaining)
+        setLevels((current) => {
+          const next = { ...current }
+          delete next[target]
+          return next
+        })
+        setFilter('all')
+        setSuccessMessage('Integrante removido do projeto.')
+        onCountChange?.(remaining.length)
+        onMemberRemoved?.()
+        return { ok: true as const }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Não foi possível remover este integrante.'
+        return { ok: false as const, message: message.includes('pelo menos um Líder ou Gestor')
+          ? 'Este projeto precisa manter pelo menos um Líder ou Gestor. Promova outro integrante antes de removê-lo.'
+          : message }
+      }
+    }
 
     useEffect(() => {
       if (!teamOpen) return
@@ -335,8 +373,7 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
                     {member.display_role?.trim() && !(isLeader && normalizeName(member.display_role) === 'lider') ? <span
                       title={badge.label}
                       className={cn(
-                        'mt-0.5 inline-block max-w-full truncate rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
-                        'whitespace-nowrap',
+                        'mt-0.5 inline-block max-w-full rounded-xl border px-2.5 py-0.5 text-[10px] font-semibold [overflow-wrap:anywhere]',
                         badge.className,
                       )}
                     >
@@ -402,6 +439,18 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
                 </span>
               ) : null}
             </div>
+            {preview.some((member) => member.display_role?.trim()) && (
+              <ul className="mb-3 flex flex-wrap gap-1.5" aria-label="Cargos personalizados">
+                {preview.filter((member) => member.display_role?.trim() &&
+                  !(levels[member.user_id] === 'owner' && normalizeName(member.display_role) === 'lider')).map((member) => {
+                  const badge = computeMemberBadge(member)
+                  return <li key={member.user_id} title={member.full_name ?? undefined}
+                    className={cn('max-w-full rounded-xl border px-2 py-0.5 text-[10px] font-semibold [overflow-wrap:anywhere]', badge.className)}>
+                    <span className="sr-only">{member.full_name || 'Integrante'} · </span>{badge.label}
+                  </li>
+                })}
+              </ul>
+            )}
             <ul className="flex flex-wrap gap-1.5" aria-label="Distribuição por nível de acesso">
               {grouped.filter((group) => group.rows.length > 0).map((group) => (
                 <li key={group.id} className={cn('rounded-full border px-2 py-0.5 text-xs font-medium', group.style)}>
@@ -415,6 +464,8 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
             </Button>
           </>
         )}
+
+        {successMessage && !teamOpen && <p role="status" className="mt-3 text-sm text-primary">{successMessage}</p>}
 
         <dialog ref={teamDialogRef} onClose={() => { if (!teamDialogRef.current?.open) setTeamOpen(false) }}
           aria-labelledby="project-team-title"
@@ -447,6 +498,7 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
                 </div>
               </header>
               <div className="min-h-0 space-y-5 overflow-y-auto overscroll-contain p-4 sm:p-5">
+                {successMessage && <p role="status" className="text-sm text-primary">{successMessage}</p>}
                 {visibleGroups.length ? visibleGroups.map((group) => {
                   const label = group.rows.length === 1 ? group.singular : group.plural
                   const validDrop = Boolean(draggedId && levels[draggedId] !== group.id && allowedLevels(draggedId).includes(group.id))
@@ -519,6 +571,7 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
           member={editingMember}
           onClose={returnToTeam}
           onSave={handleSave}
+          onRemove={editingMember && canChangeLevels ? removeMember : undefined}
           showAccessLevel
           accessLevel={editingMember ? levels[editingMember.user_id] : undefined}
           accessOptions={editingMember ? allowedLevels(editingMember.user_id) : []}

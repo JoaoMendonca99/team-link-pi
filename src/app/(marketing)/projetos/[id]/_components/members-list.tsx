@@ -243,7 +243,7 @@ export const MembersList = forwardRef<MembersListHandle, MembersListProps>(
                 </div>
                 <span
                   className={cn(
-                    'inline-flex shrink-0 items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide',
+                    'max-w-[45%] rounded-xl border px-2.5 py-0.5 text-[11px] font-semibold [overflow-wrap:anywhere]',
                     badge.className,
                   )}
                 >
