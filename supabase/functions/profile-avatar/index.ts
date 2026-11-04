@@ -64,6 +64,11 @@ Deno.serve(async (request) => {
 
   const swapped = await admin.rpc('swap_profile_avatar', { p_user: user.id, p_avatar: next })
   if (swapped.error) {
+    console.error('profile-avatar: swap_profile_avatar failed', {
+      operation: request.method,
+      code: swapped.error.code,
+      status: swapped.status,
+    })
     if (path) await storage.remove([path])
     return reply(500, { error: 'Não foi possível atualizar a fotografia no perfil.' })
   }
