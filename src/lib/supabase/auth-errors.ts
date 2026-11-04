@@ -31,3 +31,11 @@ export function translateAuthError(rawMessage: string | undefined | null): strin
 
   return rawMessage
 }
+
+export function passwordAuthError(error: { status?: number; code?: string } | null, fallback: string): string {
+  if (error?.status === 429 || error?.code === 'over_request_rate_limit') {
+    return 'Muitas tentativas. Aguarde alguns minutos antes de tentar novamente.'
+  }
+
+  return fallback
+}

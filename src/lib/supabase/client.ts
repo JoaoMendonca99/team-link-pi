@@ -48,6 +48,20 @@ export function getSupabaseClient(): SupabaseClient {
   return cachedClient
 }
 
+export function createSupabaseRecoveryClient(): SupabaseClient {
+  const env = readEnv()
+  if (!env) throw new Error('Configuração do Supabase indisponível.')
+
+  return createClient(env.url, env.anonKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: (_url, params) => params.type === 'recovery',
+      storageKey: 'team-link-password-recovery',
+    },
+  })
+}
+
 /**
  * Indica se as variáveis de ambiente do Supabase estão presentes.
  * Útil para exibir avisos quando o ambiente local ainda não está configurado.

@@ -11,11 +11,15 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase/client'
-import { translateAuthError } from '@/lib/supabase/auth-errors'
+import { passwordAuthError } from '@/lib/supabase/auth-errors'
 import { useSupabaseSession } from '@/hooks/use-supabase-session'
 
+const LOGIN_ERROR = 'Não foi possível entrar. Confira o e-mail e a senha e tente novamente.'
+const RECOVERY_ERROR = 'Não foi possível solicitar a recuperação. Tente novamente.'
+const RECOVERY_NOTICE = 'Se houver uma conta para esse endereço, você receberá um link para redefinir a senha.'
+
 function getSafeRedirectPath(path: string | null): string {
-  if (!path || !path.startsWith('/') || path.startsWith('//')) {
+  if (!path || !path.startsWith('/') || path.startsWith('//') || /[\\\s]/.test(path)) {
     return '/perfil'
   }
   return path
@@ -28,6 +32,8 @@ export function LoginClient() {
   const { isAuthenticated, loading } = useSupabaseSession()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [recovering, setRecovering] = useState(false)
+  const [recoveryRequested, setRecoveryRequested] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [envMissing, setEnvMissing] = useState(false)
@@ -44,6 +50,8 @@ export function LoginClient() {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    if (submitting) return
+
     setErrorMessage(null)
 
     const trimmedEmail = email.trim().toLowerCase()
@@ -51,7 +59,7 @@ export function LoginClient() {
       setErrorMessage('Informe seu e-mail.')
       return
     }
-    if (!password) {
+    if (!recovering && !password) {
       setErrorMessage('Informe sua senha.')
       return
     }
@@ -62,22 +70,35 @@ export function LoginClient() {
     }
 
     setSubmitting(true)
+    setRecoveryRequested(false)
     try {
       const client = getSupabaseClient()
-      const { error } = await client.auth.signInWithPassword({
+      if (recovering) {
+        const { error } = await client.auth.resetPasswordForEmail(trimmedEmail, {
+          redirectTo: new URL('/redefinir-senha', window.location.origin).href,
+        })
+        if (error && error.code !== 'user_not_found') {
+          setErrorMessage(passwordAuthError(error, RECOVERY_ERROR))
+          return
+        }
+
+        setRecoveryRequested(true)
+        return
+      }
+
+      const { data, error } = await client.auth.signInWithPassword({
         email: trimmedEmail,
         password,
       })
 
-      if (error) {
-        setErrorMessage(translateAuthError(error.message))
+      if (error || !data.session) {
+        setErrorMessage(passwordAuthError(error, LOGIN_ERROR))
         return
       }
 
       router.push(redirectTo)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : null
-      setErrorMessage(translateAuthError(message))
+    } catch {
+      setErrorMessage(recovering ? RECOVERY_ERROR : LOGIN_ERROR)
     } finally {
       setSubmitting(false)
     }
@@ -112,9 +133,23 @@ export function LoginClient() {
         <AuthCard
           className="max-w-none md:max-w-md"
           eyebrow="Entrar"
-          title="Faça login"
-          description="Use o e-mail e a senha cadastrados no Team Link."
-          footer={<p className="text-xs text-muted-foreground">Esqueceu a senha? Em breve você poderá recuperar o acesso por e-mail.</p>}
+          title={recovering ? 'Recupere sua senha' : 'Faça login'}
+          description={recovering ? 'Informe o e-mail da sua conta.' : 'Use o e-mail e a senha cadastrados no Team Link.'}
+          footer={(
+            <button
+              type="button"
+              disabled={submitting}
+              onClick={() => {
+                setRecovering(!recovering)
+                setPassword('')
+                setErrorMessage(null)
+                setRecoveryRequested(false)
+              }}
+              className="text-sm font-semibold text-primary hover:underline disabled:opacity-50"
+            >
+              {recovering ? 'Voltar ao login' : 'Esqueceu a senha?'}
+            </button>
+          )}
         >
           <form className="space-y-5 text-left" onSubmit={handleSubmit} noValidate>
             <div className="space-y-3">
@@ -130,19 +165,25 @@ export function LoginClient() {
                 required
               />
             </div>
-            <div className="space-y-3">
-              <Label htmlFor="senha">Senha</Label>
-              <Input
-                id="senha"
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="••••••••"
-                className="rounded-2xl"
-                required
-              />
-            </div>
+            {!recovering ? (
+              <div className="space-y-3">
+                <Label htmlFor="senha">Senha</Label>
+                <Input
+                  id="senha"
+                  type="password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="••••••••"
+                  className="rounded-2xl"
+                  required
+                />
+              </div>
+            ) : null}
+
+            {recoveryRequested ? (
+              <p role="status" className="text-sm text-muted-foreground">{RECOVERY_NOTICE}</p>
+            ) : null}
 
             {errorMessage ? (
               <div
@@ -167,7 +208,7 @@ export function LoginClient() {
               disabled={submitting}
               className="w-full rounded-2xl py-5 text-base font-semibold"
             >
-              {submitting ? 'Entrando...' : 'Entrar'}
+              {recovering ? (submitting ? 'Enviando...' : 'Enviar link') : (submitting ? 'Entrando...' : 'Entrar')}
             </Button>
           </form>
           <div className="mt-6 text-center text-sm text-muted-foreground">

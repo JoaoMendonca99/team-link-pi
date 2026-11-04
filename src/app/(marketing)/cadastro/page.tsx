@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase/client'
-import { translateAuthError } from '@/lib/supabase/auth-errors'
+import { passwordAuthError } from '@/lib/supabase/auth-errors'
 import { useSupabaseSession } from '@/hooks/use-supabase-session'
 import { cn } from '@/lib/utils'
 
@@ -26,22 +26,9 @@ type FieldErrors = {
   course?: string
 }
 
-const EMAIL_ALREADY_REGISTERED =
-  'Este e-mail já está cadastrado. Entre na sua conta ou use outro e-mail.'
-
-function isAlreadyRegisteredAuthMessage(message: string | undefined): boolean {
-  const normalized = (message ?? '').toLowerCase()
-  return (
-    normalized.includes('user already registered') ||
-    normalized.includes('already registered') ||
-    normalized.includes('already exists') ||
-    normalized.includes('user_already_exists')
-  )
-}
-
-function isDuplicateSignupResponse(identities: unknown): boolean {
-  return Array.isArray(identities) && identities.length === 0
-}
+const SIGNUP_ERROR = 'Não foi possível concluir o cadastro. Confira os dados e tente novamente.'
+const PROFILE_ERROR = 'A conta foi criada. Tente finalizar o cadastro novamente para salvar o perfil.'
+const SIGNUP_NOTICE = 'Se for necessário confirmar seu endereço, você receberá um link por e-mail. Depois, entre no Team Link.'
 
 type OrientationMiniCardProps = {
   title: string
@@ -104,7 +91,7 @@ function SignupOrientationPanel({ step }: { step: SignupStep }) {
               Crie sua conta no Team Link
             </h1>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Primeiro criamos seu acesso. Depois você pode completar seu perfil acadêmico com
+              Primeiro informe seus dados de acesso. Depois você pode completar seu perfil acadêmico com
               curso, habilidades e áreas de interesse.
             </p>
           </div>
@@ -186,8 +173,8 @@ export default function CadastroPage() {
   const [interests, setInterests] = useState<string[]>([])
 
   const [submitting, setSubmitting] = useState(false)
-  const [step1Submitting, setStep1Submitting] = useState(false)
-  const [step1AuthDone, setStep1AuthDone] = useState(false)
+  const [registeredUserId, setRegisteredUserId] = useState<string | null>(null)
+  const [signupNotice, setSignupNotice] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [envMissing, setEnvMissing] = useState(false)
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({})
@@ -198,10 +185,10 @@ export default function CadastroPage() {
   }, [])
 
   useEffect(() => {
-    if (!loading && isAuthenticated) {
+    if (!loading && isAuthenticated && !submitting && !registeredUserId) {
       router.replace('/perfil')
     }
-  }, [isAuthenticated, loading, router])
+  }, [isAuthenticated, loading, registeredUserId, router, submitting])
 
   const trimmedEmail = email.trim()
   const emailFormatValid = useMemo(
@@ -251,14 +238,7 @@ export default function CadastroPage() {
     return false
   }
 
-  const markEmailAlreadyRegistered = () => {
-    setFieldErrors((prev) => ({ ...prev, email: EMAIL_ALREADY_REGISTERED }))
-    setStep1Touched(true)
-  }
-
-  const handleContinue = async () => {
-    if (step1Submitting) return
-
+  const handleContinue = () => {
     setErrorMessage(null)
     setStep1Touched(true)
 
@@ -269,62 +249,12 @@ export default function CadastroPage() {
       return
     }
 
-    setStep1Submitting(true)
-    try {
-      const client = getSupabaseClient()
-      const normalizedEmail = trimmedEmail.toLowerCase()
-
-      const { data: existingProfile } = await client
-        .from('profiles')
-        .select('id')
-        .eq('email', normalizedEmail)
-        .maybeSingle()
-
-      if (existingProfile?.id) {
-        markEmailAlreadyRegistered()
-        return
-      }
-
-      const { data, error } = await client.auth.signUp({
-        email: normalizedEmail,
-        password,
-        options: {
-          data: {
-            full_name: name.trim(),
-            course: '',
-            skills: [],
-            interests: [],
-          },
-        },
-      })
-
-      if (error) {
-        if (isAlreadyRegisteredAuthMessage(error.message)) {
-          markEmailAlreadyRegistered()
-          return
-        }
-        setErrorMessage(translateAuthError(error.message))
-        return
-      }
-
-      if (isDuplicateSignupResponse(data.user?.identities)) {
-        markEmailAlreadyRegistered()
-        return
-      }
-
-      setStep1AuthDone(true)
-      setStep(2)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : null
-      setErrorMessage(translateAuthError(message))
-    } finally {
-      setStep1Submitting(false)
-    }
+    setStep(2)
   }
 
   const handleBack = () => {
     setErrorMessage(null)
-    setStep1AuthDone(false)
+    setSignupNotice(false)
     setFieldErrors((prev) => {
       const next = { ...prev }
       delete next.course
@@ -335,7 +265,7 @@ export default function CadastroPage() {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    if (submitting) return
+    if (submitting || signupNotice) return
 
     setErrorMessage(null)
 
@@ -354,84 +284,57 @@ export default function CadastroPage() {
       interests,
     }
 
+    let userId = registeredUserId
     setSubmitting(true)
     try {
       const client = getSupabaseClient()
 
-      if (step1AuthDone) {
-        const {
-          data: { session },
-        } = await client.auth.getSession()
+      if (!userId) {
+        const { data, error } = await client.auth.signUp({
+          email: normalizedEmail,
+          password,
+          options: { data: profilePayload },
+        })
 
-        if (session) {
-          const { error: authError } = await client.auth.updateUser({
-            data: profilePayload,
-          })
-          if (authError) {
-            setErrorMessage(translateAuthError(authError.message))
-            return
-          }
-
-          const { error: profileError } = await client
-            .from('profiles')
-            .update(profilePayload)
-            .eq('id', session.user.id)
-
-          if (profileError) {
-            setErrorMessage(translateAuthError(profileError.message))
-            return
-          }
-
-          router.push('/perfil')
+        if (error && error.code !== 'user_already_exists') {
+          setErrorMessage(passwordAuthError(error, SIGNUP_ERROR))
           return
         }
-      }
 
-      const { data, error } = await client.auth.signUp({
-        email: normalizedEmail,
-        password,
-        options: { data: profilePayload },
-      })
-
-      if (error) {
-        if (isAlreadyRegisteredAuthMessage(error.message)) {
-          markEmailAlreadyRegistered()
+        if (!data.session) {
           setPassword('')
           setConfirmPassword('')
-          setStep1AuthDone(false)
-          setStep(1)
+          setSignupNotice(true)
           return
         }
 
-        setErrorMessage(translateAuthError(error.message))
-        return
-      }
-
-      if (data.session) {
-        router.push('/perfil')
-        return
-      }
-
-      if (!step1AuthDone && isDuplicateSignupResponse(data.user?.identities)) {
-        markEmailAlreadyRegistered()
+        userId = data.session.user.id
+        setRegisteredUserId(userId)
         setPassword('')
         setConfirmPassword('')
-        setStep1AuthDone(false)
-        setStep(1)
+      }
+
+      // The database trigger initializes the profile with empty skills and interests.
+      const { error: profileError } = await client
+        .from('profiles')
+        .update(profilePayload)
+        .eq('id', userId)
+        .select('id')
+        .single()
+
+      if (profileError) {
+        setErrorMessage(PROFILE_ERROR)
         return
       }
 
-      router.push('/cadastro/confirmar-email')
-    } catch (error) {
-      const message = error instanceof Error ? error.message : null
-      setErrorMessage(translateAuthError(message))
+      router.replace('/perfil')
+    } catch {
+      setErrorMessage(userId ? PROFILE_ERROR : SIGNUP_ERROR)
     } finally {
       setSubmitting(false)
     }
   }
 
-  const emailAlreadyRegistered =
-    fieldErrors.email === EMAIL_ALREADY_REGISTERED
   const showNameError = step1Touched && Boolean(fieldErrors.name)
   const showEmailError = step1Touched && Boolean(fieldErrors.email)
   const showPasswordError = step1Touched && Boolean(fieldErrors.password)
@@ -493,7 +396,6 @@ export default function CadastroPage() {
                   value={email}
                   onChange={(event) => {
                     setEmail(event.target.value)
-                    setStep1AuthDone(false)
                     if (fieldErrors.email) {
                       setFieldErrors((prev) => {
                         const next = { ...prev }
@@ -507,22 +409,7 @@ export default function CadastroPage() {
                   className={cn('rounded-2xl', showEmailError && 'border-destructive')}
                 />
                 <div id="cadastro-email-hint" aria-live="polite" className="space-y-1">
-                  {emailAlreadyRegistered ? (
-                    <>
-                      <p className="text-xs font-medium text-destructive">
-                        {EMAIL_ALREADY_REGISTERED}
-                      </p>
-                      <div className="mt-1.5 flex justify-center">
-                        <Link
-                          href="/login"
-                          className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-blue-500/40 bg-transparent px-3 py-1 text-xs font-semibold text-blue-700 transition-colors hover:bg-blue-50 hover:text-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 focus-visible:ring-offset-1 focus-visible:ring-offset-card dark:text-blue-300 dark:hover:bg-blue-500/10 dark:hover:text-blue-200"
-                        >
-                          Ir para o login
-                          <span aria-hidden="true">→</span>
-                        </Link>
-                      </div>
-                    </>
-                  ) : showEmailError ? (
+                  {showEmailError ? (
                     <p className="text-xs text-destructive">{fieldErrors.email}</p>
                   ) : (
                     <p className="text-xs text-muted-foreground">Use um e-mail válido para criar sua conta.</p>
@@ -539,7 +426,6 @@ export default function CadastroPage() {
                     value={password}
                     onChange={(event) => {
                       setPassword(event.target.value)
-                      setStep1AuthDone(false)
                       if (fieldErrors.password) {
                         setFieldErrors((prev) => {
                           const next = { ...prev }
@@ -607,10 +493,9 @@ export default function CadastroPage() {
 
               <Button
                 type="submit"
-                disabled={step1Submitting}
                 className="w-full rounded-2xl py-4 text-base font-semibold"
               >
-                {step1Submitting ? 'Criando conta...' : 'Criar conta'}
+                Continuar
               </Button>
             </form>
           ) : (
@@ -680,19 +565,27 @@ export default function CadastroPage() {
                   type="button"
                   variant="outline"
                   onClick={handleBack}
-                  disabled={submitting}
+                  disabled={submitting || registeredUserId !== null}
                   className="w-full rounded-2xl py-4 font-semibold sm:flex-1"
                 >
                   Voltar
                 </Button>
                 <Button
                   type="submit"
-                  disabled={submitting}
+                  disabled={submitting || signupNotice}
                   className="w-full rounded-2xl py-4 text-base font-semibold sm:flex-[1.4]"
                 >
                   {submitting ? 'Finalizando...' : 'Finalizar cadastro'}
                 </Button>
               </div>
+              {signupNotice ? (
+                <p role="status" className="text-sm text-muted-foreground">
+                  {SIGNUP_NOTICE}{' '}
+                  <Link href="/login" className="font-semibold text-primary hover:underline">
+                    Ir para o login
+                  </Link>
+                </p>
+              ) : null}
             </form>
           )}
 
