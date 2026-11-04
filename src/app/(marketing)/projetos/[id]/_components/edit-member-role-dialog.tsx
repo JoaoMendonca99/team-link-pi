@@ -36,7 +36,7 @@ export interface EditMemberRoleDialogProps {
   } | null
   showAccessLevel?: boolean
   accessLevel?: string
-  canChangeAccess?: boolean
+  accessOptions?: readonly string[]
   onSave: (input: {
     displayRole: string | null
     badgeColor: MemberBadgeColor | null
@@ -51,7 +51,7 @@ export function EditMemberRoleDialog({
   onSave,
   showAccessLevel = false,
   accessLevel,
-  canChangeAccess = false,
+  accessOptions = [],
 }: EditMemberRoleDialogProps) {
   const [level, setLevel] = React.useState('member')
   const [displayRole, setDisplayRole] = React.useState('')
@@ -95,6 +95,7 @@ export function EditMemberRoleDialog({
 
   if (!open || !member) return null
 
+  const canChangeAccess = accessOptions.length > 0
   const trimmed = displayRole.trim()
   const previewLabel = trimmed ? formatDisplayLabel(trimmed) : (showAccessLevel ? "Sem cargo personalizado" : defaultDisplayLabelFor(member.role))
   const previewClassName = BADGE_COLOR_CLASSES[badgeColor]
@@ -139,7 +140,7 @@ export function EditMemberRoleDialog({
         <header className="flex items-start justify-between gap-3 border-b border-border/70 bg-background/40 px-5 py-4">
           <div className="min-w-0">
             <h2 id="edit-member-role-title" className="text-base font-semibold leading-tight">
-              Editar cargo
+              Editar integrante
             </h2>
             <p className="mt-0.5 truncate text-xs text-muted-foreground">{memberName}</p>
           </div>
@@ -192,9 +193,9 @@ export function EditMemberRoleDialog({
               <span>Novo nível de acesso</span>
               <select value={level} onChange={(event) => setLevel(event.target.value)} disabled={saving}
                 className="block w-full rounded-xl border border-border bg-background p-2">
-                <option value="member">Membro</option>
-                <option value="reviewer">Revisor</option>
-                <option value="manager">Gestor</option>
+                {accessOptions.map((option) => (
+                  <option key={option} value={option}>{getMemberAccessLabel(option)}</option>
+                ))}
               </select>
             </label>
           ) : null}

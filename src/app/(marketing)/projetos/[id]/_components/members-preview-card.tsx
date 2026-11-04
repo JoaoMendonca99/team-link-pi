@@ -10,7 +10,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import { Pencil, Search, Users, X } from 'lucide-react'
+import { GripVertical, Pencil, Search, Users, X } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,11 +27,21 @@ import { computeMemberBadge, isValidBadgeColor } from './member-badge'
 import { EditMemberRoleDialog } from './edit-member-role-dialog'
 
 const TEAM_LEVELS = [
-  { id: 'owner', singular: 'Dono', plural: 'Donos', style: 'border-primary/30 bg-primary/10 text-primary' },
+  { id: 'owner', singular: 'Líder', plural: 'Líderes', style: 'border-primary/30 bg-primary/10 text-primary' },
   { id: 'manager', singular: 'Gestor', plural: 'Gestores', style: 'border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300' },
   { id: 'reviewer', singular: 'Revisor', plural: 'Revisores', style: 'border-cyan-500/30 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300' },
   { id: 'member', singular: 'Membro', plural: 'Membros', style: 'border-border bg-muted text-muted-foreground' },
 ] as const
+
+type Level = typeof TEAM_LEVELS[number]['id']
+type LevelChange = { userId: string; from: Level; to: Level }
+
+const LEVEL_SUMMARY: Record<Level, string> = {
+  owner: 'Poderá editar o projeto, administrar vagas e candidaturas e gerenciar a equipe.',
+  manager: 'Poderá administrar vagas e candidaturas.',
+  reviewer: 'Terá acesso de Revisor, sem gestão da equipe ou do recrutamento.',
+  member: 'Terá acesso de Membro, sem gestão da equipe ou do recrutamento.',
+}
 
 const normalizeName = (value: string) =>
   value.normalize('NFD').replace(/\p{M}/gu, '').trim().toLocaleLowerCase('pt-BR')
@@ -71,6 +81,57 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
     const [loading, setLoading] = useState(true)
     const [errorMessage, setErrorMessage] = useState<string | null>(null)
     const [editingUserId, setEditingUserId] = useState<string | null>(null)
+
+    const [draggedId, setDraggedId] = useState<string | null>(null)
+    const [hoveredLevel, setHoveredLevel] = useState<Level | null>(null)
+    const [change, setChange] = useState<LevelChange | null>(null)
+    const [moveError, setMoveError] = useState('')
+    const [moving, setMoving] = useState(false)
+    const confirmationRef = useRef<HTMLDialogElement>(null)
+
+    const isPrimary = Boolean(currentUserId && currentUserId === projectOwnerId)
+    const isAdditionalLeader = Boolean(currentUserId && levels[currentUserId] === 'owner' && !isPrimary)
+    const canChangeLevels = isPrimary || isAdditionalLeader
+
+    const allowedLevels = useCallback((userId: string): Level[] => {
+      if (!canChangeLevels || userId === projectOwnerId || !levels[userId]) return []
+      if (isPrimary) return ['owner', 'manager', 'reviewer', 'member']
+      return levels[userId] === 'owner' ? [] : ['manager', 'reviewer', 'member']
+    }, [canChangeLevels, isPrimary, levels, projectOwnerId])
+
+    useEffect(() => {
+      if (change && !confirmationRef.current?.open) confirmationRef.current?.showModal()
+    }, [change])
+
+    function clearDrag() {
+      setDraggedId(null)
+      setHoveredLevel(null)
+    }
+
+    function closeConfirmation() {
+      confirmationRef.current?.close()
+      setChange(null)
+      setMoveError('')
+    }
+
+    async function confirmChange() {
+      if (!change || moving || !allowedLevels(change.userId).includes(change.to)) return
+      setMoving(true)
+      setMoveError('')
+      try {
+        await recruitmentRpc('recruitment_move_member', {
+          p_project: projectId, p_user: change.userId, p_previous: change.from, p_level: change.to,
+        })
+        setLevels((current) => ({ ...current, [change.userId]: change.to }))
+        setFilter('all')
+        onMemberUpdated?.()
+        closeConfirmation()
+      } catch (error) {
+        setMoveError(error instanceof Error ? error.message : 'Não foi possível alterar o nível.')
+      } finally {
+        setMoving(false)
+      }
+    }
 
     const load = useCallback(async () => {
       setLoading(true)
@@ -139,7 +200,10 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
           return { ok: false as const, message: 'Não foi possível salvar o cargo agora.' }
         }
         const targetUserId = editingMember.user_id
-        if (accessLevel && currentUserId === projectOwnerId && targetUserId !== projectOwnerId) {
+        if (accessLevel) {
+          if (!allowedLevels(targetUserId).includes(accessLevel as Level)) {
+            return { ok: false as const, message: 'Você não pode atribuir este nível.' }
+          }
           try {
             await recruitmentRpc('recruitment_set_access', {
               p_project: projectId, p_user: targetUserId, p_level: accessLevel,
@@ -206,7 +270,7 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
         onMemberUpdated?.()
         return { ok: true as const }
       },
-      [currentUserId, editingMember, onMemberUpdated, projectId, projectOwnerId],
+      [allowedLevels, editingMember, onMemberUpdated, projectId],
     )
 
     useEffect(() => {
@@ -227,14 +291,14 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
       for (const group of groups) {
         group.rows.sort((a, b) => (a.full_name ?? '').localeCompare(b.full_name ?? '', 'pt-BR', { sensitivity: 'base' }))
       }
-      return groups.filter((group) => group.rows.length > 0)
+      return groups
     }, [levels, members, projectOwnerId])
 
     const query = normalizeName(search)
     const visibleGroups = grouped
-      .filter((group) => filter === 'all' || filter === group.id)
+      .filter((group) => draggedId || filter === 'all' || filter === group.id)
       .map((group) => ({ ...group, rows: group.rows.filter((member) => normalizeName(member.full_name ?? '').includes(query)) }))
-      .filter((group) => group.rows.length > 0)
+      .filter((group) => group.rows.length > 0 || canChangeLevels)
     const preview = grouped.flatMap((group) => group.rows).slice(0, 5)
 
     function openTeam() {
@@ -257,6 +321,9 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
                 currentUserId && currentUserId === member.user_id
                   ? '/perfil'
                   : `/usuarios/${member.user_id}`
+              const canDrag = allowedLevels(member.user_id).length > 0
+              const canEditMember = canManage || (isAdditionalLeader && canDrag)
+              const isLeader = member.user_id === projectOwnerId || levels[member.user_id] === 'owner'
               const badge = computeMemberBadge({
                 role: member.role,
                 display_role: member.display_role,
@@ -267,9 +334,23 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
               return (
                 <li
                   key={`${member.project_id}-${member.user_id}`}
-                  className="relative flex min-w-0 gap-3 overflow-hidden rounded-2xl border border-card-outline/70 bg-muted/20 p-3"
+                  className={cn('relative flex min-w-0 gap-3 overflow-hidden rounded-2xl border border-card-outline/70 bg-muted/20 p-3',
+                    draggedId === member.user_id && 'opacity-50 ring-1 ring-primary')}
                 >
-                  {canManage ? (
+                  {canDrag && (
+                    <button type="button" draggable tabIndex={-1} title="Arrastar para alterar nível"
+                      aria-label={'Arrastar ' + name}
+                      className="hidden shrink-0 cursor-grab self-start rounded p-1 text-muted-foreground hover:bg-muted active:cursor-grabbing sm:block"
+                      onDragStart={(event) => {
+                        event.dataTransfer.setData('text/plain', member.user_id)
+                        event.dataTransfer.effectAllowed = 'move'
+                        setDraggedId(member.user_id)
+                      }}
+                      onDragEnd={clearDrag}>
+                      <GripVertical aria-hidden className="size-4" />
+                    </button>
+                  )}
+                  {canEditMember ? (
                     <Button
                       type="button"
                       variant="ghost"
@@ -297,7 +378,7 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
                   <div
                     className={cn(
                       'min-w-0 flex-1 space-y-1',
-                      canManage ? 'pr-9' : undefined,
+                      canEditMember ? 'pr-9' : undefined,
                     )}
                   >
                     <Link
@@ -315,7 +396,7 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
                         {member.course}
                       </p>
                     ) : null}
-                    {member.display_role?.trim() ? <span
+                    {member.display_role?.trim() && !(isLeader && normalizeName(member.display_role) === 'lider') ? <span
                       title={badge.label}
                       className={cn(
                         'mt-0.5 inline-block max-w-full truncate rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
@@ -386,7 +467,7 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
               ) : null}
             </div>
             <ul className="flex flex-wrap gap-1.5" aria-label="Distribuição por nível de acesso">
-              {grouped.map((group) => (
+              {grouped.filter((group) => group.rows.length > 0).map((group) => (
                 <li key={group.id} className={cn('rounded-full border px-2 py-0.5 text-xs font-medium', group.style)}>
                   {group.rows.length} {group.rows.length === 1 ? group.singular : group.plural}
                 </li>
@@ -424,25 +505,72 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
                   <select aria-label="Filtrar por nível de acesso" value={filter} onChange={(event) => setFilter(event.target.value)}
                     className="h-10 min-w-0 rounded-xl border border-border bg-background px-3 text-sm">
                     <option value="all">Todos os níveis</option>
-                    {grouped.map((group) => <option key={group.id} value={group.id}>{group.id === 'owner' ? group.singular : group.plural}</option>)}
+                    {grouped.filter((group) => canChangeLevels || group.rows.length > 0).map((group) => <option key={group.id} value={group.id}>{group.plural}</option>)}
                   </select>
                 </div>
               </header>
               <div className="min-h-0 space-y-5 overflow-y-auto overscroll-contain p-4 sm:p-5">
-                {visibleGroups.length ? visibleGroups.map((group) => (
-                  <section key={group.id} aria-label={group.id === 'owner' ? group.singular : group.plural}>
+                {visibleGroups.length ? visibleGroups.map((group) => {
+                  const label = group.rows.length === 1 ? group.singular : group.plural
+                  const validDrop = Boolean(draggedId && levels[draggedId] !== group.id && allowedLevels(draggedId).includes(group.id))
+                  return (
+                  <section key={group.id} aria-label={label}
+                    className={cn('rounded-2xl', validDrop && 'outline outline-1 outline-dashed outline-primary/50',
+                      validDrop && hoveredLevel === group.id && 'bg-primary/10 outline-primary')}
+                    onDragOver={(event) => {
+                      if (!validDrop) return
+                      event.preventDefault()
+                      event.dataTransfer.dropEffect = 'move'
+                      setHoveredLevel(group.id)
+                    }}
+                    onDragLeave={(event) => {
+                      if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setHoveredLevel(null)
+                    }}
+                    onDrop={(event) => {
+                      if (!validDrop || !draggedId) return
+                      event.preventDefault()
+                      setChange({ userId: draggedId, from: levels[draggedId] as Level, to: group.id })
+                      clearDrag()
+                    }}>
                     <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                       <span className={cn('mr-2 inline-block rounded-full border px-2 py-0.5', group.style)}>
-                        {group.id === 'owner' ? group.singular : group.plural}
+                        {label}
                       </span>
                       {group.rows.length} {group.rows.length === 1 ? 'integrante' : 'integrantes'}
                     </h3>
-                    {renderMembers(group.rows)}
+                    {group.rows.length ? renderMembers(group.rows) : (
+                      <p className="rounded-xl border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
+                        {query ? 'Nenhum resultado neste nível.' : 'Nenhum integrante neste nível.'}
+                      </p>
+                    )}
                   </section>
-                )) : <p role="status" className="text-sm text-muted-foreground">Nenhum integrante corresponde à busca.</p>}
+                  )
+                }) : <p role="status" className="text-sm text-muted-foreground">Nenhum integrante corresponde à busca.</p>}
               </div>
             </div>
           ) : null}
+        </dialog>
+
+        <dialog ref={confirmationRef} aria-labelledby="confirm-member-level"
+          onCancel={(event) => { event.preventDefault(); if (!moving) closeConfirmation() }}
+          className="fixed inset-0 m-auto w-[calc(100%_-_2rem)] max-w-md rounded-3xl border border-card-outline bg-card p-5 text-card-foreground shadow-2xl backdrop:bg-black/60">
+          {change && (
+            <div className="space-y-3">
+              <h2 id="confirm-member-level" className="text-lg font-semibold">Alterar nível de acesso</h2>
+              <p>{members.find((member) => member.user_id === change.userId)?.full_name || 'Integrante'}</p>
+              <p className="font-semibold text-primary">
+                {TEAM_LEVELS.find((level) => level.id === change.from)?.singular} → {TEAM_LEVELS.find((level) => level.id === change.to)?.singular}
+              </p>
+              <p className="text-sm text-muted-foreground">{LEVEL_SUMMARY[change.to]}</p>
+              {moveError && <p role="alert" className="text-sm text-destructive">{moveError}</p>}
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button type="button" variant="outline" disabled={moving} onClick={closeConfirmation}>Cancelar</Button>
+                <Button type="button" disabled={moving} onClick={() => void confirmChange()}>
+                  {moving ? 'Salvando…' : 'Confirmar alteração'}
+                </Button>
+              </div>
+            </div>
+          )}
         </dialog>
 
         <EditMemberRoleDialog
@@ -452,7 +580,7 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
           onSave={handleSave}
           showAccessLevel
           accessLevel={editingMember ? (editingMember.user_id === projectOwnerId ? 'owner' : levels[editingMember.user_id] ?? 'member') : undefined}
-          canChangeAccess={Boolean(currentUserId && currentUserId === projectOwnerId && editingMember && editingMember.user_id !== projectOwnerId && levels[editingMember.user_id])}
+          accessOptions={editingMember ? allowedLevels(editingMember.user_id) : []}
         />
       </section>
     )

@@ -50,7 +50,7 @@ const steps = [
     icon: UsersRound,
     title: 'Monte sua equipe',
     description:
-      'O dono do projeto analisa as solicitações e aprova quem fará parte da equipe.',
+      'A liderança do projeto analisa as solicitações e aprova quem fará parte da equipe.',
   },
   {
     icon: Activity,

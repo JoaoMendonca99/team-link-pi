@@ -51,7 +51,7 @@ function roleLabel(role: ProjectMemberRoleValue): string {
       return 'Membro'
     case 'owner':
     default:
-      return 'Dono'
+      return 'Líder'
   }
 }
 

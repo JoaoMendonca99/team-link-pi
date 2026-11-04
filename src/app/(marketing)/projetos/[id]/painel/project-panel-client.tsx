@@ -61,6 +61,7 @@ import { ConnectGithubDialog } from './_components/connect-github-dialog'
 import { PanelAccessDenied } from './_components/panel-access-denied'
 import { PanelGithubSection } from './_components/panel-github-section'
 import { PanelSupportSection } from './_components/panel-support-section'
+import { useProjectLeadership } from '@/hooks/use-project-leadership'
 import { RecruitmentPanel } from '@/components/team-link/recruitment'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -210,6 +211,8 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
     if (!project) return false
     return isProjectManager(user?.id, project.ownerId, membership)
   }, [membership, project, user?.id])
+
+  const canEditProject = useProjectLeadership(project?.id, user?.id)
 
   const canViewSupport = useMemo(() => {
     if (!project) return false
@@ -487,7 +490,7 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
                 Página pública
               </Link>
             </Button>
-            {isManager ? (
+            {canEditProject ? (
               <Button asChild variant="outline" size="sm" className="rounded-2xl font-semibold">
                 <Link href={`/projetos/${project.slug}/editar`}>Editar projeto</Link>
               </Button>

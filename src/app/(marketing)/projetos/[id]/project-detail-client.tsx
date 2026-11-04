@@ -29,6 +29,8 @@ import { CommentsSection } from './_components/comments-section'
 import { ApplyButton, VacancySummary, useVacancies } from '@/components/team-link/recruitment'
 import { LikeButton } from './_components/like-button'
 import { MembersPreviewCard } from './_components/members-preview-card'
+import { ProjectDescription, ProjectSummary } from './_components/project-description'
+import { useProjectLeadership } from '@/hooks/use-project-leadership'
 import { isProjectManager } from '@/lib/projects/membership'
 import { isValidBadgeColor } from './_components/member-badge'
 
@@ -211,12 +213,10 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
     })
   }, [project])
 
-  const aboutText = useMemo(() => {
-    if (!project) return ''
-    const full = project.description?.trim()
-    if (full) return full
-    return project.shortDescription?.trim() ?? ''
-  }, [project])
+  const canEditProject = useProjectLeadership(project?.id, user?.id)
+  const summary = project?.shortDescription.trim() ?? ''
+  const description = project?.description?.trim() ?? ''
+  const sameDescription = summary.replace(/\s+/g, ' ') === description.replace(/\s+/g, ' ')
 
   const handleShare = async () => {
     if (!project) return
@@ -387,6 +387,9 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
             </div>
             <div className="flex w-full min-w-0 flex-wrap items-center gap-2 sm:gap-3">
               {project.category ? <CategoryBadge label={project.category} /> : null}
+              {project.secondaryCategories?.map((category) => (
+                <span key={category} className="rounded-full border border-border px-2 py-1 text-xs text-muted-foreground">{category}</span>
+              ))}
               <ProjectStatusBadge status={project.status} />
               {updatedAtLabel ? (
                 <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/50 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
@@ -397,18 +400,9 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
             </div>
           </div>
 
-          <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">
-              Sobre o projeto
-            </p>
-            {aboutText ? (
-              <p className="break-words whitespace-pre-line text-base leading-relaxed text-muted-foreground">
-                {aboutText}
-              </p>
-            ) : (
-              <p className="text-sm text-muted-foreground">Nenhuma descrição informada.</p>
-            )}
-          </div>
+          {summary && <ProjectSummary text={summary} />}
+          {description && !sameDescription && <ProjectDescription key={project.id} text={description} />}
+          {!summary && !description && <p className="text-sm text-muted-foreground">Nenhuma descrição informada.</p>}
 
           {project.requiredSkills.length > 0 || project.openSpots > 0 ? (
             <div className="space-y-2">
@@ -468,7 +462,7 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
                 </Link>
               </Button>
             ) : null}
-            {isManager ? (
+            {canEditProject ? (
               <Button asChild variant="outline" className="w-full rounded-2xl font-semibold sm:w-auto">
                 <Link href={`/projetos/${project.slug}/editar`}>
                   <Pencil className="h-4 w-4" aria-hidden />

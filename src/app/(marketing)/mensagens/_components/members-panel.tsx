@@ -11,7 +11,7 @@ import type { ChatConversationMember } from '@/lib/chat/types'
 function roleLabel(role: string): string {
   switch (role) {
     case 'owner':
-      return 'Dono do projeto'
+      return 'Líder do projeto'
     case 'admin':
       return 'Administrador'
     case 'mentor':

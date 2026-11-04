@@ -1537,7 +1537,7 @@ function MembersListView({ loading, error, members, onRetry }: MembersListViewPr
         const displayName = member.full_name?.trim() || "Membro do projeto"
         const roleLabel =
           member.role === "owner"
-            ? "Dono do projeto"
+            ? "Líder do projeto"
             : member.role === "mentor"
               ? "Mentor"
               : member.role === "admin"

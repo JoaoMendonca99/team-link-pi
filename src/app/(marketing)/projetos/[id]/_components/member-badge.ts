@@ -97,12 +97,12 @@ export function defaultBadgeColorFor(role: string): MemberBadgeColor {
 
 /**
  * Rótulo padrão por cargo real (`role`). Usado quando `display_role` é null.
- *  - owner → DONO
+ *  - owner → LÍDER
  *  - admin → ADMIN
  *  - qualquer outro → MEMBRO
  */
 export function defaultDisplayLabelFor(role: string): string {
-  if (role === 'owner') return 'DONO'
+  if (role === 'owner') return 'LÍDER'
   if (role === 'admin') return 'ADMIN'
   return 'MEMBRO'
 }
@@ -163,7 +163,7 @@ export function computeMemberBadge(member: {
 }
 
 export function getMemberAccessLabel(role: string): string {
-  if (role === 'owner') return 'Dono'
+  if (role === 'owner') return 'Líder'
   if (role === 'manager') return 'Gestor'
   if (role === 'reviewer') return 'Revisor'
   if (role === 'admin') return 'Administrador'
