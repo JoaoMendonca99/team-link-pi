@@ -35,9 +35,12 @@ export interface EditMemberRoleDialogProps {
     badge_color?: MemberBadgeColor | null
   } | null
   showAccessLevel?: boolean
+  accessLevel?: string
+  canChangeAccess?: boolean
   onSave: (input: {
     displayRole: string | null
     badgeColor: MemberBadgeColor | null
+    accessLevel?: string
   }) => Promise<{ ok: true } | { ok: false; message: string }>
 }
 
@@ -47,7 +50,10 @@ export function EditMemberRoleDialog({
   member,
   onSave,
   showAccessLevel = false,
+  accessLevel,
+  canChangeAccess = false,
 }: EditMemberRoleDialogProps) {
+  const [level, setLevel] = React.useState('member')
   const [displayRole, setDisplayRole] = React.useState('')
   const [badgeColor, setBadgeColor] = React.useState<MemberBadgeColor>('blue')
   const [saving, setSaving] = React.useState(false)
@@ -59,6 +65,7 @@ export function EditMemberRoleDialog({
     if (!open || !member) return
     setErrorMessage(null)
     setDisplayRole((member.display_role ?? '').trim())
+    setLevel(accessLevel ?? 'member')
     const incomingColor = isValidBadgeColor(member.badge_color ?? null)
       ? (member.badge_color as MemberBadgeColor)
       : defaultBadgeColorFor(member.role)
@@ -67,7 +74,7 @@ export function EditMemberRoleDialog({
     queueMicrotask(() => {
       inputRef.current?.focus()
     })
-  }, [member, open])
+  }, [accessLevel, member, open])
 
   // ESC fecha o modal e trava o scroll do body enquanto aberto.
   React.useEffect(() => {
@@ -100,6 +107,7 @@ export function EditMemberRoleDialog({
     const result = await onSave({
       displayRole: resetToDefault ? null : trimmed.length > 0 ? trimmed : null,
       badgeColor: resetToDefault ? null : badgeColor,
+      ...(canChangeAccess ? { accessLevel: resetToDefault ? accessLevel : level } : {}),
     })
     if (result.ok) {
       onClose()
@@ -176,8 +184,19 @@ export function EditMemberRoleDialog({
 
           {showAccessLevel ? (
             <p className="mb-3 text-xs text-muted-foreground">
-              Nível de acesso: <strong>{getMemberAccessLabel(member.role)}</strong>
+              Nível de acesso: <strong>{getMemberAccessLabel(accessLevel ?? member.role)}</strong>
             </p>
+          ) : null}
+          {canChangeAccess ? (
+            <label className="mb-4 block space-y-1 text-sm">
+              <span>Novo nível de acesso</span>
+              <select value={level} onChange={(event) => setLevel(event.target.value)} disabled={saving}
+                className="block w-full rounded-xl border border-border bg-background p-2">
+                <option value="member">Membro</option>
+                <option value="reviewer">Revisor</option>
+                <option value="manager">Gestor</option>
+              </select>
+            </label>
           ) : null}
           {/* Cargo exibido */}
           <div className="space-y-1.5">

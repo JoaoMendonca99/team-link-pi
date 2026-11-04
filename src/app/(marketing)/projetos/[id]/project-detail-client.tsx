@@ -10,7 +10,6 @@ import {
   MessageCircle,
   Pencil,
   Share2,
-  Users,
 } from 'lucide-react'
 
 import { CategoryBadge } from '@/components/team-link/category-badge'
@@ -27,7 +26,7 @@ import type {
 } from '@/types/database'
 import { useSupabaseSession } from '@/hooks/use-supabase-session'
 import { CommentsSection } from './_components/comments-section'
-import { JoinRequestSection } from './_components/join-request-section'
+import { ApplyButton, VacancySummary, useVacancies } from '@/components/team-link/recruitment'
 import { LikeButton } from './_components/like-button'
 import { MembersPreviewCard } from './_components/members-preview-card'
 import { isProjectManager } from '@/lib/projects/membership'
@@ -58,6 +57,7 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
   const [membership, setMembership] = useState<CurrentMembership | null>(null)
 
   const [members, setMembers] = useState<ProjectPublicMemberRow[]>([])
+  const { vacancies, error: vacancyError } = useVacancies(project?.id)
 
   // -------------------------------------------------------------------------
   // Carregamento do projeto
@@ -443,11 +443,8 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
           ) : null}
 
           <div className="flex flex-col gap-2 border-t border-card-outline/70 pt-4 sm:flex-row sm:flex-wrap sm:items-center">
-            {project.openSpots > 0 && (isVisitor || isLoggedNonMember) ? (
-              <Button asChild className="w-full rounded-2xl font-semibold sm:w-auto">
-                <a href="#participar">Participar</a>
-              </Button>
-            ) : null}
+            <ApplyButton key={project.id + (user?.id ?? '')} projectId={project.id} title={project.title}
+              vacancies={vacancies} userId={user?.id} canApply={isLoggedNonMember} isVisitor={isVisitor} />
             <LikeButton
               projectId={project.id}
               initialCount={likesCount}
@@ -492,71 +489,7 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
               currentUserId={user?.id ?? null}
             />
 
-            {project.openSpots > 0 ? (
-            <section
-              id="participar"
-              className="scroll-mt-24 space-y-3 rounded-[1.75rem] border border-card-outline bg-card p-4 sm:p-5"
-            >
-              <div className="flex min-w-0 items-start gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                  <Users className="h-5 w-5" aria-hidden />
-                </div>
-                <div className="min-w-0">
-                  <h2 className="text-lg font-bold text-foreground">
-                    {project.openSpots}{' '}
-                    {project.openSpots === 1 ? 'vaga disponível' : 'vagas disponíveis'}
-                  </h2>
-                  <p className="text-xs text-muted-foreground">
-                    {isMember
-                      ? 'Conheça o perfil que a equipe está buscando para essa vaga.'
-                      : 'Solicite participação para colaborar com a equipe.'}
-                  </p>
-                </div>
-              </div>
-              {project.requiredSkills.length > 0 ? (
-                <p className="break-words text-xs font-medium text-primary">{project.requiredSkills.join(' · ')}</p>
-              ) : null}
-              {project.desiredProfile ? (
-                <p className="break-words whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
-                  {project.desiredProfile}
-                </p>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  A equipe ainda não detalhou o perfil ideal para essa vaga.
-                </p>
-              )}
-
-              {isVisitor ? (
-                <div className="flex flex-col gap-2 border-t border-card-outline/70 pt-5 xl:flex-row">
-                  <Button asChild className="w-full rounded-2xl font-semibold sm:w-auto">
-                    <Link href="/login">Entrar</Link>
-                  </Button>
-                  <Button asChild variant="outline" className="w-full rounded-2xl font-semibold sm:w-auto">
-                    <Link href="/cadastro">Criar conta</Link>
-                  </Button>
-                </div>
-              ) : null}
-
-              {isLoggedNonMember ? (
-                <JoinRequestSection
-                  variant="inline"
-                  projectId={project.id}
-                  ownerId={project.ownerId}
-                />
-              ) : null}
-
-              {isMember && !isManager ? (
-                <p className="border-t border-card-outline/70 pt-5 text-sm text-muted-foreground">
-                  Você já faz parte deste projeto.
-                </p>
-              ) : null}
-            </section>
-            ) : (
-              <section className="rounded-[1.75rem] border border-card-outline bg-card p-5">
-                <h2 className="font-semibold">Vagas</h2>
-                <p className="mt-1 text-sm text-muted-foreground">Sem vagas disponíveis no momento.</p>
-              </section>
-            )}
+            <VacancySummary vacancies={vacancies} error={vacancyError} />
           </div>
         </aside>
 

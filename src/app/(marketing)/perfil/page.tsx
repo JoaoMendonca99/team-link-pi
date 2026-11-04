@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { MyApplications } from '@/components/team-link/recruitment'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Heart, Layers, MessageSquare, PlusCircle, Users } from 'lucide-react'
 
@@ -418,6 +419,7 @@ export default function ProfilePage() {
             </div>
           )}
         </section>
+        {user ? <MyApplications key={user.id} /> : null}
       </Container>
     </main>
   )

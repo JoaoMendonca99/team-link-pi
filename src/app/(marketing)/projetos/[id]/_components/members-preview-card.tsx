@@ -20,6 +20,7 @@ import type {
   ProjectPublicMemberRow,
 } from '@/types/database'
 import { cn } from '@/lib/utils'
+import { recruitmentRpc } from '@/components/team-link/recruitment'
 
 import { computeMemberBadge, getMemberAccessLabel, isValidBadgeColor } from './member-badge'
 import { EditMemberRoleDialog } from './edit-member-role-dialog'
@@ -50,6 +51,7 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
     },
     ref,
   ) {
+    const [levels, setLevels] = useState<Record<string, string>>({})
     const [members, setMembers] = useState<ProjectPublicMemberRow[]>([])
     const teamDialogRef = useRef<HTMLDialogElement>(null)
     const [teamOpen, setTeamOpen] = useState(false)
@@ -84,6 +86,13 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
       void load()
     }, [load])
 
+    useEffect(() => {
+      let active = true
+      void recruitmentRpc<Record<string, string>>('recruitment_member_levels', { p_project: projectId })
+        .then((value) => { if (active) setLevels(value) }).catch(() => { if (active) setLevels({}) })
+      return () => { active = false }
+    }, [projectId, currentUserId])
+
     useImperativeHandle(ref, () => ({ reload: load }), [load])
 
     useEffect(() => {
@@ -107,14 +116,30 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
       async ({
         displayRole,
         badgeColor,
+        accessLevel,
       }: {
         displayRole: string | null
         badgeColor: MemberBadgeColor | null
+        accessLevel?: string
       }) => {
         if (!editingMember) {
           return { ok: false as const, message: 'Não foi possível salvar o cargo agora.' }
         }
         const targetUserId = editingMember.user_id
+        if (accessLevel && currentUserId === projectOwnerId && targetUserId !== projectOwnerId) {
+          try {
+            await recruitmentRpc('recruitment_set_access', {
+              p_project: projectId, p_user: targetUserId, p_level: accessLevel,
+              p_display_role: displayRole, p_badge_color: badgeColor,
+            })
+            setLevels((previous) => ({ ...previous, [targetUserId]: accessLevel }))
+            await load()
+            onMemberUpdated?.()
+            return { ok: true as const }
+          } catch (error) {
+            return { ok: false as const, message: error instanceof Error ? error.message : 'Falha ao atualizar integrante.' }
+          }
+        }
         const payload = {
           p_project_id: projectId,
           p_user_id: targetUserId,
@@ -166,7 +191,7 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
         onMemberUpdated?.()
         return { ok: true as const }
       },
-      [editingMember, onMemberUpdated, projectId],
+      [currentUserId, editingMember, load, onMemberUpdated, projectId, projectOwnerId],
     )
 
     useEffect(() => {
@@ -243,7 +268,7 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
                       </p>
                     ) : null}
                     <p className="text-xs text-muted-foreground">
-                      Nível de acesso: {getMemberAccessLabel(member.user_id === projectOwnerId ? 'owner' : member.role)}
+                      Nível de acesso: {getMemberAccessLabel(member.user_id === projectOwnerId ? 'owner' : levels[member.user_id] ?? member.role)}
                     </p>
                     {member.display_role?.trim() ? <span
                       title={badge.label}
@@ -347,6 +372,8 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
           onClose={() => setEditingUserId(null)}
           onSave={handleSave}
           showAccessLevel
+          accessLevel={editingMember ? (editingMember.user_id === projectOwnerId ? 'owner' : levels[editingMember.user_id] ?? 'member') : undefined}
+          canChangeAccess={Boolean(currentUserId && currentUserId === projectOwnerId && editingMember && editingMember.user_id !== projectOwnerId && levels[editingMember.user_id])}
         />
       </section>
     )

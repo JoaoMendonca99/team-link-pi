@@ -61,7 +61,7 @@ import { ConnectGithubDialog } from './_components/connect-github-dialog'
 import { PanelAccessDenied } from './_components/panel-access-denied'
 import { PanelGithubSection } from './_components/panel-github-section'
 import { PanelSupportSection } from './_components/panel-support-section'
-import { OwnerRequestsSection } from '../_components/owner-requests-section'
+import { RecruitmentPanel } from '@/components/team-link/recruitment'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -164,7 +164,7 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
     try {
       const client = getSupabaseClient()
       const { data } = await client
-        .from('project_public_members')
+        .from('project_members')
         .select('role, display_role, badge_color, support_access')
         .eq('project_id', project.id)
         .eq('user_id', user.id)
@@ -540,12 +540,7 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
           </p>
         ) : null}
 
-        {isManager ? (
-          <OwnerRequestsSection
-            projectId={project.id}
-            onChange={loadProject}
-          />
-        ) : null}
+        <RecruitmentPanel key={project.id + (user?.id ?? '')} projectId={project.id} userId={user?.id} />
 
         <section
           className={cn(

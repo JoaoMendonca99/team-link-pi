@@ -164,6 +164,8 @@ export function computeMemberBadge(member: {
 
 export function getMemberAccessLabel(role: string): string {
   if (role === 'owner') return 'Dono'
+  if (role === 'manager') return 'Gestor'
+  if (role === 'reviewer') return 'Revisor'
   if (role === 'admin') return 'Administrador'
   if (role === 'mentor') return 'Mentor'
   return 'Membro'
