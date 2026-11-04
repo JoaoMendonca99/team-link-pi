@@ -70,7 +70,7 @@ export function OwnerRequestsSection({
       .from('join_requests')
       .select(
         `id, project_id, user_id, message, status, decided_by, decided_at, created_at,
-         profiles:user_id (id, full_name, email, course, bio, skills, interests, avatar_url)`,
+         profiles:user_id (id, full_name, course, university, bio, skills, interests, avatar_url)`,
       )
       .eq('project_id', projectId)
       .eq('status', 'pending')
@@ -199,9 +199,7 @@ function RequestCard({
           {profile?.bio ? (
             <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{profile.bio}</p>
           ) : null}
-          {profile?.email ? (
-            <p className="truncate text-xs text-muted-foreground">{profile.email}</p>
-          ) : null}
+
           {createdLabel ? (
             <p className="mt-1 text-xs font-medium text-muted-foreground">Enviada em {createdLabel}</p>
           ) : null}

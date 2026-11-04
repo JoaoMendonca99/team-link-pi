@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { Session, User } from "@supabase/supabase-js"
 
+import { PROFILE_CHANGED, PROFILE_FIELDS } from "@/lib/profile-social"
 import { getSupabaseClient, isSupabaseConfigured } from "@/lib/supabase/client"
 import type { ProfileRow } from "@/types/database"
 
@@ -56,7 +57,7 @@ export function useSupabaseSession(): SupabaseSessionState {
       const client = getSupabaseClient()
       const { data, error } = await client
         .from("profiles")
-        .select("*")
+        .select(PROFILE_FIELDS)
         .eq("id", currentUser.id)
         .maybeSingle()
 
@@ -113,6 +114,13 @@ export function useSupabaseSession(): SupabaseSessionState {
       subscription.subscription.unsubscribe()
     }
   }, [loadProfile])
+
+  useEffect(() => {
+    if (!user) return
+    const reload = () => { void loadProfile(user) }
+    window.addEventListener(PROFILE_CHANGED, reload)
+    return () => window.removeEventListener(PROFILE_CHANGED, reload)
+  }, [loadProfile, user])
 
   const signOut = useCallback(async () => {
     if (!isSupabaseConfigured()) return

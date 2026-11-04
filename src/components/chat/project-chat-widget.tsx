@@ -314,7 +314,7 @@ export function ProjectChatWidget() {
           const profilesResult = await client
             .from("profiles")
             .select(
-              "id, full_name, email, course, bio, avatar_url, skills, interests, created_at, updated_at",
+              "id, full_name, course, university, bio, avatar_url, skills, interests, created_at, updated_at",
             )
             .in("id", senderIds)
           if (profilesResult.error) throw profilesResult.error
@@ -375,7 +375,7 @@ export function ProjectChatWidget() {
             const profileResult = await client
               .from("profiles")
               .select(
-                "id, full_name, email, course, bio, avatar_url, skills, interests, created_at, updated_at",
+                "id, full_name, course, university, bio, avatar_url, skills, interests, created_at, updated_at",
               )
               .eq("id", row.sender_id)
               .maybeSingle()

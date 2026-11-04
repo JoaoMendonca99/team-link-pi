@@ -3,13 +3,10 @@
 import Link from 'next/link'
 import { MyApplications } from '@/components/team-link/recruitment'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Heart, Layers, MessageSquare, PlusCircle, Users } from 'lucide-react'
+import { Layers, PlusCircle } from 'lucide-react'
 
-import { ProjectCard } from '@/components/team-link/project-card'
-import { StatCard } from '@/components/team-link/stat-card'
-import { TagList } from '@/components/team-link/tag-list'
-import { UserAvatar } from '@/components/team-link/user-avatar'
 import { EmptyState } from '@/components/team-link/empty-state'
+import { ProjectCard } from '@/components/team-link/project-card'
 import { Button } from '@/components/ui/button'
 import { Container } from '@/components/layout/container'
 import { getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase/client'
@@ -19,6 +16,9 @@ import type {
   ProjectMemberStatusValue,
   ProjectPublicCardRow,
 } from '@/types/database'
+import { AcademicTags, ProfileHeading } from '@/components/profile/profile-heading'
+import { FriendsPanel, useProfileSocial } from '@/components/profile/friendships'
+import { useProjectLeadership } from '@/hooks/use-project-leadership'
 import { useSupabaseSession } from '@/hooks/use-supabase-session'
 
 interface Participation {
@@ -43,21 +43,11 @@ function formatDate(value: string | null | undefined): string {
   return date.toLocaleDateString('pt-BR')
 }
 
-function roleLabel(role: ProjectMemberRoleValue): string {
-  switch (role) {
-    case 'mentor':
-      return 'Mentor'
-    case 'member':
-      return 'Membro'
-    case 'owner':
-    default:
-      return 'Líder'
-  }
-}
-
 export default function ProfilePage() {
   const { loading, isAuthenticated, profile, user } = useSupabaseSession()
 
+  const social = useProfileSocial(user?.id, user?.id)
+  const [tab, setTab] = useState<'Projetos' | 'Amigos' | 'Candidaturas'>('Projetos')
   const [ownProjects, setOwnProjects] = useState<ProjectDisplay[]>([])
   const [participations, setParticipations] = useState<Participation[]>([])
   const [projectsLoading, setProjectsLoading] = useState(false)
@@ -196,231 +186,74 @@ export default function ProfilePage() {
     )
   }
 
-  const fullName = profile?.full_name?.trim() || user.email?.split('@')[0] || 'Conta Team Link'
-  const email = profile?.email ?? user.email ?? ''
-  const course = profile?.course?.trim() || 'Curso não informado'
-  const bio =
-    profile?.bio?.trim() ||
-    'Você ainda não adicionou uma biografia. Edite seu perfil para apresentar sua trajetória, interesses e habilidades.'
-  const skills = profile?.skills ?? []
-  const interests = profile?.interests ?? []
-  const avatarUrl = profile?.avatar_url ?? undefined
-  const joinedAt = formatDate(profile?.created_at)
-
-  const showOwnSkeleton = projectsLoading && ownProjects.length === 0
-  const showParticipationSkeleton = projectsLoading && participations.length === 0
-
   return (
-    <main className="bg-muted/40 pb-20">
-      <div className="relative overflow-hidden rounded-b-[40px] border-b border-white/60 bg-[#081021] pb-16 pt-16 text-white sm:pb-24 sm:pt-24">
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute right-[-20%] top-[-35%] h-[28rem] w-[28rem] rounded-full bg-[radial-gradient(circle,#2563EB_0%,transparent_70%)] blur-3xl opacity-95" />
-          <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(8,16,39,0.95),rgba(79,70,229,0.35))]" />
-        </div>
-        <Container className="relative flex min-w-0 flex-col items-center gap-8 text-center sm:gap-10 md:flex-row md:items-end md:text-left">
-          <UserAvatar name={fullName} imageUrl={avatarUrl} ring sizeClassName="h-20 w-20 sm:h-24 sm:w-24" />
-          <div className="min-w-0 space-y-3">
-            <p className="text-xs uppercase tracking-[0.3em] text-white/65">Seu perfil</p>
-            <div className="flex flex-col items-center gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center md:justify-start">
-              <h1 className="text-balance text-3xl font-bold sm:text-4xl">{fullName}</h1>
-              <span className="max-w-full break-words rounded-full border border-white/25 bg-white/10 px-3 py-1 text-center text-xs font-semibold uppercase tracking-[0.2em]">
-                {course}
-              </span>
-            </div>
-            <p className="mx-auto max-w-2xl break-words text-white/85 md:mx-0">{bio}</p>
-            {email ? <p className="break-all text-sm text-white/70">{email}</p> : null}
-            {joinedAt ? <p className="text-sm text-white/60">Perfil criado em {joinedAt}</p> : null}
-            <div className="flex flex-wrap justify-center gap-3 md:justify-start">
-              <Button asChild className="rounded-2xl font-semibold shadow-lg shadow-primary/30">
-                <Link href="/perfil/editar">Editar perfil</Link>
-              </Button>
-              <Button
-                asChild
-                variant="secondary"
-                className="rounded-2xl border border-white/20 bg-transparent text-white hover:bg-white/15"
-              >
-                <Link href="/meus-projetos">Meus projetos</Link>
-              </Button>
-            </div>
+    <main className="bg-background pb-12">
+      <Container className="space-y-4 py-8">
+        {profile ? <ProfileHeading profile={profile} projects={ownProjects}
+          projectCount={new Set([...ownProjects.map(({ id }) => id), ...participations.map(({ project }) => project.id)]).size}
+          social={social} own>
+          <Button asChild variant="ghost"><Link href="/meus-projetos">Meus projetos</Link></Button>
+        </ProfileHeading> : <p role="alert">Não foi possível carregar seu perfil.</p>}
+
+        <dl className="grid grid-cols-2 gap-2 rounded-2xl border border-card-outline bg-card p-4 sm:grid-cols-4">
+          {[
+            ['Projetos publicados', stats.projectsPublished], ['Participações', stats.participationsCount],
+            ['Curtidas recebidas', stats.likesReceived], ['Comentários recebidos', stats.commentsReceived],
+          ].map(([label, value]) => <div key={label}>
+            <dt className="text-xs text-muted-foreground">{label}</dt>
+            <dd className="text-lg font-semibold">{value}</dd>
+          </div>)}
+        </dl>
+
+        {profile && <AcademicTags profile={profile} />}
+
+        <nav aria-label="Seções do perfil" className="flex flex-wrap gap-1 rounded-2xl border border-card-outline bg-card p-1">
+          {(['Projetos', 'Amigos', 'Candidaturas'] as const).map((label) => <Button
+            key={label} type="button" variant={tab === label ? 'default' : 'ghost'} size="sm"
+            aria-pressed={tab === label} onClick={() => setTab(label)}>{label}</Button>)}
+        </nav>
+
+        {tab === 'Projetos' && (
+          <div className="space-y-5">
+            {(fetchError || envMissing) && <div className="space-y-2">
+              <p role="alert" className="text-sm text-destructive">Não foi possível carregar seus projetos.</p>
+              <Button type="button" variant="outline" onClick={() => void loadData()}>Tentar novamente</Button>
+            </div>}
+            {projectsLoading && <p role="status" className="text-sm text-muted-foreground">Carregando projetos…</p>}
+            <section className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-lg font-semibold">Projetos criados por você</h2>
+                <Button asChild variant="outline" size="sm"><Link href="/nova-ideia"><PlusCircle aria-hidden /> Nova ideia</Link></Button>
+              </div>
+              {ownProjects.length ? <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {ownProjects.map((project) => <ProfileProject key={project.id} project={project} userId={user.id} />)}
+              </div> : !projectsLoading && <p className="text-sm text-muted-foreground">Nenhum projeto público criado.</p>}
+            </section>
+            <section className="space-y-3">
+              <h2 className="text-lg font-semibold">Participações em projetos de outras pessoas</h2>
+              {participations.length ? <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {participations.map(({ membershipId, project, joinedAt }) => <div key={membershipId} className="min-w-0 space-y-2">
+                  {joinedAt && <p className="text-xs text-muted-foreground">Desde {formatDate(joinedAt)}</p>}
+                  <ProfileProject project={project} userId={user.id} />
+                </div>)}
+              </div> : !projectsLoading && <p className="text-sm text-muted-foreground">Nenhuma participação registrada.</p>}
+            </section>
           </div>
-        </Container>
-      </div>
-
-      <Container className="space-y-14 py-14">
-        <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
-          <StatCard icon={Layers} label="Projetos publicados" value={stats.projectsPublished} />
-          <StatCard icon={Heart} label="Curtidas recebidas" value={stats.likesReceived} />
-          <StatCard icon={Users} label="Participações" value={stats.participationsCount} />
-          <StatCard
-            icon={MessageSquare}
-            label="Comentários recebidos"
-            value={stats.commentsReceived}
-          />
-        </div>
-
-        {envMissing ? (
-          <div
-            role="status"
-            className="mx-auto w-full max-w-md rounded-2xl border border-amber-400/40 bg-amber-100/60 px-4 py-3 text-center text-sm font-medium text-amber-900 dark:bg-amber-500/10 dark:text-amber-200 md:mx-0 md:max-w-none md:text-left"
-          >
-            Não foi possível conectar ao serviço de dados. Tente novamente em instantes.
-          </div>
-        ) : null}
-
-        {fetchError ? (
-          <div className="mx-auto w-full max-w-md rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-6 text-center md:max-w-none">
-            <p className="text-sm font-semibold text-destructive">
-              Não foi possível carregar seus projetos no momento.
-            </p>
-            <p className="mt-2 text-xs text-destructive/80">{fetchError}</p>
-            <Button onClick={() => void loadData()} className="mt-4 rounded-2xl font-semibold">
-              Tentar novamente
-            </Button>
-          </div>
-        ) : null}
-
-        {skills.length > 0 ? (
-          <section className="rounded-[2rem] border border-card-outline bg-card p-8 shadow-xl">
-            <h2 className="text-xl font-semibold text-foreground">Habilidades</h2>
-            <div className="mt-4">
-              <TagList tags={skills} max={skills.length} size="md" />
-            </div>
-          </section>
-        ) : (
-          <section className="rounded-[2rem] border border-dashed border-card-outline bg-card/40 p-8">
-            <h2 className="text-xl font-semibold text-foreground">Habilidades</h2>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Você ainda não cadastrou habilidades. Edite seu perfil para incluí-las e ser encontrado por projetos compatíveis.
-            </p>
-          </section>
         )}
-
-        {interests.length > 0 ? (
-          <section className="rounded-[2rem] border border-card-outline bg-card p-8 shadow-xl">
-            <h2 className="text-xl font-semibold text-foreground">Áreas de interesse</h2>
-            <div className="mt-4">
-              <TagList tags={interests} max={interests.length} size="md" />
-            </div>
-          </section>
-        ) : null}
-
-        <section className="space-y-6">
-          <div className="flex flex-col gap-4 text-center md:flex-row md:items-center md:justify-between md:text-left">
-            <div className="space-y-1">
-              <p className="text-xs uppercase tracking-[0.3em] text-primary">Suas publicações</p>
-              <h2 className="text-3xl font-bold">Projetos publicados</h2>
-              <p className="text-sm text-muted-foreground">
-                Ideias que você criou no Team Link.
-              </p>
-            </div>
-            <Button asChild className="mx-auto rounded-2xl font-semibold shadow-lg shadow-primary/25 md:mx-0">
-              <Link href="/nova-ideia" className="inline-flex items-center gap-2">
-                <PlusCircle className="h-4 w-4" />
-                Nova ideia
-              </Link>
-            </Button>
-          </div>
-
-          {showOwnSkeleton ? (
-            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-              {Array.from({ length: 3 }).map((_, index) => (
-                <div
-                  key={index}
-                  className="mx-auto h-64 w-full max-w-md animate-pulse rounded-[1.65rem] bg-muted md:mx-0 md:max-w-none"
-                />
-              ))}
-            </div>
-          ) : ownProjects.length === 0 ? (
-            <EmptyState
-              icon={Layers}
-              title="Nenhum projeto publicado"
-              description="Quando você criar uma ideia, ela aparecerá aqui."
-              actionLabel="Criar nova ideia"
-              href="/nova-ideia"
-              className="mx-auto w-full max-w-md md:max-w-none"
-            />
-          ) : (
-            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-              {ownProjects.map((project) => (
-                <div
-                  key={project.id}
-                  className="mx-auto w-full max-w-md space-y-4 md:mx-0 md:max-w-none"
-                >
-                  <ProjectCard project={project} />
-                  <div className="flex flex-wrap gap-3">
-                    <Button
-                      asChild
-                      variant="outline"
-                      className="flex-1 rounded-2xl font-semibold"
-                    >
-                      <Link href={`/projetos/${project.slug}/editar`}>Editar</Link>
-                    </Button>
-                    <Button asChild className="flex-1 rounded-2xl font-semibold">
-                      <Link href={`/projetos/${project.slug}`}>Ver projeto</Link>
-                    </Button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section className="space-y-6">
-          <div className="space-y-1 text-center md:text-left">
-            <p className="text-xs uppercase tracking-[0.3em] text-primary">Equipes</p>
-            <h2 className="text-3xl font-bold">Participações em projetos</h2>
-            <p className="text-sm text-muted-foreground">
-              Projetos de outras pessoas dos quais você faz parte.
-            </p>
-          </div>
-
-          {showParticipationSkeleton ? (
-            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-              {Array.from({ length: 2 }).map((_, index) => (
-                <div
-                  key={index}
-                  className="mx-auto h-64 w-full max-w-md animate-pulse rounded-[1.65rem] bg-muted md:mx-0 md:max-w-none"
-                />
-              ))}
-            </div>
-          ) : participations.length === 0 ? (
-            <EmptyState
-              icon={Users}
-              title="Sem participações registradas"
-              description="Quando você entrar em um projeto de outra pessoa, ele aparecerá aqui."
-              className="mx-auto w-full max-w-md md:max-w-none"
-            />
-          ) : (
-            <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-              {participations.map((participation) => {
-                const joinedLabel = formatDate(participation.joinedAt)
-                return (
-                  <div
-                    key={participation.membershipId}
-                    className="mx-auto w-full max-w-md space-y-4 md:mx-0 md:max-w-none"
-                  >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
-                        {roleLabel(participation.role)}
-                      </span>
-                      {joinedLabel ? (
-                        <span className="text-xs text-muted-foreground">
-                          Desde {joinedLabel}
-                        </span>
-                      ) : null}
-                    </div>
-                    <ProjectCard project={participation.project} />
-                    <Button asChild className="w-full rounded-2xl font-semibold">
-                      <Link href={`/projetos/${participation.project.slug}`}>Ver projeto</Link>
-                    </Button>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </section>
-        {user ? <MyApplications key={user.id} /> : null}
+        {tab === 'Amigos' && <FriendsPanel key={user.id} />}
+        {tab === 'Candidaturas' && <MyApplications key={user.id} />}
       </Container>
     </main>
   )
+}
+
+function ProfileProject({ project, userId }: { project: ProjectDisplay; userId: string }) {
+  const canEdit = useProjectLeadership(project.id, userId)
+  return <div className="min-w-0 space-y-2">
+    <ProjectCard project={project} />
+    <div className="flex flex-wrap gap-2">
+      <Button asChild size="sm" variant="outline"><Link href={'/projetos/' + project.slug}>Ver projeto</Link></Button>
+      {canEdit && <Button asChild size="sm" variant="ghost"><Link href={'/projetos/' + project.slug + '/editar'}>Editar</Link></Button>}
+    </div>
+  </div>
 }

@@ -434,7 +434,7 @@ export async function loadConversationMessages(
   const profiles = await client
     .from('profiles')
     .select(
-      'id, full_name, email, course, bio, avatar_url, skills, interests, created_at, updated_at',
+      'id, full_name, course, university, bio, avatar_url, skills, interests, created_at, updated_at',
     )
     .in('id', senderIds)
   if (profiles.error) throw new Error(profiles.error.message)
@@ -483,7 +483,7 @@ export async function fetchProfileById(userId: string): Promise<ProfileRow | nul
   const result = await client
     .from('profiles')
     .select(
-      'id, full_name, email, course, bio, avatar_url, skills, interests, created_at, updated_at',
+      'id, full_name, course, university, bio, avatar_url, skills, interests, created_at, updated_at',
     )
     .eq('id', userId)
     .maybeSingle()

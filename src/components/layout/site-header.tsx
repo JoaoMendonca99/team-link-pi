@@ -17,6 +17,7 @@ import { Container } from "@/components/layout/container"
 import { NotificationBell } from "@/components/notifications/notification-bell"
 import { UserAvatar } from "@/components/team-link/user-avatar"
 import { useThemeMode } from "@/components/providers/theme-provider"
+import { useProfilePresence } from "@/hooks/use-profile-presence"
 import { useSupabaseSession } from "@/hooks/use-supabase-session"
 import { cn } from "@/lib/utils"
 
@@ -51,6 +52,7 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
   const router = useRouter()
   const { darkMode, toggleTheme } = useThemeMode()
   const { isAuthenticated, profile, user, signOut } = useSupabaseSession()
+  useProfilePresence(user?.id)
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const displayName =
@@ -58,7 +60,7 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
     (user?.user_metadata?.full_name as string | undefined) ||
     user?.email?.split("@")[0] ||
     ""
-  const displayEmail = profile?.email ?? user?.email ?? ""
+  const displayEmail = user?.email ?? ""
   const avatarUrl = profile?.avatar_url ?? undefined
 
   const closeMobile = useCallback(() => {

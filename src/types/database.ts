@@ -44,8 +44,8 @@ export type JoinRequestStatus = "pending" | "approved" | "rejected" | "canceled"
 export interface ProfileRow {
   id: string
   full_name: string | null
-  email: string | null
   course: string | null
+  university: string | null
   bio: string | null
   avatar_url: string | null
   skills: string[] | null
