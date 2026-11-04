@@ -40,7 +40,7 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
         const project = response.data as ProjectRow | null
         if (!active) return
         if (!project) return setResult({ state: 'missing' })
-        const leadership = await client.rpc('is_project_leader', { p_project_id: project.id })
+        const leadership = await client.rpc('is_project_join_manager', { p_project_id: project.id })
         if (leadership.error) throw leadership.error
         if (!active) return
         if (!leadership.data) return setResult({ state: 'denied' })
@@ -83,7 +83,7 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
           )
           : result.state === 'loading' ? <p role="status">Carregando…</p>
           : result.state === 'missing' ? <p>Projeto não encontrado.</p>
-          : result.state === 'denied' ? <p>Somente Líderes podem editar os dados do projeto.</p>
+          : result.state === 'denied' ? <p>Somente Líderes ou Gestores podem editar os dados do projeto.</p>
           : result.state === 'error' ? (
             <div className="space-y-4">
               <p role="alert">Não foi possível carregar o projeto e suas vagas.</p>

@@ -38,7 +38,7 @@ type LevelChange = { userId: string; from: Level; to: Level }
 
 const LEVEL_SUMMARY: Record<Level, string> = {
   owner: 'Poderá editar o projeto, administrar vagas e candidaturas e gerenciar a equipe.',
-  manager: 'Poderá administrar vagas e candidaturas.',
+  manager: 'Poderá editar o projeto, administrar vagas e candidaturas e gerenciar a equipe.',
   reviewer: 'Terá acesso de Revisor, sem gestão da equipe ou do recrutamento.',
   member: 'Terá acesso de Membro, sem gestão da equipe ou do recrutamento.',
 }
@@ -52,7 +52,7 @@ export interface MembersPreviewCardHandle {
 
 interface Props {
   projectId: string
-  projectOwnerId?: string | null
+  onAdminChange?: (allowed: boolean) => void
   currentUserId?: string | null
   /** Disparado quando o cargo visual de algum membro é alterado por aqui. */
   onMemberUpdated?: () => void
@@ -64,7 +64,7 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
   function MembersPreviewCard(
     {
       projectId,
-      projectOwnerId,
+      onAdminChange,
       currentUserId,
       onMemberUpdated,
       onMembersChange,
@@ -89,15 +89,16 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
     const [moving, setMoving] = useState(false)
     const confirmationRef = useRef<HTMLDialogElement>(null)
 
-    const isPrimary = Boolean(currentUserId && currentUserId === projectOwnerId)
-    const isAdditionalLeader = Boolean(currentUserId && levels[currentUserId] === 'owner' && !isPrimary)
-    const canChangeLevels = isPrimary || isAdditionalLeader
+    const ownLevel = currentUserId ? levels[currentUserId] : undefined
+    const canChangeLevels = ownLevel === 'owner' || ownLevel === 'manager'
 
-    const allowedLevels = useCallback((userId: string): Level[] => {
-      if (!canChangeLevels || userId === projectOwnerId || !levels[userId]) return []
-      if (isPrimary) return ['owner', 'manager', 'reviewer', 'member']
-      return levels[userId] === 'owner' ? [] : ['manager', 'reviewer', 'member']
-    }, [canChangeLevels, isPrimary, levels, projectOwnerId])
+    const allowedLevels = useCallback((userId: string): Level[] =>
+      canChangeLevels && levels[userId] ? TEAM_LEVELS.map(({ id }) => id) : [],
+    [canChangeLevels, levels])
+
+    useEffect(() => {
+      onAdminChange?.(canChangeLevels)
+    }, [canChangeLevels, onAdminChange])
 
     useEffect(() => {
       if (change && !confirmationRef.current?.open) confirmationRef.current?.showModal()
@@ -173,14 +174,6 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
       onMembersChange?.(members)
     }, [members, onMembersChange])
 
-    const canManage = useMemo(() => {
-      if (!currentUserId) return false
-      if (projectOwnerId && projectOwnerId === currentUserId) return true
-      const me = members.find((m) => m.user_id === currentUserId)
-      if (!me) return false
-      return me.role === 'owner' || me.role === 'admin'
-    }, [currentUserId, members, projectOwnerId])
-
     const editingMember = useMemo(() => {
       if (!editingUserId) return null
       return members.find((m) => m.user_id === editingUserId) ?? null
@@ -196,79 +189,24 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
         badgeColor: MemberBadgeColor | null
         accessLevel?: string
       }) => {
-        if (!editingMember) {
-          return { ok: false as const, message: 'Não foi possível salvar o cargo agora.' }
+        if (!editingMember || !accessLevel || !allowedLevels(editingMember.user_id).includes(accessLevel as Level)) {
+          return { ok: false as const, message: 'Você não pode atribuir este nível.' }
         }
         const targetUserId = editingMember.user_id
-        if (accessLevel) {
-          if (!allowedLevels(targetUserId).includes(accessLevel as Level)) {
-            return { ok: false as const, message: 'Você não pode atribuir este nível.' }
-          }
-          try {
-            await recruitmentRpc('recruitment_set_access', {
-              p_project: projectId, p_user: targetUserId, p_level: accessLevel,
-              p_display_role: displayRole, p_badge_color: badgeColor,
-            })
-            setLevels((previous) => ({ ...previous, [targetUserId]: accessLevel }))
-            setMembers((previous) => previous.map((member) => member.user_id === targetUserId
-              ? { ...member, display_role: displayRole, badge_color: badgeColor } : member))
-            setFilter('all')
-            onMemberUpdated?.()
-            return { ok: true as const }
-          } catch (error) {
-            return { ok: false as const, message: error instanceof Error ? error.message : 'Falha ao atualizar integrante.' }
-          }
+        try {
+          await recruitmentRpc('recruitment_set_access', {
+            p_project: projectId, p_user: targetUserId, p_level: accessLevel,
+            p_display_role: displayRole, p_badge_color: badgeColor,
+          })
+          setLevels((previous) => ({ ...previous, [targetUserId]: accessLevel }))
+          setMembers((previous) => previous.map((member) => member.user_id === targetUserId
+            ? { ...member, display_role: displayRole, badge_color: badgeColor } : member))
+          setFilter('all')
+          onMemberUpdated?.()
+          return { ok: true as const }
+        } catch (error) {
+          return { ok: false as const, message: error instanceof Error ? error.message : 'Falha ao atualizar integrante.' }
         }
-        const payload = {
-          p_project_id: projectId,
-          p_user_id: targetUserId,
-          p_display_role: displayRole,
-          p_badge_color: badgeColor,
-        }
-        const client = getSupabaseClient()
-        const { data, error } = await client.rpc(
-          'update_project_member_visual_role',
-          payload,
-        )
-
-        if (error) {
-          if (typeof window !== 'undefined') {
-            console.error('[update_project_member_visual_role:preview]', {
-              payload,
-              message: error.message,
-              details: error.details,
-              hint: error.hint,
-              code: error.code,
-              raw: error,
-            })
-          }
-          return { ok: false as const, message: 'Não foi possível salvar o cargo agora.' }
-        }
-
-        type RpcRow = {
-          user_id: string
-          display_role: string | null
-          badge_color: string | null
-        }
-        const rpcRows: RpcRow[] = Array.isArray(data) ? (data as RpcRow[]) : []
-        const persisted = rpcRows.find((row) => row.user_id === targetUserId) ?? null
-        const nextDisplayRole = persisted?.display_role ?? displayRole
-        const nextBadgeColorRaw = persisted?.badge_color ?? badgeColor
-        const nextBadgeColor: MemberBadgeColor | null = isValidBadgeColor(
-          nextBadgeColorRaw ?? null,
-        )
-          ? (nextBadgeColorRaw as MemberBadgeColor)
-          : null
-
-        setMembers((prev) =>
-          prev.map((m) =>
-            m.user_id === targetUserId
-              ? { ...m, display_role: nextDisplayRole, badge_color: nextBadgeColor }
-              : m,
-          ),
-        )
-        onMemberUpdated?.()
-        return { ok: true as const }
       },
       [allowedLevels, editingMember, onMemberUpdated, projectId],
     )
@@ -283,8 +221,7 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
     const grouped = useMemo(() => {
       const groups = TEAM_LEVELS.map((level) => ({ ...level, rows: [] as ProjectPublicMemberRow[] }))
       for (const member of members) {
-        const level = member.user_id === projectOwnerId ? 'owner'
-          : levels[member.user_id] ?? (member.role === 'admin' || member.role === 'owner' ? 'manager' : 'member')
+        const level = levels[member.user_id] ?? 'member'
         const group = groups.find((entry) => entry.id === level) ?? groups[3]
         group.rows.push(member)
       }
@@ -292,7 +229,7 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
         group.rows.sort((a, b) => (a.full_name ?? '').localeCompare(b.full_name ?? '', 'pt-BR', { sensitivity: 'base' }))
       }
       return groups
-    }, [levels, members, projectOwnerId])
+    }, [levels, members])
 
     const query = normalizeName(search)
     const visibleGroups = grouped
@@ -322,8 +259,7 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
                   ? '/perfil'
                   : `/usuarios/${member.user_id}`
               const canDrag = allowedLevels(member.user_id).length > 0
-              const canEditMember = canManage || (isAdditionalLeader && canDrag)
-              const isLeader = member.user_id === projectOwnerId || levels[member.user_id] === 'owner'
+              const isLeader = levels[member.user_id] === 'owner'
               const badge = computeMemberBadge({
                 role: member.role,
                 display_role: member.display_role,
@@ -350,7 +286,7 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
                       <GripVertical aria-hidden className="size-4" />
                     </button>
                   )}
-                  {canEditMember ? (
+                  {canDrag ? (
                     <Button
                       type="button"
                       variant="ghost"
@@ -378,7 +314,7 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
                   <div
                     className={cn(
                       'min-w-0 flex-1 space-y-1',
-                      canEditMember ? 'pr-9' : undefined,
+                      canDrag ? 'pr-9' : undefined,
                     )}
                   >
                     <Link
@@ -490,6 +426,7 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
                   <div>
                     <h2 id="project-team-title" className="text-lg font-semibold">Integrantes do projeto</h2>
                     <p className="text-sm text-muted-foreground">{members.length} {members.length === 1 ? 'integrante' : 'integrantes'}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Líderes e Gestores têm as mesmas permissões administrativas.</p>
                   </div>
                   <Button type="button" variant="ghost" size="icon" aria-label="Fechar integrantes"
                     onClick={() => teamDialogRef.current?.close()}>
@@ -561,7 +498,11 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
               <p className="font-semibold text-primary">
                 {TEAM_LEVELS.find((level) => level.id === change.from)?.singular} → {TEAM_LEVELS.find((level) => level.id === change.to)?.singular}
               </p>
-              <p className="text-sm text-muted-foreground">{LEVEL_SUMMARY[change.to]}</p>
+              <p className="text-sm text-muted-foreground">
+                {['owner', 'manager'].includes(change.from) && ['owner', 'manager'].includes(change.to)
+                  ? 'As permissões administrativas serão mantidas.'
+                  : LEVEL_SUMMARY[change.to]}
+              </p>
               {moveError && <p role="alert" className="text-sm text-destructive">{moveError}</p>}
               <div className="flex flex-wrap justify-end gap-2">
                 <Button type="button" variant="outline" disabled={moving} onClick={closeConfirmation}>Cancelar</Button>
@@ -579,7 +520,7 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
           onClose={returnToTeam}
           onSave={handleSave}
           showAccessLevel
-          accessLevel={editingMember ? (editingMember.user_id === projectOwnerId ? 'owner' : levels[editingMember.user_id] ?? 'member') : undefined}
+          accessLevel={editingMember ? levels[editingMember.user_id] : undefined}
           accessOptions={editingMember ? allowedLevels(editingMember.user_id) : []}
         />
       </section>

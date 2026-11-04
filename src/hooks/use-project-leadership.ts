@@ -10,7 +10,7 @@ export function useProjectLeadership(projectId?: string, userId?: string) {
   useEffect(() => {
     if (!projectId || !key) return
     let active = true
-    void recruitmentRpc<boolean>('is_project_leader', { p_project_id: projectId })
+    void recruitmentRpc<boolean>('is_project_join_manager', { p_project_id: projectId })
       .then((allowed) => { if (active) setVerifiedKey(allowed ? key : undefined) })
       .catch(() => { if (active) setVerifiedKey(undefined) })
     return () => { active = false }

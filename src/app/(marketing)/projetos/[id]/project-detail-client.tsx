@@ -30,8 +30,6 @@ import { ApplyButton, VacancySummary, useVacancies } from '@/components/team-lin
 import { LikeButton } from './_components/like-button'
 import { MembersPreviewCard } from './_components/members-preview-card'
 import { ProjectDescription, ProjectSummary } from './_components/project-description'
-import { useProjectLeadership } from '@/hooks/use-project-leadership'
-import { isProjectManager } from '@/lib/projects/membership'
 import { isValidBadgeColor } from './_components/member-badge'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -164,10 +162,6 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
             ? ((data.badge_color as MemberBadgeColor) ?? null)
             : null,
         })
-      } else if (user.id === project.ownerId) {
-        // Caso raro em que o owner ainda não está na view de membros
-        // (ex.: latência logo após criar). Mantém a UI estável.
-        setMembership({ role: 'owner', displayRole: null, badgeColor: null })
       } else {
         setMembership(null)
       }
@@ -184,17 +178,8 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
   // Derivados de tipo de usuário
   // -------------------------------------------------------------------------
 
-  const isManager = useMemo(
-    () =>
-      Boolean(
-        isAuthenticated &&
-          user &&
-          project &&
-          isProjectManager(user.id, project.ownerId, membership),
-      ),
-    [isAuthenticated, membership, project, user],
-  )
-  const isMember = Boolean(membership) || isManager
+  const [canEditProject, setCanEditProject] = useState(false)
+  const isMember = Boolean(membership) || canEditProject
   const isLoggedNonMember = isAuthenticated && !isMember && !sessionLoading
   const isVisitor = !isAuthenticated && !sessionLoading
 
@@ -213,7 +198,6 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
     })
   }, [project])
 
-  const canEditProject = useProjectLeadership(project?.id, user?.id)
   const summary = project?.shortDescription.trim() ?? ''
   const description = project?.description?.trim() ?? ''
   const sameDescription = summary.replace(/\s+/g, ' ') === description.replace(/\s+/g, ' ')
@@ -479,7 +463,7 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
               key={project.id}
               onMembersChange={setMembers}
               projectId={project.id}
-              projectOwnerId={project.ownerId}
+              onAdminChange={setCanEditProject}
               currentUserId={user?.id ?? null}
             />
 
