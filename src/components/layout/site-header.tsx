@@ -70,8 +70,13 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
   useEffect(() => {
     if (!mobileOpen) return
 
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = "hidden"
+    // Lock the viewport without making the body a scroll container for the sticky header.
+    const viewport = document.documentElement
+    const { overflow, scrollbarGutter } = viewport.style
+    if (viewport.clientWidth < window.innerWidth) {
+      viewport.style.scrollbarGutter = "stable"
+    }
+    viewport.style.overflow = "hidden"
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
@@ -89,7 +94,8 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
     window.addEventListener("keydown", handleKeyDown)
     desktopQuery.addEventListener("change", handleBreakpointChange)
     return () => {
-      document.body.style.overflow = previousOverflow
+      viewport.style.overflow = overflow
+      viewport.style.scrollbarGutter = scrollbarGutter
       window.removeEventListener("keydown", handleKeyDown)
       desktopQuery.removeEventListener("change", handleBreakpointChange)
     }
@@ -148,7 +154,7 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
 
           <div className="hidden items-center gap-2 lg:flex">
             {isAuthenticated ? (
-              <DropdownMenu>
+              <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button
                     type="button"
