@@ -1,12 +1,13 @@
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
 
-import { MessagesClient } from './messages-client'
+import { MessagesHub } from './messages-hub'
 
 export const metadata: Metadata = {
   title: 'Mensagens',
-  description: 'Converse com a equipe dos seus projetos.',
+  description: 'Converse com amigos e com a equipe dos seus projetos.',
 }
 
 export default function MensagensPage() {
-  return <MessagesClient />
+  return <Suspense fallback={<p role="status" className="p-5">Carregando mensagens…</p>}><MessagesHub /></Suspense>
 }

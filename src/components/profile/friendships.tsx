@@ -160,6 +160,9 @@ export function FriendsPanel() {
               <p className="break-words text-xs text-muted-foreground">{row.course || row.university}</p>
               <PresenceLabel lastActivity={row.last_activity} />
             </div>
+            {row.relationship === 'accepted' && <Button asChild size="sm" variant="outline">
+              <Link href={'/mensagens?aba=amigos&amigo=' + row.user_id}>Enviar mensagem</Link>
+            </Button>}
             <FriendshipControls userId={row.user_id} relationship={row.relationship} onChanged={load} />
           </li>)}</ul>}
       </section>

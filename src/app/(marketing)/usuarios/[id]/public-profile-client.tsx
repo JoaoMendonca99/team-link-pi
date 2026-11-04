@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { ArrowLeft, User } from 'lucide-react'
+import { ArrowLeft, MessageCircle, User } from 'lucide-react'
 import { Container } from '@/components/layout/container'
 import { EmptyState } from '@/components/team-link/empty-state'
 import { ProjectCard } from '@/components/team-link/project-card'
@@ -52,7 +52,12 @@ export function PublicProfileClient({ userId }: { userId: string }) {
         : <>
           <ProfileHeading profile={data.profile} projects={data.projects} social={social}>
             {user?.id === userId ? <Button asChild><Link href="/perfil">Meu perfil</Link></Button> :
-              user && social && <FriendshipControls userId={userId} relationship={social.relationship} />}
+              user && social && <>
+                <FriendshipControls userId={userId} relationship={social.relationship} />
+                {social.relationship === 'accepted' && <Button asChild variant="outline">
+                  <Link href={'/mensagens?aba=amigos&amigo=' + userId}><MessageCircle aria-hidden /> Enviar mensagem</Link>
+                </Button>}
+              </>}
           </ProfileHeading>
           <AcademicTags profile={data.profile} />
           <section className="space-y-3">

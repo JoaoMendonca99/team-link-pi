@@ -7,6 +7,7 @@ import { Bell, BellRing, CheckCheck, Loader2 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { UserAvatar } from "@/components/team-link/user-avatar"
+import { watchFriendChats } from "@/lib/chat/friends"
 import { useSupabaseSession } from "@/hooks/use-supabase-session"
 import { getSupabaseClient, isSupabaseConfigured } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
@@ -94,6 +95,14 @@ export function NotificationBell({ className }: { className?: string }) {
       window.clearInterval(id)
     }
   }, [refreshUnreadCount, supabaseReady, user?.id])
+
+  React.useEffect(() => {
+    if (!supabaseReady || !user?.id) return
+    return watchFriendChats(user.id, 'notifications', () => {
+      if (open) void loadList()
+      else void refreshUnreadCount()
+    })
+  }, [loadList, open, refreshUnreadCount, supabaseReady, user?.id])
 
   // Reset ao deslogar.
   React.useEffect(() => {
