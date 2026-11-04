@@ -26,7 +26,7 @@ import type {
 } from '@/types/database'
 import { useSupabaseSession } from '@/hooks/use-supabase-session'
 import { CommentsSection } from './_components/comments-section'
-import { ApplyButton, VacancySummary, useVacancies } from '@/components/team-link/recruitment'
+import { ApplyButton, VacancySummary, useProjectApplications, useVacancies } from '@/components/team-link/recruitment'
 import { LikeButton } from './_components/like-button'
 import { MembersPreviewCard } from './_components/members-preview-card'
 import { ProjectDescription, ProjectSummary } from './_components/project-description'
@@ -58,6 +58,8 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
 
   const [members, setMembers] = useState<ProjectPublicMemberRow[]>([])
   const { vacancies, error: vacancyError, reload: reloadVacancies } = useVacancies(project?.id)
+  const applications = useProjectApplications(project?.id, user?.id)
+  const [applicationTarget, setApplicationTarget] = useState<string | null>(null)
 
   // -------------------------------------------------------------------------
   // Carregamento do projeto
@@ -388,28 +390,6 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
           {description && !sameDescription && <ProjectDescription key={project.id} text={description} />}
           {!summary && !description && <p className="text-sm text-muted-foreground">Nenhuma descrição informada.</p>}
 
-          {project.requiredSkills.length > 0 || project.openSpots > 0 ? (
-            <div className="space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">
-                Habilidades procuradas
-              </p>
-              {project.requiredSkills.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
-                  {project.requiredSkills.map((skill) => (
-                    <span
-                      key={skill}
-                      className="inline-flex items-center rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary"
-                    >
-                      {skill}
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">Nenhuma habilidade informada.</p>
-              )}
-            </div>
-          ) : null}
-
           {project.tags.length > 0 ? (
             <ul aria-label="Tags do projeto" className="flex flex-wrap gap-2">
               {project.tags.map((tag) => (
@@ -422,7 +402,8 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
 
           <div className="flex flex-col gap-2 border-t border-card-outline/70 pt-4 sm:flex-row sm:flex-wrap sm:items-center">
             <ApplyButton key={project.id + (user?.id ?? '')} projectId={project.id} title={project.title}
-              vacancies={vacancies} userId={user?.id} canApply={isLoggedNonMember} isVisitor={isVisitor} />
+              vacancies={vacancies} userId={user?.id} canApply={isLoggedNonMember} isVisitor={isVisitor}
+              applications={applications} target={applicationTarget} setTarget={setApplicationTarget} />
             <LikeButton
               projectId={project.id}
               initialCount={likesCount}
@@ -468,7 +449,9 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
               currentUserId={user?.id ?? null}
             />
 
-            <VacancySummary vacancies={vacancies} error={vacancyError} />
+            <VacancySummary vacancies={vacancies} error={vacancyError}
+              onApply={isLoggedNonMember && !applications.loading && !applications.error && !applications.current && !applications.approved
+                ? setApplicationTarget : undefined} />
           </div>
         </aside>
 

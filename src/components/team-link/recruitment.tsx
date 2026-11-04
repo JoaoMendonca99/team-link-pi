@@ -25,7 +25,7 @@ export async function recruitmentRpc<T>(name: string, args: Record<string, unkno
   return data as T
 }
 
-function Modal({ title, close, children }: { title: string; close: () => void; children: ReactNode }) {
+function Modal({ title, close, children, dismissOutside = false }: { title: string; close: () => void; children: ReactNode; dismissOutside?: boolean }) {
   const ref = useRef<HTMLDialogElement>(null)
   useEffect(() => {
     const dialog = ref.current
@@ -36,6 +36,11 @@ function Modal({ title, close, children }: { title: string; close: () => void; c
   }, [])
   return (
     <dialog ref={ref} aria-label={title} onCancel={(event) => { event.preventDefault(); close() }}
+      onClick={dismissOutside ? (event) => {
+        if (event.target !== event.currentTarget) return
+        const { left, right, top, bottom } = event.currentTarget.getBoundingClientRect()
+        if (event.clientX < left || event.clientX > right || event.clientY < top || event.clientY > bottom) close()
+      } : undefined}
       className="fixed inset-0 m-auto max-h-[85dvh] w-[calc(100%_-_2rem)] max-w-lg space-y-4 overflow-y-auto overscroll-contain rounded-3xl border border-card-outline bg-card p-5 text-card-foreground backdrop:bg-black/70">
       <header className="flex items-center justify-between gap-3">
         <h2 className="break-words text-lg font-semibold">{title}</h2>
@@ -62,32 +67,64 @@ export function useVacancies(projectId: string | undefined) {
   return { vacancies, error, reload }
 }
 
-export function VacancySummary({ vacancies, error }: { vacancies: Vacancy[]; error: string | null }) {
-  const available = vacancies.filter((v) => v.open && v.available > 0)
+const hasPositions = (vacancy: Vacancy) => vacancy.open && vacancy.available > 0
+const positionLabel = (vacancy: Vacancy) => {
+  const count = vacancy.open ? vacancy.available : 0
+  return count === 1 ? '1 posição disponível' : `${count} posições disponíveis`
+}
+const vacancyStatus = (vacancy: Vacancy) => !vacancy.open ? 'Encerrada' : vacancy.available > 0 ? 'Aberta' : 'Preenchida'
+
+export function VacancySummary({ vacancies, error, onApply }: { vacancies: Vacancy[]; error: string | null; onApply?: (id: string) => void }) {
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const selected = vacancies.find((vacancy) => vacancy.id === selectedId)
+  const ordered = [...vacancies].sort((a, b) => Number(b.open) - Number(a.open))
   return <section id="participar" className={card}>
     <h2 className="text-lg font-semibold">Vagas disponíveis</h2>
     <Failure message={error} />
-    {!error && !available.length ? <p className="text-sm text-muted-foreground">Sem vagas disponíveis no momento.</p> : null}
-    {available.map((v) => <div key={v.id} className="space-y-1 border-t border-border pt-2">
-      <p className="break-words text-sm font-semibold">{v.title} <span className="text-primary">· {v.available}</span></p>
-      {v.skills.length ? <p className="break-words text-xs text-primary">{v.skills.join(' · ')}</p> : null}
-      {v.description ? <p className="whitespace-pre-wrap break-words text-sm text-muted-foreground">{v.description}</p> : null}
-    </div>)}
+    {!error && !ordered.length ? <p className="text-sm text-muted-foreground">Sem vagas disponíveis no momento.</p> : null}
+    <ul className="space-y-2">
+      {ordered.map((v) => <li key={v.id} className="space-y-2 rounded-xl border border-border p-3">
+        <h3 className="break-words text-sm font-semibold">{v.title}</h3>
+        <p className="text-xs text-muted-foreground">{positionLabel(v)} · {vacancyStatus(v)}</p>
+        <VacancySkills skills={v.skills.slice(0, 4)} remaining={v.skills.length - 4} />
+        <Button type="button" size="sm" variant="outline" aria-label={`Ver descrição de ${v.title}`} onClick={() => setSelectedId(v.id)}>
+          Ver descrição
+        </Button>
+      </li>)}
+    </ul>
+    {selected ? <Modal title={selected.title} close={() => setSelectedId(null)} dismissOutside>
+      <p className="text-sm text-muted-foreground">{positionLabel(selected)} · {vacancyStatus(selected)}</p>
+      <p className="whitespace-pre-wrap break-words text-sm">{selected.description || 'Nenhuma descrição informada.'}</p>
+      {selected.skills.length > 0 ? <div className="space-y-2">
+        <h3 className="text-sm font-semibold">Habilidades desejadas</h3>
+        <VacancySkills skills={selected.skills} />
+      </div> : null}
+      {onApply && hasPositions(selected) ? <Button type="button" onClick={() => { setSelectedId(null); onApply(selected.id) }}>Candidatar-se</Button> : null}
+    </Modal> : null}
   </section>
 }
 
-function useApplications(project: string | null, enabled: boolean) {
+function VacancySkills({ skills, remaining = 0 }: { skills: string[]; remaining?: number }) {
+  if (!skills.length) return null
+  return <ul aria-label="Habilidades desejadas" className="flex flex-wrap gap-1">
+    {skills.map((skill, index) => <li key={index} className="max-w-full break-words rounded-full border border-primary/25 px-2 py-0.5 text-xs text-primary">{skill}</li>)}
+    {remaining > 0 ? <li aria-label={`Mais ${remaining} habilidades`} className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">+{remaining}</li> : null}
+  </ul>
+}
+
+function useApplications(project: string | null, enabled: boolean, viewer?: string) {
+  const scope = JSON.stringify([project, viewer])
   const [items, setItems] = useState<Application[]>([])
   const [error, setError] = useState<string | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [loadedScope, setLoadedScope] = useState<string | null>(null)
   const reload = useCallback(async () => {
     if (!enabled) return
     try { setItems(await recruitmentRpc<Application[]>('recruitment_applications', { p_project: project })); setError(null) }
     catch (err) { setError(errorText(err)) }
-    finally { setLoading(false) }
-  }, [enabled, project])
+    finally { setLoadedScope(scope) }
+  }, [enabled, project, scope])
   useEffect(() => { void reload() }, [reload])
-  return { items, reload, error, loading }
+  return { items: loadedScope === scope ? items : [], reload, error: loadedScope === scope ? error : null, loading: loadedScope !== scope }
 }
 
 function ApplicationDetails({ item, manager, vacancies, reload }: { item: Application; manager?: boolean; vacancies?: Vacancy[]; reload: () => Promise<void> }) {
@@ -157,23 +194,35 @@ function VacancyOptions({ options, selected, setSelected }: { options: Vacancy[]
   </fieldset>
 }
 
-export function ApplyButton({ projectId, title, vacancies, userId, canApply, isVisitor }: { projectId: string; title: string; vacancies: Vacancy[]; userId?: string; canApply: boolean; isVisitor: boolean }) {
-  const { items, reload, error, loading } = useApplications(projectId, Boolean(userId))
-  const [open, setOpen] = useState(false)
-  const [selected, setSelected] = useState<string[]>([])
+export function useProjectApplications(projectId: string | undefined, userId: string | undefined) {
+  const applications = useApplications(projectId ?? null, Boolean(projectId && userId), userId)
+  const own = applications.items.filter((item) => item.user_id === userId)
+  const current = own.find(active)
+  return { ...applications, current, previous: current ?? own[0], approved: own.some((item) => item.status === 'approved') }
+}
+
+export function ApplyButton({ projectId, title, vacancies, userId, canApply, isVisitor, applications, target, setTarget }: {
+  projectId: string; title: string; vacancies: Vacancy[]; userId?: string; canApply: boolean; isVisitor: boolean
+  applications: ReturnType<typeof useProjectApplications>; target: string | null; setTarget: (target: string | null) => void
+}) {
+  const { reload, error, loading, current, previous, approved } = applications
+  const [selection, setSelected] = useState<string[] | null>(null)
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
-  const own = items.filter((item) => item.user_id === userId)
-  const current = own.find(active)
-  const previous = current ?? own[0]
-  const options = vacancies.filter((v) => v.open && v.available > 0)
-  const available = options.length > 0 && canApply && !own.some((item) => item.status === 'approved')
+  const options = vacancies.filter(hasPositions)
+  const selected = selection ?? (target ? [target] : [])
+  const available = options.length > 0 && canApply && !approved
+  function close() {
+    setSelected(null)
+    setFeedback(null)
+    setTarget(null)
+  }
   if (isVisitor) return options.length ? <Button asChild><Link href="/login">Participar</Link></Button> : null
   if (!userId || loading || error || (!available && !previous)) return <Failure message={error} />
   return <>
-    <Button onClick={() => { setFeedback(null); setOpen(true) }}>{current || !available ? 'Acompanhar candidatura' : 'Participar'}</Button>
-    {open ? <Modal title={title} close={() => setOpen(false)}>
+    <Button onClick={() => setTarget('')}>{current || !available ? 'Acompanhar candidatura' : 'Participar'}</Button>
+    {target !== null ? <Modal title={title} close={close}>
       {current || !available ? (previous ? <ApplicationDetails key={previous.id} item={previous} reload={reload} /> : null) : (
         <form className="space-y-3" onSubmit={async (e) => {
           e.preventDefault(); setBusy(true); setFeedback(null)
@@ -185,7 +234,7 @@ export function ApplyButton({ projectId, title, vacancies, userId, canApply, isV
           <VacancyOptions options={options} selected={selected} setSelected={setSelected} />
           <Textarea aria-label="Apresentação opcional" maxLength={4000} value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Apresente suas experiências, interesses e disponibilidade (opcional)" />
           <Failure message={feedback} />
-          <div className="flex flex-wrap gap-2"><Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
+          <div className="flex flex-wrap gap-2"><Button type="button" variant="outline" onClick={close}>Cancelar</Button>
             <Button disabled={busy || !selected.length}>Enviar solicitação</Button></div>
         </form>
       )}
