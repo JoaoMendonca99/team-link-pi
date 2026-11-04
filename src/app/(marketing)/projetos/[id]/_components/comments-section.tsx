@@ -14,6 +14,7 @@ import type { MemberBadgeColor, ProjectPublicCommentRow, ProjectPublicMemberRow 
 
 type Comment = Pick<ProjectPublicCommentRow, 'id' | 'user_id' | 'content' | 'created_at'> & {
   user_name: string | null
+  user_avatar_url: string | null
 }
 
 export function CommentsSection({
@@ -47,7 +48,7 @@ export function CommentsSection({
     const client = getSupabaseClient()
     const { data, error } = await client
       .from('project_public_comments')
-      .select('id, user_id, content, created_at, user_name')
+      .select('id, user_id, content, created_at, user_name, user_avatar_url')
       .eq('project_id', projectId)
       .order('created_at', { ascending: true })
 
@@ -120,7 +121,7 @@ export function CommentsSection({
           ))}
         </div>
       ) : comments.length === 0 ? (
-        <p className="rounded-2xl border border-border/80 bg-muted/40 px-4 py-8 text-center text-sm text-muted-foreground">
+        <p className="rounded-2xl border border-border/80 bg-muted/40 px-3 py-3 text-center text-sm text-muted-foreground">
           Nenhum comentário ainda. Seja o primeiro a comentar.
         </p>
       ) : (
@@ -141,6 +142,7 @@ export function CommentsSection({
                 <header className="flex items-center gap-3">
                   <UserAvatar
                     name={authorName}
+                    imageUrl={comment.user_avatar_url ?? undefined}
                     sizeClassName="h-8 w-8"
                   />
                   <div className="min-w-0 flex-1">
@@ -181,6 +183,8 @@ export function CommentsSection({
       {isAuthenticated ? (
         <div className="space-y-3">
           <Textarea
+            rows={2}
+            className="min-h-14"
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             placeholder="Compartilhe feedback, disponibilidade ou perguntas..."
@@ -215,7 +219,7 @@ export function CommentsSection({
       ) : (
         <div className="rounded-2xl border border-card-outline bg-card p-4 text-sm font-medium text-muted-foreground">
           <p className="text-foreground">Entre na sua conta para comentar.</p>
-          <div className="mt-4 flex flex-wrap gap-3">
+          <div className="mt-2 flex flex-wrap gap-2">
             <Button asChild className="rounded-xl font-semibold">
               <Link href="/login">Entrar</Link>
             </Button>

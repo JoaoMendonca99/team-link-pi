@@ -320,7 +320,7 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
   return (
     <main className="bg-background pb-20">
       <div className="border-b border-border bg-gradient-to-b from-muted/50 to-transparent">
-        <Container className="space-y-5 py-6">
+        <Container className="space-y-2 py-2.5">
           <nav aria-label="Breadcrumb" className="text-xs text-muted-foreground sm:text-sm">
             <ol className="flex flex-wrap items-center gap-1.5">
               <li>
@@ -346,7 +346,7 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
             </ol>
           </nav>
 
-          <Button asChild variant="ghost" className="w-fit gap-2 rounded-2xl px-3 font-semibold">
+          <Button asChild variant="ghost" className="h-8 w-fit gap-2 rounded-xl px-2 text-sm font-semibold">
             <Link href="/explorar">
               <ArrowLeft className="h-4 w-4" />
               Voltar
@@ -355,7 +355,7 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
         </Container>
       </div>
 
-      <Container className="grid min-w-0 items-start gap-5 py-6 lg:grid-cols-[minmax(0,7fr)_minmax(17rem,3fr)] lg:grid-rows-[auto_1fr] lg:gap-6">
+      <Container className="grid min-w-0 items-start gap-4 py-4 lg:grid-cols-[minmax(0,7fr)_minmax(17rem,3fr)] lg:grid-rows-[auto_1fr] lg:gap-6">
         <motion.section
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
@@ -442,7 +442,7 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
             </ul>
           ) : null}
 
-          <div className="flex flex-col gap-2 border-t border-card-outline/70 pt-6 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end sm:gap-3">
+          <div className="flex flex-col gap-2 border-t border-card-outline/70 pt-4 sm:flex-row sm:flex-wrap sm:items-center">
             {project.openSpots > 0 && (isVisitor || isLoggedNonMember) ? (
               <Button asChild className="w-full rounded-2xl font-semibold sm:w-auto">
                 <a href="#participar">Participar</a>
@@ -483,7 +483,7 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
         </motion.section>
 
         <aside aria-label="Equipe e vagas" className="min-w-0 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:self-stretch">
-          <div className="space-y-5 lg:sticky lg:top-24 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto lg:p-1">
+          <div className="space-y-4">
             <MembersPreviewCard
               key={project.id}
               onMembersChange={setMembers}
@@ -495,14 +495,14 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
             {project.openSpots > 0 ? (
             <section
               id="participar"
-              className="scroll-mt-24 space-y-4 rounded-[1.75rem] border border-card-outline bg-card p-4 sm:p-5"
+              className="scroll-mt-24 space-y-3 rounded-[1.75rem] border border-card-outline bg-card p-4 sm:p-5"
             >
               <div className="flex min-w-0 items-start gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                   <Users className="h-5 w-5" aria-hidden />
                 </div>
                 <div className="min-w-0">
-                  <h2 className="text-lg font-semibold">
+                  <h2 className="text-lg font-bold text-foreground">
                     {project.openSpots}{' '}
                     {project.openSpots === 1 ? 'vaga disponível' : 'vagas disponíveis'}
                   </h2>

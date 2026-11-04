@@ -7,9 +7,10 @@ import {
   useEffect,
   useImperativeHandle,
   useMemo,
+  useRef,
   useState,
 } from 'react'
-import { Pencil, Users } from 'lucide-react'
+import { Pencil, Users, X } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/team-link/user-avatar'
@@ -20,7 +21,7 @@ import type {
 } from '@/types/database'
 import { cn } from '@/lib/utils'
 
-import { computeMemberBadge, isValidBadgeColor } from './member-badge'
+import { computeMemberBadge, getMemberAccessLabel, isValidBadgeColor } from './member-badge'
 import { EditMemberRoleDialog } from './edit-member-role-dialog'
 
 export interface MembersPreviewCardHandle {
@@ -50,7 +51,8 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
     ref,
   ) {
     const [members, setMembers] = useState<ProjectPublicMemberRow[]>([])
-    const [expanded, setExpanded] = useState(false)
+    const teamDialogRef = useRef<HTMLDialogElement>(null)
+    const [teamOpen, setTeamOpen] = useState(false)
     const [loading, setLoading] = useState(true)
     const [errorMessage, setErrorMessage] = useState<string | null>(null)
     const [editingUserId, setEditingUserId] = useState<string | null>(null)
@@ -167,6 +169,100 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
       [editingMember, onMemberUpdated, projectId],
     )
 
+    useEffect(() => {
+      if (!teamOpen) return
+      const previousOverflow = document.body.style.overflow
+      document.body.style.overflow = 'hidden'
+      return () => { document.body.style.overflow = previousOverflow }
+    }, [teamOpen])
+
+    function renderMembers(rows: ProjectPublicMemberRow[]) {
+      return (
+          <ul className="space-y-2">
+            {rows.map((member) => {
+              const name = member.full_name?.trim() || 'Membro'
+              const profileHref =
+                currentUserId && currentUserId === member.user_id
+                  ? '/perfil'
+                  : `/usuarios/${member.user_id}`
+              const badge = computeMemberBadge({
+                role: member.role,
+                display_role: member.display_role,
+                badge_color: isValidBadgeColor(member.badge_color ?? null)
+                  ? (member.badge_color as MemberBadgeColor)
+                  : null,
+              })
+              return (
+                <li
+                  key={`${member.project_id}-${member.user_id}`}
+                  className="relative flex min-w-0 gap-3 overflow-hidden rounded-2xl border border-card-outline/70 bg-muted/20 p-2.5"
+                >
+                  {canManage ? (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-2 top-2 z-10 h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
+                      onClick={() => {
+                        teamDialogRef.current?.close()
+                        setTeamOpen(false)
+                        setEditingUserId(member.user_id)
+                      }}
+                      aria-label={`Editar cargo de ${name}`}
+                      title="Editar cargo"
+                    >
+                      <Pencil className="h-4 w-4" aria-hidden />
+                    </Button>
+                  ) : null}
+                  <div className="shrink-0 self-start">
+                    <UserAvatar
+                      name={name}
+                      sizeClassName="h-9 w-9"
+                      ring={false}
+                    />
+                  </div>
+                  <div
+                    className={cn(
+                      'min-w-0 flex-1 space-y-1',
+                      canManage ? 'pr-9' : undefined,
+                    )}
+                  >
+                    <Link
+                      href={profileHref}
+                      title={name}
+                      className="block truncate text-sm font-semibold text-primary hover:underline"
+                    >
+                      {name}
+                    </Link>
+                    {member.course ? (
+                      <p
+                        title={member.course}
+                        className="truncate text-xs leading-snug text-muted-foreground"
+                      >
+                        {member.course}
+                      </p>
+                    ) : null}
+                    <p className="text-xs text-muted-foreground">
+                      Nível de acesso: {getMemberAccessLabel(member.user_id === projectOwnerId ? 'owner' : member.role)}
+                    </p>
+                    {member.display_role?.trim() ? <span
+                      title={badge.label}
+                      className={cn(
+                        'mt-0.5 inline-block max-w-full truncate rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
+                        'whitespace-nowrap',
+                        badge.className,
+                      )}
+                    >
+                      Cargo: {badge.label}
+                    </span> : null}
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+      )
+    }
+
     return (
       <section
         id="equipe-do-projeto"
@@ -209,95 +305,48 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
             Nenhum membro listado ainda.
           </p>
         ) : (
-          <ul className="mt-4 space-y-2">
-            {(expanded ? members : members.slice(0, 4)).map((member) => {
-              const name = member.full_name?.trim() || 'Membro'
-              const profileHref =
-                currentUserId && currentUserId === member.user_id
-                  ? '/perfil'
-                  : `/usuarios/${member.user_id}`
-              const badge = computeMemberBadge({
-                role: member.role,
-                display_role: member.display_role,
-                badge_color: isValidBadgeColor(member.badge_color ?? null)
-                  ? (member.badge_color as MemberBadgeColor)
-                  : null,
-              })
-              return (
-                <li
-                  key={`${member.project_id}-${member.user_id}`}
-                  className="relative flex min-w-0 gap-3 overflow-hidden rounded-2xl border border-card-outline/70 bg-muted/20 p-2.5"
-                >
-                  {canManage ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="absolute right-2 top-2 z-10 h-8 w-8 shrink-0 text-muted-foreground hover:text-foreground"
-                      onClick={() => setEditingUserId(member.user_id)}
-                      aria-label={`Editar cargo de ${name}`}
-                      title="Editar cargo"
-                    >
-                      <Pencil className="h-4 w-4" aria-hidden />
-                    </Button>
-                  ) : null}
-                  <div className="shrink-0 self-start">
-                    <UserAvatar
-                      name={name}
-                      sizeClassName="h-9 w-9"
-                      ring={false}
-                    />
-                  </div>
-                  <div
-                    className={cn(
-                      'min-w-0 flex-1 space-y-1',
-                      canManage ? 'pr-9' : undefined,
-                    )}
-                  >
-                    <Link
-                      href={profileHref}
-                      title={name}
-                      className="block truncate text-sm font-semibold text-primary hover:underline"
-                    >
-                      {name}
-                    </Link>
-                    {member.course ? (
-                      <p
-                        title={member.course}
-                        className="truncate text-xs leading-snug text-muted-foreground"
-                      >
-                        {member.course}
-                      </p>
-                    ) : null}
-                    <span
-                      title={badge.label}
-                      className={cn(
-                        'mt-0.5 inline-block max-w-full truncate rounded-full border px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide',
-                        'whitespace-nowrap',
-                        badge.className,
-                      )}
-                    >
-                      {badge.label}
-                    </span>
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
+          <>
+            <div className="mb-3 mt-3 flex items-center -space-x-2" aria-hidden="true">
+              {members.slice(0, 3).map((member) => (
+                <UserAvatar key={member.user_id} name={member.full_name?.trim() || 'Membro'}
+                  sizeClassName="h-9 w-9 border-2 border-card" ring={false} />
+              ))}
+              {members.length > 3 ? (
+                <span className="grid h-9 w-9 place-items-center rounded-full border-2 border-card bg-muted text-xs font-semibold">
+                  +{members.length - 3}
+                </span>
+              ) : null}
+            </div>
+            {renderMembers(members.slice(0, 3))}
+            <Button type="button" variant="outline" className="mt-3 w-full rounded-xl"
+              aria-haspopup="dialog" onClick={() => {
+                teamDialogRef.current?.showModal()
+                setTeamOpen(true)
+              }}>
+              Ver todos os integrantes
+            </Button>
+          </>
         )}
 
-        {members.length > 4 ? (
-          <Button type="button" variant="ghost" className="mt-3 w-full" aria-expanded={expanded}
-            onClick={() => setExpanded((current) => !current)}>
-            {expanded ? 'Mostrar menos membros' : 'Ver todos os membros'}
-          </Button>
-        ) : null}
+        <dialog ref={teamDialogRef} onClose={() => setTeamOpen(false)}
+          aria-labelledby="project-team-title"
+          className="fixed inset-0 m-auto max-h-[85dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto overscroll-contain rounded-3xl border border-card-outline bg-card p-4 text-card-foreground shadow-xl backdrop:bg-black/70 sm:p-5">
+          <header className="mb-4 flex items-center justify-between gap-3">
+            <h2 id="project-team-title" className="text-lg font-semibold">Integrantes do projeto</h2>
+            <Button type="button" variant="ghost" size="icon" aria-label="Fechar integrantes"
+              onClick={() => teamDialogRef.current?.close()}>
+              <X className="h-4 w-4" aria-hidden />
+            </Button>
+          </header>
+          {teamOpen ? renderMembers(members) : null}
+        </dialog>
 
         <EditMemberRoleDialog
           open={editingMember !== null}
           member={editingMember}
           onClose={() => setEditingUserId(null)}
           onSave={handleSave}
+          showAccessLevel
         />
       </section>
     )

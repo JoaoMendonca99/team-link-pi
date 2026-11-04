@@ -18,6 +18,7 @@ import {
   defaultBadgeColorFor,
   defaultDisplayLabelFor,
   formatDisplayLabel,
+  getMemberAccessLabel,
   isValidBadgeColor,
 } from './member-badge'
 
@@ -33,6 +34,7 @@ export interface EditMemberRoleDialogProps {
     display_role?: string | null
     badge_color?: MemberBadgeColor | null
   } | null
+  showAccessLevel?: boolean
   onSave: (input: {
     displayRole: string | null
     badgeColor: MemberBadgeColor | null
@@ -44,6 +46,7 @@ export function EditMemberRoleDialog({
   onClose,
   member,
   onSave,
+  showAccessLevel = false,
 }: EditMemberRoleDialogProps) {
   const [displayRole, setDisplayRole] = React.useState('')
   const [badgeColor, setBadgeColor] = React.useState<MemberBadgeColor>('blue')
@@ -86,7 +89,7 @@ export function EditMemberRoleDialog({
   if (!open || !member) return null
 
   const trimmed = displayRole.trim()
-  const previewLabel = trimmed ? formatDisplayLabel(trimmed) : defaultDisplayLabelFor(member.role)
+  const previewLabel = trimmed ? formatDisplayLabel(trimmed) : (showAccessLevel ? "Sem cargo personalizado" : defaultDisplayLabelFor(member.role))
   const previewClassName = BADGE_COLOR_CLASSES[badgeColor]
   const memberName = member.full_name?.trim() || 'Membro'
 
@@ -152,7 +155,7 @@ export function EditMemberRoleDialog({
           <div className="mb-4 flex items-center gap-3 rounded-2xl border border-border/60 bg-muted/30 px-3 py-3">
             <UserAvatar
               name={memberName}
-              imageUrl={member.avatar_url ?? undefined}
+              imageUrl={showAccessLevel ? undefined : member.avatar_url ?? undefined}
               sizeClassName="h-10 w-10"
             />
             <div className="min-w-0 flex-1">
@@ -171,6 +174,11 @@ export function EditMemberRoleDialog({
             </span>
           </div>
 
+          {showAccessLevel ? (
+            <p className="mb-3 text-xs text-muted-foreground">
+              Nível de acesso: <strong>{getMemberAccessLabel(member.role)}</strong>
+            </p>
+          ) : null}
           {/* Cargo exibido */}
           <div className="space-y-1.5">
             <label htmlFor="edit-member-role-input" className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -182,11 +190,11 @@ export function EditMemberRoleDialog({
               value={displayRole}
               maxLength={DISPLAY_ROLE_MAX_LENGTH}
               onChange={(event) => setDisplayRole(event.target.value)}
-              placeholder="Ex.: Desenvolvedor, Designer, ADM..."
+              placeholder={showAccessLevel ? "Ex.: Desenvolvedor, Designer, QA" : "Ex.: Desenvolvedor, Designer, ADM..."}
               disabled={saving}
             />
             <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-              <span>Deixe vazio para usar o padrão do cargo real.</span>
+              <span>{showAccessLevel ? "Cargo e cor são visuais e não alteram permissões." : "Deixe vazio para usar o padrão do cargo real."}</span>
               <span className="tabular-nums">
                 {displayRole.length}/{DISPLAY_ROLE_MAX_LENGTH}
               </span>
@@ -199,7 +207,7 @@ export function EditMemberRoleDialog({
               Sugestões
             </p>
             <div className="flex flex-wrap gap-1.5">
-              {ROLE_SUGGESTIONS.map((suggestion) => {
+              {ROLE_SUGGESTIONS.filter((suggestion) => !showAccessLevel || suggestion !== "ADMIN").map((suggestion) => {
                 const active = trimmed.toLowerCase() === suggestion.toLowerCase()
                 return (
                   <button

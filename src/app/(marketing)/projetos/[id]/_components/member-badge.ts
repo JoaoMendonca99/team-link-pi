@@ -161,3 +161,10 @@ export function computeMemberBadge(member: {
     className: BADGE_COLOR_CLASSES[color],
   }
 }
+
+export function getMemberAccessLabel(role: string): string {
+  if (role === 'owner') return 'Dono'
+  if (role === 'admin') return 'Administrador'
+  if (role === 'mentor') return 'Mentor'
+  return 'Membro'
+}
