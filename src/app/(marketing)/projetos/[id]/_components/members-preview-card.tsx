@@ -10,9 +10,10 @@ import {
   useRef,
   useState,
 } from 'react'
-import { Pencil, Users, X } from 'lucide-react'
+import { Pencil, Search, Users, X } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { UserAvatar } from '@/components/team-link/user-avatar'
 import { getSupabaseClient } from '@/lib/supabase/client'
 import type {
@@ -22,8 +23,18 @@ import type {
 import { cn } from '@/lib/utils'
 import { recruitmentRpc } from '@/components/team-link/recruitment'
 
-import { computeMemberBadge, getMemberAccessLabel, isValidBadgeColor } from './member-badge'
+import { computeMemberBadge, isValidBadgeColor } from './member-badge'
 import { EditMemberRoleDialog } from './edit-member-role-dialog'
+
+const TEAM_LEVELS = [
+  { id: 'owner', singular: 'Dono', plural: 'Donos', style: 'border-primary/30 bg-primary/10 text-primary' },
+  { id: 'manager', singular: 'Gestor', plural: 'Gestores', style: 'border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300' },
+  { id: 'reviewer', singular: 'Revisor', plural: 'Revisores', style: 'border-cyan-500/30 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300' },
+  { id: 'member', singular: 'Membro', plural: 'Membros', style: 'border-border bg-muted text-muted-foreground' },
+] as const
+
+const normalizeName = (value: string) =>
+  value.normalize('NFD').replace(/\p{M}/gu, '').trim().toLocaleLowerCase('pt-BR')
 
 export interface MembersPreviewCardHandle {
   reload: () => Promise<void>
@@ -54,6 +65,8 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
     const [levels, setLevels] = useState<Record<string, string>>({})
     const [members, setMembers] = useState<ProjectPublicMemberRow[]>([])
     const teamDialogRef = useRef<HTMLDialogElement>(null)
+    const [search, setSearch] = useState('')
+    const [filter, setFilter] = useState('all')
     const [teamOpen, setTeamOpen] = useState(false)
     const [loading, setLoading] = useState(true)
     const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -133,7 +146,9 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
               p_display_role: displayRole, p_badge_color: badgeColor,
             })
             setLevels((previous) => ({ ...previous, [targetUserId]: accessLevel }))
-            await load()
+            setMembers((previous) => previous.map((member) => member.user_id === targetUserId
+              ? { ...member, display_role: displayRole, badge_color: badgeColor } : member))
+            setFilter('all')
             onMemberUpdated?.()
             return { ok: true as const }
           } catch (error) {
@@ -191,7 +206,7 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
         onMemberUpdated?.()
         return { ok: true as const }
       },
-      [currentUserId, editingMember, load, onMemberUpdated, projectId, projectOwnerId],
+      [currentUserId, editingMember, onMemberUpdated, projectId, projectOwnerId],
     )
 
     useEffect(() => {
@@ -201,9 +216,41 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
       return () => { document.body.style.overflow = previousOverflow }
     }, [teamOpen])
 
+    const grouped = useMemo(() => {
+      const groups = TEAM_LEVELS.map((level) => ({ ...level, rows: [] as ProjectPublicMemberRow[] }))
+      for (const member of members) {
+        const level = member.user_id === projectOwnerId ? 'owner'
+          : levels[member.user_id] ?? (member.role === 'admin' || member.role === 'owner' ? 'manager' : 'member')
+        const group = groups.find((entry) => entry.id === level) ?? groups[3]
+        group.rows.push(member)
+      }
+      for (const group of groups) {
+        group.rows.sort((a, b) => (a.full_name ?? '').localeCompare(b.full_name ?? '', 'pt-BR', { sensitivity: 'base' }))
+      }
+      return groups.filter((group) => group.rows.length > 0)
+    }, [levels, members, projectOwnerId])
+
+    const query = normalizeName(search)
+    const visibleGroups = grouped
+      .filter((group) => filter === 'all' || filter === group.id)
+      .map((group) => ({ ...group, rows: group.rows.filter((member) => normalizeName(member.full_name ?? '').includes(query)) }))
+      .filter((group) => group.rows.length > 0)
+    const preview = grouped.flatMap((group) => group.rows).slice(0, 5)
+
+    function openTeam() {
+      const dialog = teamDialogRef.current
+      if (dialog && !dialog.open) dialog.showModal()
+      setTeamOpen(true)
+    }
+
+    function returnToTeam() {
+      setEditingUserId(null)
+      openTeam()
+    }
+
     function renderMembers(rows: ProjectPublicMemberRow[]) {
       return (
-          <ul className="space-y-2">
+          <ul className="grid auto-rows-fr gap-2 sm:grid-cols-2">
             {rows.map((member) => {
               const name = member.full_name?.trim() || 'Membro'
               const profileHref =
@@ -220,7 +267,7 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
               return (
                 <li
                   key={`${member.project_id}-${member.user_id}`}
-                  className="relative flex min-w-0 gap-3 overflow-hidden rounded-2xl border border-card-outline/70 bg-muted/20 p-2.5"
+                  className="relative flex min-w-0 gap-3 overflow-hidden rounded-2xl border border-card-outline/70 bg-muted/20 p-3"
                 >
                   {canManage ? (
                     <Button
@@ -242,6 +289,7 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
                   <div className="shrink-0 self-start">
                     <UserAvatar
                       name={name}
+                      imageUrl={member.avatar_url || undefined}
                       sizeClassName="h-9 w-9"
                       ring={false}
                     />
@@ -267,9 +315,6 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
                         {member.course}
                       </p>
                     ) : null}
-                    <p className="text-xs text-muted-foreground">
-                      Nível de acesso: {getMemberAccessLabel(member.user_id === projectOwnerId ? 'owner' : levels[member.user_id] ?? member.role)}
-                    </p>
                     {member.display_role?.trim() ? <span
                       title={badge.label}
                       className={cn(
@@ -278,7 +323,7 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
                         badge.className,
                       )}
                     >
-                      Cargo: {badge.label}
+                      {badge.label}
                     </span> : null}
                   </div>
                 </li>
@@ -303,9 +348,7 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
                 ? 'Carregando equipe…'
                 : `${members.length} ${members.length === 1 ? 'membro' : 'membros'}`}
             </h3>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Veja quem faz parte deste projeto.
-            </p>
+
           </div>
           <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/10 text-primary">
             <Users className="h-5 w-5" aria-hidden />
@@ -314,7 +357,7 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
 
         {loading ? (
           <div className="mt-4 space-y-2">
-            {Array.from({ length: 3 }).map((_, i) => (
+            {Array.from({ length: 1 }).map((_, i) => (
               <div key={i} className="h-14 animate-pulse rounded-2xl bg-muted" />
             ))}
           </div>
@@ -332,44 +375,80 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
         ) : (
           <>
             <div className="mb-3 mt-3 flex items-center -space-x-2" aria-hidden="true">
-              {members.slice(0, 3).map((member) => (
-                <UserAvatar key={member.user_id} name={member.full_name?.trim() || 'Membro'}
+              {preview.map((member) => (
+                <UserAvatar key={member.user_id} name={member.full_name?.trim() || 'Membro'} imageUrl={member.avatar_url || undefined}
                   sizeClassName="h-9 w-9 border-2 border-card" ring={false} />
               ))}
-              {members.length > 3 ? (
+              {members.length > preview.length ? (
                 <span className="grid h-9 w-9 place-items-center rounded-full border-2 border-card bg-muted text-xs font-semibold">
-                  +{members.length - 3}
+                  +{members.length - preview.length}
                 </span>
               ) : null}
             </div>
-            {renderMembers(members.slice(0, 3))}
+            <ul className="flex flex-wrap gap-1.5" aria-label="Distribuição por nível de acesso">
+              {grouped.map((group) => (
+                <li key={group.id} className={cn('rounded-full border px-2 py-0.5 text-xs font-medium', group.style)}>
+                  {group.rows.length} {group.rows.length === 1 ? group.singular : group.plural}
+                </li>
+              ))}
+            </ul>
             <Button type="button" variant="outline" className="mt-3 w-full rounded-xl"
-              aria-haspopup="dialog" onClick={() => {
-                teamDialogRef.current?.showModal()
-                setTeamOpen(true)
-              }}>
+              aria-haspopup="dialog" onClick={() => { setSearch(''); setFilter('all'); openTeam() }}>
               Ver todos os integrantes
             </Button>
           </>
         )}
 
-        <dialog ref={teamDialogRef} onClose={() => setTeamOpen(false)}
+        <dialog ref={teamDialogRef} onClose={() => { if (!teamDialogRef.current?.open) setTeamOpen(false) }}
           aria-labelledby="project-team-title"
-          className="fixed inset-0 m-auto max-h-[85dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto overscroll-contain rounded-3xl border border-card-outline bg-card p-4 text-card-foreground shadow-xl backdrop:bg-black/70 sm:p-5">
-          <header className="mb-4 flex items-center justify-between gap-3">
-            <h2 id="project-team-title" className="text-lg font-semibold">Integrantes do projeto</h2>
-            <Button type="button" variant="ghost" size="icon" aria-label="Fechar integrantes"
-              onClick={() => teamDialogRef.current?.close()}>
-              <X className="h-4 w-4" aria-hidden />
-            </Button>
-          </header>
-          {teamOpen ? renderMembers(members) : null}
+          className="fixed inset-0 m-auto w-[calc(100%_-_2rem)] max-w-3xl overflow-hidden rounded-3xl border border-card-outline bg-card p-0 text-card-foreground shadow-xl backdrop:bg-black/70">
+          {teamOpen ? (
+            <div className="flex max-h-[85dvh] min-w-0 flex-col">
+              <header className="shrink-0 space-y-3 border-b border-border p-4 sm:p-5">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h2 id="project-team-title" className="text-lg font-semibold">Integrantes do projeto</h2>
+                    <p className="text-sm text-muted-foreground">{members.length} {members.length === 1 ? 'integrante' : 'integrantes'}</p>
+                  </div>
+                  <Button type="button" variant="ghost" size="icon" aria-label="Fechar integrantes"
+                    onClick={() => teamDialogRef.current?.close()}>
+                    <X className="h-4 w-4" aria-hidden />
+                  </Button>
+                </div>
+                <div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                  <div className="relative min-w-0">
+                    <Search aria-hidden className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input type="search" aria-label="Buscar por nome" placeholder="Buscar por nome"
+                      value={search} onChange={(event) => setSearch(event.target.value)} className="w-full pl-9" />
+                  </div>
+                  <select aria-label="Filtrar por nível de acesso" value={filter} onChange={(event) => setFilter(event.target.value)}
+                    className="h-10 min-w-0 rounded-xl border border-border bg-background px-3 text-sm">
+                    <option value="all">Todos os níveis</option>
+                    {grouped.map((group) => <option key={group.id} value={group.id}>{group.id === 'owner' ? group.singular : group.plural}</option>)}
+                  </select>
+                </div>
+              </header>
+              <div className="min-h-0 space-y-5 overflow-y-auto overscroll-contain p-4 sm:p-5">
+                {visibleGroups.length ? visibleGroups.map((group) => (
+                  <section key={group.id} aria-label={group.id === 'owner' ? group.singular : group.plural}>
+                    <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      <span className={cn('mr-2 inline-block rounded-full border px-2 py-0.5', group.style)}>
+                        {group.id === 'owner' ? group.singular : group.plural}
+                      </span>
+                      {group.rows.length} {group.rows.length === 1 ? 'integrante' : 'integrantes'}
+                    </h3>
+                    {renderMembers(group.rows)}
+                  </section>
+                )) : <p role="status" className="text-sm text-muted-foreground">Nenhum integrante corresponde à busca.</p>}
+              </div>
+            </div>
+          ) : null}
         </dialog>
 
         <EditMemberRoleDialog
           open={editingMember !== null}
           member={editingMember}
-          onClose={() => setEditingUserId(null)}
+          onClose={returnToTeam}
           onSave={handleSave}
           showAccessLevel
           accessLevel={editingMember ? (editingMember.user_id === projectOwnerId ? 'owner' : levels[editingMember.user_id] ?? 'member') : undefined}
