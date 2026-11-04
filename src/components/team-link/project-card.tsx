@@ -45,6 +45,13 @@ export function ProjectCard({
         <ProjectStatusBadge status={project.status} className="shrink-0" />
       </div>
 
+      {Boolean(project.secondaryCategories?.length) && (
+        <ul aria-label="Categorias secundárias" className="mt-2 flex flex-wrap gap-1.5 text-xs text-muted-foreground">
+          {project.secondaryCategories?.map((category) => (
+            <li key={category} className="max-w-full break-words rounded-full border border-border px-2 py-0.5">{category}</li>
+          ))}
+        </ul>
+      )}
       <h3 className="mt-4 break-words text-balance text-lg font-semibold leading-snug text-foreground sm:text-xl">
         {project.title}
       </h3>

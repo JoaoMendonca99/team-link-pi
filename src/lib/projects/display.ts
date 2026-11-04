@@ -21,6 +21,7 @@ export interface ProjectDisplay {
   shortDescription: string
   description: string | null
   category: string | null
+  secondaryCategories?: string[]
   status: ProjectStatusValue
   visibility: ProjectVisibility
   openSpots: number
@@ -84,9 +85,10 @@ export function mapPublicCardToDisplay(row: ProjectPublicCardRow): ProjectDispla
     shortDescription: row.short_description ?? "",
     description: null,
     category: row.category,
+    secondaryCategories: row.secondary_categories ?? [],
     status: row.status,
     visibility: row.visibility,
-    openSpots: row.open_spots,
+    openSpots: row.available_positions ?? row.open_spots,
     desiredProfile:
       row.open_spots > 0 ? (row.desired_profile?.trim() || null) : null,
     projectUrl: row.project_url?.trim() || null,
@@ -131,6 +133,7 @@ export function mapProjectRowToDisplay(
     shortDescription: row.short_description ?? "",
     description: row.description,
     category: row.category,
+    secondaryCategories: row.secondary_categories ?? [],
     status: row.status,
     visibility: row.visibility,
     openSpots: row.open_spots,

@@ -32,10 +32,12 @@ function filterProjects(
       project.title.toLowerCase().includes(term) ||
       project.shortDescription.toLowerCase().includes(term) ||
       (project.category?.toLowerCase().includes(term) ?? false) ||
+      project.secondaryCategories?.some((item) => item.toLowerCase().includes(term)) ||
       project.tags.some((item) => item.toLowerCase().includes(term)) ||
       project.requiredSkills.some((item) => item.toLowerCase().includes(term))
 
-    const matchesCategory = category === 'Todas' || project.category === category
+    const matchesCategory = category === 'Todas' || project.category === category ||
+      project.secondaryCategories?.includes(category)
     const matchesStatus = status === 'all' || project.status === status
     const matchesTag =
       tag === 'Todas' ||
@@ -117,7 +119,7 @@ export function ExploreCatalog() {
   useEffect(() => {
     const categoryQuery = searchParams.get('category')
     if (!categoryQuery) return
-    const decoded = decodeURIComponent(categoryQuery)
+    const decoded = categoryQuery
 
     if (decoded === 'Todas' || projectCategories.includes(decoded)) {
       setCategory(decoded)
@@ -126,7 +128,7 @@ export function ExploreCatalog() {
 
   const categoryOptions = useMemo(() => {
     const fromProjects = projects
-      .map((project) => project.category)
+      .flatMap((project) => [project.category, ...(project.secondaryCategories ?? [])])
       .filter((value): value is string => Boolean(value))
     const merged = new Set<string>([...projectCategories, ...fromProjects])
     return Array.from(merged).sort((a, b) => a.localeCompare(b, 'pt-BR'))

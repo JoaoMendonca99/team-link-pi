@@ -90,6 +90,7 @@ export interface ProjectRow {
   short_description: string | null
   description: string | null
   category: string | null
+  secondary_categories?: string[]
   status: ProjectStatusValue
   visibility: ProjectVisibility
   open_spots: number
@@ -217,6 +218,8 @@ export interface ProjectPublicCardRow {
   slug: string
   short_description: string | null
   category: string | null
+  available_positions?: number
+  secondary_categories?: string[]
   status: ProjectStatusValue
   visibility: ProjectVisibility
   open_spots: number

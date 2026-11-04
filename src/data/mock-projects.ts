@@ -12,6 +12,8 @@ const defaultCatalogCategories = [
   "Sustentabilidade",
   "Robótica",
   "Data & comunidade",
+  "Tecnologia e inovação",
+  "Engenharia",
 ] as const
 
 export const projectCategories: string[] = [...defaultCatalogCategories].sort((a, b) =>
