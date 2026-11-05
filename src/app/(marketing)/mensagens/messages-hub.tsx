@@ -24,7 +24,9 @@ export function MessagesHub() {
       <Button asChild size="sm" variant={friends ? 'default' : 'ghost'}><Link href="/mensagens?aba=amigos" aria-current={friends ? 'page' : undefined}>Amigos</Link></Button>
       <Button asChild size="sm" variant={friends ? 'ghost' : 'default'}><Link href="/mensagens" aria-current={friends ? undefined : 'page'}>Projetos</Link></Button>
     </nav>
-    {(!friends || projectsVisited) && <div className={friends ? 'hidden' : 'flex min-h-0 flex-1 flex-col'}><MessagesClient /></div>}
+    {(!friends || projectsVisited) && <div className={friends ? 'hidden' : 'flex min-h-0 flex-1 flex-col'}>
+      <MessagesClient active={!friends} requestedProject={params.get('projeto')} requestedConversation={friends ? null : params.get('conversa')} />
+    </div>}
     {friends && (loading ? <p role="status" className="p-5">Carregando mensagens…</p> : user ?
       <FriendChats key={user.id} userId={user.id} profile={profile} requestedFriend={params.get('amigo')} requestedChat={params.get('conversa')} /> :
       <div className="space-y-3 p-5"><p>Entre na sua conta para ver as conversas entre amigos.</p>

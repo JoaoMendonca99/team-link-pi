@@ -29,6 +29,7 @@ import type {
   ChatThreadMessage,
 } from '@/lib/chat/types'
 import { getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase/client'
+import { useProjectChatRead } from '@/hooks/use-project-chat-read'
 import { useSupabaseSession } from '@/hooks/use-supabase-session'
 import type { ProfileRow, ProjectMessageRow } from '@/types/database'
 import { cn } from '@/lib/utils'
@@ -42,7 +43,9 @@ import { MESSAGE_MAX_LENGTH, ThreadPanel } from './_components/thread-panel'
 
 type MobileStep = 'projects' | 'conversations' | 'thread'
 
-export function MessagesClient() {
+export function MessagesClient({ active = true, requestedProject, requestedConversation }: {
+  active?: boolean; requestedProject?: string | null; requestedConversation?: string | null
+}) {
   const { isAuthenticated, loading: sessionLoading, user, profile } =
     useSupabaseSession()
 
@@ -186,6 +189,26 @@ export function MessagesClient() {
     void reloadConversations(selectedProjectId)
   }, [reloadConversations, selectedProjectId])
 
+  const deepLink = useRef<string | null>(null)
+  useEffect(() => {
+    if (!active || !requestedProject) { deepLink.current = null; return }
+    if (!projects.some((project) => project.id === requestedProject)) return
+    const key = requestedProject + ':' + (requestedConversation ?? '')
+    if (deepLink.current === key) return
+    if (selectedProjectId !== requestedProject) {
+      setSelectedProjectId(requestedProject)
+      setSelectedConversationId(null)
+      setMobileStep('conversations')
+    }
+    if (!requestedConversation || conversations.some((row) => row.project_id === requestedProject && row.id === requestedConversation)) {
+      deepLink.current = key
+      if (requestedConversation) {
+        setSelectedConversationId(requestedConversation)
+        setMobileStep('thread')
+      }
+    }
+  }, [active, conversations, projects, requestedConversation, requestedProject, selectedProjectId])
+
   const reloadMessages = useCallback(async (conversationId: string) => {
     setMessagesLoading(true)
     setMessagesError(null)
@@ -209,6 +232,14 @@ export function MessagesClient() {
     }
     void reloadMessages(selectedConversationId)
   }, [reloadMessages, selectedConversationId])
+
+  const refreshReadCounts = useCallback(() => {
+    void reloadProjects()
+    if (selectedProjectId) void reloadConversations(selectedProjectId)
+  }, [reloadConversations, reloadProjects, selectedProjectId])
+  const latest = messages.at(-1)
+  useProjectChatRead(user?.id, active ? selectedConversation?.id : undefined,
+    latest?.conversation_id === selectedConversation?.id ? latest?.created_at : undefined, refreshReadCounts)
 
   // Mantém referência fresca para o handler Realtime sem reinscrever.
   const messagesRef = useRef<ChatThreadMessage[]>([])
@@ -252,6 +283,7 @@ export function MessagesClient() {
 
   // Realtime subscription idêntico ao do widget, escopado por conversa.
   useEffect(() => {
+    if (!active) return
     if (!selectedConversationId) return
     if (!isAuthenticated) return
     if (!supabaseReady) return
@@ -281,7 +313,7 @@ export function MessagesClient() {
         // silencioso — já removido em outra cadeia de cleanup.
       }
     }
-  }, [handleRealtimeInsert, isAuthenticated, selectedConversationId, supabaseReady])
+  }, [active, handleRealtimeInsert, isAuthenticated, selectedConversationId, supabaseReady])
 
   // ---------------------------------------------------------------------------
   // Handlers

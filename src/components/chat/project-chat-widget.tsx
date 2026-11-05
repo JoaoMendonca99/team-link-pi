@@ -31,14 +31,18 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { UserAvatar } from "@/components/team-link/user-avatar"
+import { FriendThread, useFriendChats } from "@/app/(marketing)/mensagens/_components/friend-chats"
+import { chatSearch, WidgetFriends } from "./widget-friends"
+import { useProjectChatRead } from "@/hooks/use-project-chat-read"
 import { useSupabaseSession } from "@/hooks/use-supabase-session"
+import { loadMyChatProjects, loadProjectConversations } from "@/lib/chat/loaders"
+import { profileRpc } from "@/lib/profile-social"
 import { getSupabaseClient, isSupabaseConfigured } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
 import type {
   ProfileRow,
   ProjectConversationRow,
   ProjectMessageRow,
-  ProjectRow,
 } from "@/types/database"
 
 const MESSAGE_MAX_LENGTH = 2000
@@ -50,6 +54,7 @@ type View = "projects" | "conversations" | "thread" | "create-group" | "members"
 interface ChatProject {
   id: string
   title: string
+  unreadCount?: number
 }
 
 interface ChatMessage extends ProjectMessageRow {
@@ -82,11 +87,23 @@ interface ConversationMemberView {
  * - Conversa Geral nunca pode ser excluída.
  */
 export function ProjectChatWidget() {
-  const { isAuthenticated, user, profile, loading: sessionLoading } = useSupabaseSession()
+  const session = useSupabaseSession()
+  if (!session.user || !session.isAuthenticated || session.loading) return null
+  return <ChatWidget key={session.user.id} session={session} />
+}
+
+function ChatWidget({ session }: { session: ReturnType<typeof useSupabaseSession> }) {
+  const { isAuthenticated, user, profile, loading: sessionLoading } = session
 
   const [mounted, setMounted] = React.useState(false)
   const [open, setOpen] = React.useState(false)
   const [view, setView] = React.useState<View>("projects")
+  const [tab, setTab] = React.useState<"friends" | "projects">("friends")
+  const [search, setSearch] = React.useState("")
+  const [friendChatId, setFriendChatId] = React.useState<string | null>(null)
+  const { chats, load: loadFriendChats } = useFriendChats(user?.id, open && tab === "friends" ? friendChatId : null)
+  const friendChat = chats?.find((chat) => chat.id === friendChatId)
+  const [conversationUnread, setConversationUnread] = React.useState<Record<string, number>>({})
 
   const [projects, setProjects] = React.useState<ChatProject[]>([])
   const [projectsLoading, setProjectsLoading] = React.useState(false)
@@ -181,41 +198,16 @@ export function ProjectChatWidget() {
   // Data loaders
   // -------------------------------------------------------------------------
 
-  const loadProjects = React.useCallback(async () => {
+  const loadProjects = React.useCallback(async (background = false) => {
     if (!user) return
     if (!supabaseReady) {
       setProjectsError("Não foi possível conectar ao serviço de dados.")
       return
     }
-    setProjectsLoading(true)
+    if (!background) setProjectsLoading(true)
     setProjectsError(null)
     try {
-      const client = getSupabaseClient()
-      const membershipResult = await client
-        .from("project_members")
-        .select("project_id")
-        .eq("user_id", user.id)
-        .eq("status", "active")
-      if (membershipResult.error) throw membershipResult.error
-      const projectIds = Array.from(
-        new Set(
-          ((membershipResult.data ?? []) as Array<{ project_id: string }>).map(
-            (row) => row.project_id,
-          ),
-        ),
-      )
-      if (projectIds.length === 0) {
-        setProjects([])
-        return
-      }
-      const projectsResult = await client
-        .from("projects")
-        .select("id, title")
-        .in("id", projectIds)
-        .order("updated_at", { ascending: false })
-      if (projectsResult.error) throw projectsResult.error
-      const rows = (projectsResult.data ?? []) as Array<Pick<ProjectRow, "id" | "title">>
-      setProjects(rows.map((row) => ({ id: row.id, title: row.title })))
+      setProjects(await loadMyChatProjects(user.id))
     } catch (error) {
       setProjects([])
       setProjectsError(
@@ -224,16 +216,29 @@ export function ProjectChatWidget() {
           : "Não foi possível carregar seus projetos no momento.",
       )
     } finally {
-      setProjectsLoading(false)
+      if (!background) setProjectsLoading(false)
     }
   }, [supabaseReady, user])
 
   React.useEffect(() => {
-    if (!open) return
+    if (!open || tab !== "projects") return
     if (!isAuthenticated) return
     if (view !== "projects") return
     void loadProjects()
-  }, [isAuthenticated, loadProjects, open, view])
+  }, [isAuthenticated, loadProjects, open, tab, view])
+
+  const refreshProjectCounts = React.useCallback(() => {
+    void loadProjects(true)
+    if (selectedProject) {
+      void loadProjectConversations(selectedProject.id)
+        .then((rows) => setConversationUnread(Object.fromEntries(rows.map((row) => [row.id, row.unread_count ?? 0]))))
+        .catch(() => {})
+    }
+  }, [loadProjects, selectedProject])
+
+  React.useEffect(() => {
+    if (open && tab === "projects" && view === "conversations") refreshProjectCounts()
+  }, [open, refreshProjectCounts, tab, view])
 
   const loadConversations = React.useCallback(
     async (projectId: string) => {
@@ -338,10 +343,10 @@ export function ProjectChatWidget() {
   )
 
   React.useEffect(() => {
-    if (view !== "thread") return
+    if (!open || tab !== "projects" || view !== "thread") return
     if (!selectedConversation) return
     void loadMessages(selectedConversation.id)
-  }, [loadMessages, selectedConversation, view])
+  }, [loadMessages, open, selectedConversation, tab, view])
 
   // Mantém uma referência sempre fresca de `messages` para o handler do
   // Realtime checar duplicidade sem precisar entrar nas dependências do effect
@@ -402,55 +407,58 @@ export function ProjectChatWidget() {
     [profile, supabaseReady, user],
   )
 
-  // Subscription do Supabase Realtime para a conversa aberta.
-  //
-  // Só roda quando o painel está aberto, na view de thread, com conversa
-  // selecionada e usuário autenticado. O cleanup remove o canal sempre que
-  // qualquer uma dessas condições mudar, evitando inscrições duplicadas.
+  // One RLS-filtered channel updates both the launcher and the open project thread.
+  const projectMessage = React.useRef<(row: ProjectMessageRow) => void>(() => {})
   React.useEffect(() => {
-    if (!open) return
-    if (view !== "thread") return
-    if (!isAuthenticated) return
-    if (!supabaseReady) return
-    if (!selectedConversation) return
+    projectMessage.current = (row) => {
+      if (open && tab === "projects" && view === "thread" && selectedConversation?.id === row.conversation_id) {
+        void handleRealtimeInsert(row, selectedConversation.id)
+      }
+    }
+  }, [handleRealtimeInsert, open, selectedConversation, tab, view])
 
-    const conversationId = selectedConversation.id
+  const refreshCountsRef = React.useRef(refreshProjectCounts)
+  React.useEffect(() => { refreshCountsRef.current = refreshProjectCounts }, [refreshProjectCounts])
+  React.useEffect(() => {
+    if (!supabaseReady || !user?.id) return
     const client = getSupabaseClient()
-
-    const channel = client.channel(`project_messages:${conversationId}`)
-
+    const channel = client.channel("widget-projects:" + user.id + ":" + crypto.randomUUID())
+    let timer: number | undefined
+    const refresh = () => {
+      window.clearTimeout(timer)
+      timer = window.setTimeout(() => refreshCountsRef.current(), 150)
+    }
     channel.on(
       REALTIME_LISTEN_TYPES.POSTGRES_CHANGES,
       {
         event: REALTIME_POSTGRES_CHANGES_LISTEN_EVENT.INSERT,
         schema: "public",
         table: "project_messages",
-        filter: `conversation_id=eq.${conversationId}`,
       },
       (payload) => {
         const row = payload.new as ProjectMessageRow | null
         if (!row) return
-        void handleRealtimeInsert(row, conversationId)
+        projectMessage.current(row)
+        refresh()
       },
     )
-
-    channel.subscribe()
-
+    channel.on("postgres_changes", {
+      event: "UPDATE", schema: "public", table: "project_conversation_members", filter: "user_id=eq." + user.id,
+    }, refresh)
+    channel.subscribe((status) => { if (status === "SUBSCRIBED") refresh() })
+    refresh()
+    const onVisible = () => { if (!document.hidden) refresh() }
+    document.addEventListener("visibilitychange", onVisible)
     return () => {
-      try {
-        void client.removeChannel(channel)
-      } catch {
-        // Silencioso: se já foi removido por outro caminho, ignoramos.
-      }
+      window.clearTimeout(timer)
+      document.removeEventListener("visibilitychange", onVisible)
+      void client.removeChannel(channel)
     }
-  }, [
-    handleRealtimeInsert,
-    isAuthenticated,
-    open,
-    selectedConversation,
-    supabaseReady,
-    view,
-  ])
+  }, [supabaseReady, user?.id])
+
+  const newestMessage = messages.at(-1)
+  useProjectChatRead(user?.id, open && tab === "projects" && view === "thread" ? selectedConversation?.id : undefined,
+    newestMessage?.conversation_id === selectedConversation?.id ? newestMessage?.created_at : undefined, refreshProjectCounts)
 
   React.useEffect(() => {
     if (view !== "thread") return
@@ -884,13 +892,20 @@ export function ProjectChatWidget() {
   })()
 
   const showMembersButton =
-    view === "thread" && selectedConversation && selectedConversation.kind !== "direct"
+    tab === "projects" && view === "thread" && selectedConversation && selectedConversation.kind !== "direct"
+  const unread = (chats?.reduce((sum, chat) => sum + chat.unread_count, 0) ?? 0) +
+    projects.reduce((sum, project) => sum + (project.unreadCount ?? 0), 0)
+  const query = chatSearch(search.trim())
+  const fullUrl = tab === "friends"
+    ? "/mensagens?aba=amigos" + (friendChatId ? "&conversa=" + encodeURIComponent(friendChatId) : "")
+    : selectedProject ? "/mensagens?projeto=" + encodeURIComponent(selectedProject.id) +
+      (selectedConversation ? "&conversa=" + encodeURIComponent(selectedConversation.id) : "") : "/mensagens"
 
   const launcher = (
     <button
       type="button"
       onClick={() => setOpen((prev) => !prev)}
-      aria-label={open ? "Fechar chat" : "Abrir chat"}
+      aria-label={(open ? "Fechar chat" : "Abrir chat") + (unread ? `, ${unread} mensagens não lidas` : "")}
       aria-expanded={open}
       aria-controls="project-chat-panel"
       className={cn(
@@ -899,6 +914,7 @@ export function ProjectChatWidget() {
       )}
     >
       {open ? <X className="h-6 w-6" aria-hidden /> : <MessageCircle className="h-6 w-6" aria-hidden />}
+      {unread > 0 && <span aria-hidden className="absolute -right-1 -top-1 rounded-full bg-destructive px-2 py-0.5 text-xs text-white">{unread > 99 ? "99+" : unread}</span>}
     </button>
   )
 
@@ -907,27 +923,22 @@ export function ProjectChatWidget() {
       id="project-chat-panel"
       role="dialog"
       aria-modal="false"
-      aria-label="Chat dos seus projetos"
+      aria-label="Mensagens"
       className={cn(
         "fixed z-[40] flex flex-col overflow-hidden rounded-3xl border border-card-outline bg-card text-card-foreground shadow-2xl",
-        // Mobile: ancorado acima do launcher, com margem lateral. dvh evita
-        // que o chrome do navegador mobile coma a janela e faça o painel
-        // parecer "subir" para cima do header.
-        "left-4 right-4 top-auto bottom-20 max-h-[min(calc(100dvh-164px),640px)]",
-        // Desktop: janela flutuante fixa no canto inferior direito, com
-        // folga garantida abaixo do header (72px) e acima do launcher.
-        "md:left-auto md:right-6 md:bottom-24 md:w-[400px] md:max-h-[min(calc(100dvh-180px),640px)]",
+        "bottom-20 left-2 right-2 h-[min(560px,80dvh,calc(100dvh-5.5rem))]",
+        "md:bottom-24 md:left-auto md:right-6 md:h-[min(560px,80dvh,calc(100dvh-6.5rem))] md:w-[380px]",
       )}
     >
-      <header className="flex items-center justify-between gap-3 border-b border-border bg-background/60 px-4 py-3">
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border bg-background/60 px-4 py-2">
         <div className="flex min-w-0 items-center gap-2">
-          {view !== "projects" ? (
+          {tab === "projects" && view !== "projects" ? (
             <Button
               type="button"
               variant="ghost"
               size="icon"
               className="h-8 w-8"
-              onClick={handleBack}
+              onClick={() => { setSearch(""); handleBack() }}
               aria-label="Voltar"
             >
               <ArrowLeft className="h-4 w-4" aria-hidden />
@@ -939,10 +950,10 @@ export function ProjectChatWidget() {
           )}
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold leading-tight text-foreground">
-              {headerTitle}
+              Mensagens
             </p>
-            {headerSubtitle ? (
-              <p className="truncate text-xs text-muted-foreground">{headerSubtitle}</p>
+            {tab === "projects" && (view !== "projects" || headerSubtitle) ? (
+              <p className="truncate text-xs text-muted-foreground">{view === "projects" ? headerSubtitle : headerTitle}</p>
             ) : null}
           </div>
         </div>
@@ -970,7 +981,7 @@ export function ProjectChatWidget() {
             title="Abrir central de mensagens"
             onClick={() => setOpen(false)}
           >
-            <Link href="/mensagens">
+            <Link href={fullUrl}>
               <ExternalLink className="h-4 w-4" aria-hidden />
             </Link>
           </Button>
@@ -987,13 +998,32 @@ export function ProjectChatWidget() {
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1 flex-col">
+      <nav aria-label="Tipos de mensagens" className="flex shrink-0 gap-2 border-b border-border px-3 py-2">
+        <Button size="sm" variant={tab === "friends" ? "default" : "ghost"} aria-pressed={tab === "friends"} onClick={() => { setTab("friends"); setSearch("") }}>Amigos</Button>
+        <Button size="sm" variant={tab === "projects" ? "default" : "ghost"} aria-pressed={tab === "projects"} onClick={() => { setTab("projects"); setSearch("") }}>Projetos</Button>
+      </nav>
+      {(tab === "friends" ? !friendChatId : view === "projects" || view === "conversations") &&
+        <div className="shrink-0 border-b border-border px-3 py-2">
+          <Input type="search" aria-label={tab === "friends" ? "Buscar amigos" : "Buscar projetos ou conversas"} placeholder="Buscar por nome" value={search} onChange={(event) => setSearch(event.target.value)} />
+        </div>}
+      {tab === "friends" && user && (friendChatId ? friendChat ?
+        <FriendThread key={friendChat.id} chat={friendChat} profile={profile} userId={user.id} onChange={loadFriendChats} onBack={() => setFriendChatId(null)} /> :
+        <div className="space-y-2 p-3">
+          <p role="status">Conversa indisponível ou carregando…</p>
+          <Button size="sm" variant="outline" onClick={() => setFriendChatId(null)}>Voltar aos amigos</Button>
+        </div> :
+        <WidgetFriends chats={chats} query={query} onOpen={async (friend, chat) => {
+          const id = chat?.id ?? await profileRpc<string>("open_friend_chat", { p_user: friend.user_id })
+          if (!chat) await loadFriendChats()
+          setFriendChatId(id)
+        }} />)}
+      {tab === "projects" && <div className="flex min-h-0 flex-1 flex-col">
         {view === "projects" ? (
           <ProjectsListView
             loading={projectsLoading}
             error={projectsError}
-            projects={projects}
-            onSelect={handleSelectProject}
+            projects={projects.filter((project) => chatSearch(project.title).includes(query))}
+            onSelect={(project) => { setSearch(""); handleSelectProject(project) }}
             onRetry={() => void loadProjects()}
           />
         ) : null}
@@ -1002,7 +1032,9 @@ export function ProjectChatWidget() {
           <ConversationsListView
             loading={conversationsLoading}
             error={conversationsError}
-            conversations={conversations}
+            conversations={conversations.filter((conversation) => chatSearch(conversationLabel(conversation)).includes(query))}
+            searching={Boolean(query)}
+            unreadCounts={conversationUnread}
             memberCounts={groupMemberCounts}
             onSelect={handleSelectConversation}
             onRetry={() =>
@@ -1067,9 +1099,9 @@ export function ProjectChatWidget() {
             sendError={sendError}
           />
         ) : null}
-      </div>
+      </div>}
 
-      {confirmDelete ? (
+      {tab === "projects" && confirmDelete ? (
         <ConfirmDeleteOverlay
           conversation={confirmDelete}
           deleting={deletingGroup}
@@ -1145,7 +1177,7 @@ function ProjectsListView({ loading, error, projects, onSelect, onRetry }: Proje
     )
   }
   return (
-    <ul className="flex-1 overflow-y-auto p-2">
+    <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2">
       {projects.map((project) => (
         <li key={project.id}>
           <button
@@ -1164,6 +1196,7 @@ function ProjectsListView({ loading, error, projects, onSelect, onRetry }: Proje
                 Conversas do projeto
               </span>
             </span>
+            <UnreadBadge count={project.unreadCount} />
           </button>
         </li>
       ))}
@@ -1176,6 +1209,8 @@ interface ConversationsListViewProps {
   error: string | null
   conversations: ProjectConversationRow[]
   memberCounts: Record<string, number>
+  unreadCounts: Record<string, number>
+  searching: boolean
   onSelect: (conversation: ProjectConversationRow) => void
   onRetry: () => void
   onCreateGroup: () => void
@@ -1188,6 +1223,8 @@ function ConversationsListView({
   error,
   conversations,
   memberCounts,
+  unreadCounts,
+  searching,
   onSelect,
   onRetry,
   onCreateGroup,
@@ -1233,7 +1270,7 @@ function ConversationsListView({
         </Button>
       </div>
 
-      <ul className="flex-1 overflow-y-auto p-2">
+      <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2">
         {general ? (
           <li>
             <button
@@ -1250,13 +1287,15 @@ function ConversationsListView({
                   Todos os membros do projeto
                 </span>
               </span>
+              <UnreadBadge count={unreadCounts[general.id]} />
             </button>
           </li>
-        ) : (
+        ) : !searching ? (
           <li className="px-3 py-4 text-center text-xs text-muted-foreground">
             A conversa geral deste projeto ainda não foi criada.
           </li>
-        )}
+        ) : null}
+        {searching && !general && groups.length === 0 && <li className="p-3 text-sm text-muted-foreground">Nenhuma conversa encontrada.</li>}
 
         {groups.length > 0 ? (
           <li
@@ -1291,10 +1330,11 @@ function ConversationsListView({
                         : `${count} membros`}
                   </span>
                 </span>
+                <UnreadBadge count={unreadCounts[group.id]} />
               </button>
 
               <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                <DropdownMenu>
+                <DropdownMenu modal={false}>
                   <DropdownMenuTrigger asChild>
                     <Button
                       type="button"
@@ -1680,7 +1720,7 @@ function ThreadView({
 
   return (
     <>
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4">
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4">
         {loading ? (
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> Carregando mensagens...
@@ -1800,6 +1840,10 @@ function ThreadView({
       </div>
     </>
   )
+}
+
+function UnreadBadge({ count = 0 }: { count?: number }) {
+  return count > 0 ? <span aria-label={count + " não lidas"} className="rounded-full bg-primary px-2 py-1 text-xs text-primary-foreground">{count > 99 ? "99+" : count}</span> : null
 }
 
 function initialsOf(text: string): string {

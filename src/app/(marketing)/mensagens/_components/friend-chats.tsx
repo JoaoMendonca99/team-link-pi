@@ -19,17 +19,9 @@ const time = (value: string) => new Date(value).toLocaleString('pt-BR', { dateSt
 const nameOf = (chat: FriendChat) => chat.full_name?.trim() || 'Estudante'
 const searchable = (text: string) => text.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase('pt-BR')
 
-export function FriendChats({ userId, profile, requestedFriend, requestedChat }: {
-  userId: string
-  profile: ProfileRow | null
-  requestedFriend: string | null
-  requestedChat: string | null
-}) {
-  const router = useRouter()
+export function useFriendChats(userId: string | undefined, requestedChat: string | null) {
   const [chats, setChats] = useState<FriendChat[]>()
   const [listError, setListError] = useState('')
-  const [openError, setOpenError] = useState('')
-  const [search, setSearch] = useState('')
   const request = useRef(0)
   const connected = useRef(false)
   const activeChat = useRef(requestedChat)
@@ -37,6 +29,7 @@ export function FriendChats({ userId, profile, requestedFriend, requestedChat }:
   useEffect(() => { activeChat.current = requestedChat }, [requestedChat])
 
   const load = useCallback(async () => {
+    if (!userId) return
     const id = ++request.current
     try {
       const data = await profileRpc<FriendChat[]>('get_friend_chats')
@@ -44,9 +37,10 @@ export function FriendChats({ userId, profile, requestedFriend, requestedChat }:
     } catch (error) {
       if (request.current === id) setListError(error instanceof Error ? error.message : 'Não foi possível carregar as conversas.')
     }
-  }, [])
+  }, [userId])
 
   useEffect(() => {
+    if (!userId) return
     void load()
     let scheduled: number | undefined
     const refresh = () => {
@@ -69,6 +63,19 @@ export function FriendChats({ userId, profile, requestedFriend, requestedChat }:
       window.removeEventListener(FRIENDSHIPS_CHANGED, refresh)
     }
   }, [load, userId])
+  return { chats, listError, load }
+}
+
+export function FriendChats({ userId, profile, requestedFriend, requestedChat }: {
+  userId: string
+  profile: ProfileRow | null
+  requestedFriend: string | null
+  requestedChat: string | null
+}) {
+  const router = useRouter()
+  const { chats, listError, load } = useFriendChats(userId, requestedChat)
+  const [openError, setOpenError] = useState('')
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     if (!requestedFriend) return
@@ -133,8 +140,8 @@ function mergeMessages(current: FriendMessage[], incoming: FriendMessage[]) {
   return [...unique.values()].sort((a, b) => a.id - b.id)
 }
 
-function FriendThread({ chat, profile, userId, onChange }: {
-  chat: FriendChat; profile: ProfileRow | null; userId: string; onChange: () => void
+export function FriendThread({ chat, profile, userId, onChange, onBack }: {
+  chat: FriendChat; profile: ProfileRow | null; userId: string; onChange: () => void; onBack?: () => void
 }) {
   const { id, last_message_id: latestId } = chat
   const [messages, setMessages] = useState<FriendMessage[]>([])
@@ -253,11 +260,12 @@ function FriendThread({ chat, profile, userId, onChange }: {
 
   return <section aria-label="Conversa privada" className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
     <header className="flex min-w-0 shrink-0 items-center gap-3 border-b border-border p-3">
-      <Button asChild variant="ghost" size="icon" className="lg:hidden"><Link href={baseUrl} aria-label="Voltar às conversas"><ArrowLeft aria-hidden /></Link></Button>
+      {onBack ? <Button variant="ghost" size="icon" onClick={onBack} aria-label="Voltar às conversas"><ArrowLeft aria-hidden /></Button> :
+        <Button asChild variant="ghost" size="icon" className="lg:hidden"><Link href={baseUrl} aria-label="Voltar às conversas"><ArrowLeft aria-hidden /></Link></Button>}
       <UserAvatar name={nameOf(chat)} imageUrl={chat.avatar_url ?? undefined} sizeClassName="size-10 shrink-0" />
       <div className="min-w-0">
         <Link href={'/usuarios/' + chat.friend_id} className="block truncate font-semibold hover:underline">{nameOf(chat)}</Link>
-        <PresenceLabel lastActivity={chat.last_activity} />
+        {chat.can_send && <PresenceLabel lastActivity={chat.last_activity} showPrivate={Boolean(onBack)} />}
       </div>
     </header>
     <div ref={scroll} className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-3 sm:p-5">

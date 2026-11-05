@@ -35,8 +35,8 @@ export function useProfileSocial(userId?: string, viewerId?: string) {
   return result?.key === key ? result.data : undefined
 }
 
-export function PresenceLabel({ lastActivity }: { lastActivity?: string | null }) {
-  if (!lastActivity) return null
+export function PresenceLabel({ lastActivity, showPrivate = false }: { lastActivity?: string | null; showPrivate?: boolean }) {
+  if (!lastActivity) return showPrivate ? <span className="text-xs text-muted-foreground">Atividade não compartilhada</span> : null
   const elapsed = Date.now() - Date.parse(lastActivity)
   if (!Number.isFinite(elapsed)) return null
   if (elapsed < ONLINE_WINDOW) return <span className="inline-flex items-center gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400">
@@ -46,8 +46,13 @@ export function PresenceLabel({ lastActivity }: { lastActivity?: string | null }
   const hours = Math.floor(minutes / 60)
   const days = Math.floor(hours / 24)
   const relative = new Intl.RelativeTimeFormat('pt-BR', { numeric: 'auto' })
-  const time = days ? relative.format(-days, 'day') : hours ? relative.format(-hours, 'hour') : relative.format(-minutes, 'minute')
-  return <span className="text-xs text-muted-foreground">Visto por último {time}</span>
+  const yesterday = new Date()
+  yesterday.setDate(yesterday.getDate() - 1)
+  const activity = new Date(lastActivity)
+  const time = activity.toDateString() === yesterday.toDateString()
+    ? 'ontem às ' + activity.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+    : days ? relative.format(-days, 'day') : hours ? relative.format(-hours, 'hour') : relative.format(-minutes, 'minute')
+  return <span className="text-xs text-muted-foreground">Visto {time}</span>
 }
 
 export function FriendshipControls({ userId, relationship, onChanged }: {
