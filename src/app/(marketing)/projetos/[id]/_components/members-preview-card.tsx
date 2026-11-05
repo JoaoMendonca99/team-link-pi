@@ -428,7 +428,7 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
           </p>
         ) : (
           <>
-            <div className="mb-3 mt-3 flex items-center -space-x-2" aria-hidden="true">
+            <div className="mt-3 flex items-center -space-x-2" aria-hidden="true">
               {preview.map((member) => (
                 <UserAvatar key={member.user_id} name={member.full_name?.trim() || 'Membro'} imageUrl={member.avatar_url || undefined}
                   sizeClassName="h-9 w-9 border-2 border-card" ring={false} />
@@ -439,25 +439,6 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
                 </span>
               ) : null}
             </div>
-            {preview.some((member) => member.display_role?.trim()) && (
-              <ul className="mb-3 flex flex-wrap gap-1.5" aria-label="Cargos personalizados">
-                {preview.filter((member) => member.display_role?.trim() &&
-                  !(levels[member.user_id] === 'owner' && normalizeName(member.display_role) === 'lider')).map((member) => {
-                  const badge = computeMemberBadge(member)
-                  return <li key={member.user_id} title={member.full_name ?? undefined}
-                    className={cn('max-w-full rounded-xl border px-2 py-0.5 text-[10px] font-semibold [overflow-wrap:anywhere]', badge.className)}>
-                    <span className="sr-only">{member.full_name || 'Integrante'} · </span>{badge.label}
-                  </li>
-                })}
-              </ul>
-            )}
-            <ul className="flex flex-wrap gap-1.5" aria-label="Distribuição por nível de acesso">
-              {grouped.filter((group) => group.rows.length > 0).map((group) => (
-                <li key={group.id} className={cn('rounded-full border px-2 py-0.5 text-xs font-medium', group.style)}>
-                  {group.rows.length} {group.rows.length === 1 ? group.singular : group.plural}
-                </li>
-              ))}
-            </ul>
             <Button type="button" variant="outline" className="mt-3 w-full rounded-xl"
               aria-haspopup="dialog" onClick={() => { setSearch(''); setFilter('all'); openTeam() }}>
               Ver todos os integrantes

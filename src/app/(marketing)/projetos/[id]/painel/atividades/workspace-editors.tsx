@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { UserAvatar } from '@/components/team-link/user-avatar'
+import { lockDialogScroll } from '@/lib/dialog-scroll-lock'
 import { activityDate, activityRpc, goalProgress, historyLabels, isoDateTime, kinds, localDateTime, priorities, taskKind, type Details, type Goal, type Person, type Stage, type Task, type Workspace } from '@/lib/activities'
 
 type Mutation = (action: string, input: Record<string, unknown>) => Promise<string>
@@ -14,12 +15,9 @@ export function Dialog({ title, busy, close, children }: { title: string; busy: 
   const ref = useRef<HTMLDialogElement>(null)
   useEffect(() => {
     const el=ref.current
-    const viewport=document.documentElement
-    const { overflow, scrollbarGutter }=viewport.style
-    if(viewport.clientWidth<innerWidth)viewport.style.scrollbarGutter='stable'
-    viewport.style.overflow='hidden'
     el?.showModal()
-    return ()=>{el?.close();viewport.style.overflow=overflow;viewport.style.scrollbarGutter=scrollbarGutter}
+    const unlock=lockDialogScroll()
+    return ()=>{el?.close();unlock()}
   }, [])
   return <dialog ref={ref} aria-label={title} onCancel={(event)=>{event.preventDefault();if(!busy)close()}}
     className="fixed inset-0 m-auto max-h-[88dvh] w-[calc(100%_-_1rem)] max-w-3xl space-y-4 overflow-y-auto overscroll-contain rounded-3xl border border-card-outline bg-card p-4 text-card-foreground shadow-xl backdrop:bg-black/70 sm:p-6">

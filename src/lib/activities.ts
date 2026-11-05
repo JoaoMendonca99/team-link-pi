@@ -35,6 +35,14 @@ export function goalProgress(goal: Goal, tasks: Task[], stages: Stage[]) {
   const actual = goal.kind === 'numeric' ? Number(goal.actual) : linked.filter((task) => taskKind(task, stages) === 'done').length
   return { total, actual, percent: total > 0 ? actual >= total ? 100 : Math.min(99, Math.round(actual / total * 100)) : 0 }
 }
+export function goalsByDeadline(a: Goal, b: Goal) {
+  const first = a.due_at ? Date.parse(a.due_at) : Infinity
+  const second = b.due_at ? Date.parse(b.due_at) : Infinity
+  return (first === second ? 0 : first < second ? -1 : 1) || a.title.localeCompare(b.title, 'pt-BR') || a.id.localeCompare(b.id)
+}
+export function dashboardGoals(goals: Goal[], tasks: Task[], stages: Stage[]) {
+  return [...goals].sort((a, b) => Number(goalProgress(a, tasks, stages).percent === 100) - Number(goalProgress(b, tasks, stages).percent === 100) || goalsByDeadline(a, b))
+}
 export const localDateTime = (value: string | null) => {
   if (!value) return ''
   const d = new Date(value)

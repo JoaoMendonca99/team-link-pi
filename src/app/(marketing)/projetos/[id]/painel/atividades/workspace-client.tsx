@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { UserAvatar } from '@/components/team-link/user-avatar'
 import { useSupabaseSession } from '@/hooks/use-supabase-session'
 import { getSupabaseClient } from '@/lib/supabase/client'
-import { activityDate, activityRpc, dueSoon, goalProgress, kinds, overdue, priorities, taskKind, type Goal, type Task, type Workspace } from '@/lib/activities'
+import { activityDate, activityRpc, dashboardGoals, dueSoon, goalProgress, goalsByDeadline, kinds, overdue, priorities, taskKind, type Goal, type Task, type Workspace } from '@/lib/activities'
 import { PeriodManager, PeriodTransfer } from './workspace-periods'
 import { ActivityEditor, GoalEditor, StageEditor, Dialog } from './workspace-editors'
 
@@ -185,10 +185,7 @@ function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
       </div>
       <div className="min-w-0 space-y-2"><div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">Metas</h2><Button size="sm" variant="outline" onClick={()=>setAllGoalsOpen(true)}>Ver todas as metas</Button></div>
         <p className="text-xs text-muted-foreground">{goals.filter(g=>goalProgress(g,tasks,stages).percent===100).length} concluídas · {goals.filter(g=>{const p=goalProgress(g,tasks,stages);return p.actual>0&&p.percent<100}).length} em andamento · {goals.filter(g=>goalProgress(g,tasks,stages).actual===0).length} pendentes · {goals.filter(g=>overdue(g.due_at,goalProgress(g,tasks,stages).percent===100)).length} atrasadas</p>
-        <div className="grid gap-2 sm:grid-cols-3">{[...goals].sort((a,b)=>{
-          const rank=(g:Goal)=>{const p=goalProgress(g,tasks,stages);return p.percent===100?4:overdue(g.due_at,false)?0:dueSoon(g.due_at,false)?1:p.actual>0?2:3}
-          return rank(a)-rank(b)||(Date.parse(a.due_at??'9999-01-01')-Date.parse(b.due_at??'9999-01-01'))||a.title.localeCompare(b.title)
-        }).slice(0,3).map(g=><button key={g.id} type="button" onClick={()=>setGoal(g.id)} className="block w-full space-y-1 rounded-lg border border-border p-2 text-left hover:border-primary"><span className="flex justify-between gap-2 text-xs"><strong className="min-w-0 break-words">{g.title}</strong><span>{goalProgress(g,tasks,stages).percent}%</span></span><progress aria-label={'Progresso de '+g.title} value={goalProgress(g,tasks,stages).percent} max={100} className="h-1.5 w-full accent-primary" />{g.due_at&&<span className="block text-xs text-muted-foreground">{activityDate(g.due_at)}</span>}</button>)}</div>
+        <div className="grid gap-2 sm:grid-cols-3">{dashboardGoals(goals,tasks,stages).slice(0,3).map(g=><button key={g.id} type="button" onClick={()=>setGoal(g.id)} className="block w-full space-y-1 rounded-lg border border-border p-2 text-left hover:border-primary"><span className="flex justify-between gap-2 text-xs"><strong className="min-w-0 break-words">{g.title}</strong><span>{goalProgress(g,tasks,stages).percent}%</span></span><progress aria-label={'Progresso de '+g.title} value={goalProgress(g,tasks,stages).percent} max={100} className="h-1.5 w-full accent-primary" />{g.due_at&&<span className="block text-xs text-muted-foreground">{activityDate(g.due_at)}</span>}</button>)}</div>
         {!goals.length&&<p className="text-xs text-muted-foreground">Nenhuma meta cadastrada.</p>}
       </div>
     </section>
@@ -205,19 +202,19 @@ function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
           <label className="flex items-center gap-1 py-2"><input type="checkbox" checked={lateOnly} onChange={e=>setLateOnly(e.target.checked)} />Somente atrasadas</label>
         </div>
         <div className="grid min-w-0 grid-cols-1 gap-3 pb-3 @min-[32rem]/kanban:grid-cols-2 @min-[54rem]/kanban:grid-cols-4" aria-label="Quadro Kanban">{stages.map(stage=><section key={stage.id} aria-label={stage.name} className="flex max-h-[65dvh] min-w-0 flex-col rounded-2xl border border-border bg-muted/30" onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();const moved=tasks.find(item=>item.id===e.dataTransfer.getData('text/plain'));if(moved&&!readOnly)void mutate('move',{id:moved.id,version:moved.version,stage_id:stage.id}).catch((err:Error)=>setError(err.message))}}>
-          <h3 className="shrink-0 break-words p-3 font-semibold">{stage.name} · {filtered.filter(item=>item.stage_id===stage.id).length}</h3><div className="min-h-20 space-y-3 overflow-y-auto overscroll-contain p-3 pt-0">{filtered.filter(item=>item.stage_id===stage.id).map(taskCard)}</div>
+          <h3 className="shrink-0 break-words p-3 font-semibold">{stage.name} · {filtered.filter(item=>item.stage_id===stage.id).length}</h3><div className="min-h-20 space-y-3 overflow-y-auto p-3 pt-0">{filtered.filter(item=>item.stage_id===stage.id).map(taskCard)}</div>
         </section>)}</div>{!filtered.length&&<p className="text-sm text-muted-foreground">Nenhuma atividade neste filtro.</p>}
       </section>
       <aside aria-label="Minhas atividades" className="min-w-0 space-y-3 rounded-2xl border border-border bg-card p-3"><h2 className="text-lg font-semibold">Minhas atividades</h2>
         <label className="block text-xs">Exibir<select className="ml-2 rounded-lg border bg-background p-2" value={mineFilter} onChange={e=>setMineFilter(e.target.value)}>{[['pending','Pendentes'],['doing','Em andamento'],['review','Em revisão'],['done','Concluídas'],['all','Todas']].map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
-        <div className="max-h-[65dvh] space-y-3 overflow-y-auto overscroll-contain">{tasks.filter(item=>item.assignees.includes(userId)&&(mineFilter==='all'||mineFilter==='pending'&&!done(item)||taskKind(item,stages)===mineFilter)).sort((a,b)=>{
+        <div className="max-h-[65dvh] space-y-3 overflow-y-auto">{tasks.filter(item=>item.assignees.includes(userId)&&(mineFilter==='all'||mineFilter==='pending'&&!done(item)||taskKind(item,stages)===mineFilter)).sort((a,b)=>{
           const rank=(item:Task)=>done(item)?6:overdue(item.due_at,false)?0:dueSoon(item.due_at,false)?1:taskKind(item,stages)==='review'?2:taskKind(item,stages)==='doing'?3:4
           return rank(a)-rank(b)||Date.parse(a.due_at??'9999-01-01')-Date.parse(b.due_at??'9999-01-01')||a.title.localeCompare(b.title)
         }).map(taskCard)}</div>
         {!tasks.some(item=>item.assignees.includes(userId)&&(mineFilter==='all'||mineFilter==='pending'&&!done(item)||taskKind(item,stages)===mineFilter))&&<p className="text-sm text-muted-foreground">Nenhuma atividade atribuída neste filtro.</p>}
       </aside>
     </div>
-    {allGoalsOpen&&<Dialog title="Todas as metas" busy={busy} close={()=>setAllGoalsOpen(false)}>{manager&&!readOnly&&<Button onClick={()=>setGoal('new')}>Nova meta</Button>}{goalCards(goals)}{!goals.length&&<p className="text-sm text-muted-foreground">Nenhuma meta cadastrada.</p>}</Dialog>}
+    {allGoalsOpen&&<Dialog title="Todas as metas" busy={busy} close={()=>setAllGoalsOpen(false)}>{manager&&!readOnly&&<Button onClick={()=>setGoal('new')}>Nova meta</Button>}{goalCards([...goals].sort(goalsByDeadline))}{!goals.length&&<p className="text-sm text-muted-foreground">Nenhuma meta cadastrada.</p>}</Dialog>}
     {task && (task === 'new' || selected) && <ActivityEditor key={task} data={scoped} requestTransfer={()=>setTransfer({task:selected?.id})} task={selected} userId={userId} revision={revision} busy={busy} mutate={mutate} close={() => setTask(null)} />}
     {goal && (goal === 'new' || selectedGoal) && <GoalEditor key={goal} data={scoped} requestTransfer={()=>setTransfer({goal:selectedGoal?.id})} goal={selectedGoal} revision={revision} busy={busy} mutate={mutate} close={() => setGoal(null)} openTask={(id) => {setGoal(null);setTask(id)}} />}
     {periodsOpen&&<PeriodManager data={data} busy={busy} mutate={mutate} close={()=>setPeriodsOpen(false)} />}
