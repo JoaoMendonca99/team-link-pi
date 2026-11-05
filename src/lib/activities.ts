@@ -26,6 +26,7 @@ export async function activityRpc<T>(name: string, args: Record<string, unknown>
 }
 export const taskKind = (task: Task, stages: Stage[]) => stages.find((stage) => stage.id === task.stage_id)?.kind
 export const overdue = (due: string | null, done: boolean, now = Date.now()) => !done && Boolean(due && Date.parse(due) < now)
+export const dueSoon = (due: string | null, done: boolean, now = Date.now()) => !done && Boolean(due && Date.parse(due) >= now && Date.parse(due) <= now + 3 * 86_400_000)
 export function goalProgress(goal: Goal, tasks: Task[], stages: Stage[]) {
   const linked = tasks.filter((task) => task.goal_id === goal.id)
   const total = goal.kind === 'numeric' ? Number(goal.target) : linked.length

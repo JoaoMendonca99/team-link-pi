@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { UserAvatar } from '@/components/team-link/user-avatar'
 import { useSupabaseSession } from '@/hooks/use-supabase-session'
 import { getSupabaseClient } from '@/lib/supabase/client'
-import { activityDate, activityRpc, goalProgress, kinds, overdue, priorities, taskKind, type Goal, type Task, type Workspace } from '@/lib/activities'
+import { activityDate, activityRpc, dueSoon, goalProgress, kinds, overdue, priorities, taskKind, type Goal, type Task, type Workspace } from '@/lib/activities'
 import { ActivityEditor, GoalEditor, StageEditor } from './workspace-editors'
 
 type Tab = 'Dashboard' | 'Kanban' | 'Metas' | 'Minhas atividades'
@@ -109,6 +109,7 @@ function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
       <button type="button" onClick={() => setTask(item.id)} className="block w-full break-words text-left text-sm font-semibold hover:text-primary">{item.title}</button>
       <p className={'text-xs ' + (item.priority === 'urgent' ? 'font-semibold text-destructive' : 'text-muted-foreground')}>{priorities[item.priority]} · {activityDate(item.due_at)}</p>
       {overdue(item.due_at, done(item)) && <p className="text-xs text-destructive">Atrasada</p>}
+      {dueSoon(item.due_at, done(item)) && <p className="text-xs font-medium text-primary">Vence em até 3 dias</p>}
       <div className="flex flex-wrap gap-1">{item.assignees.map((id) => {
         const person = members.find((entry) => entry.id === id)
         return <span key={id} title={person?.name || 'Integrante indisponível'}><UserAvatar name={person?.name || 'Integrante'} imageUrl={person?.avatar ?? undefined} sizeClassName="size-7" /></span>
