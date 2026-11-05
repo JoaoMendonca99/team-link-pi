@@ -3,18 +3,20 @@ import { getSupabaseClient } from '@/lib/supabase/client'
 export type Kind = 'todo' | 'doing' | 'review' | 'done'
 export type Priority = 'low' | 'medium' | 'high' | 'urgent'
 export type Stage = { id: string; name: string; kind: Kind; position: number; version: number }
-export type Goal = { id: string; title: string; description: string; due_at: string | null; owners: string[]; kind: 'tasks' | 'numeric'; target: number; actual: number; unit: string; version: number }
-export type Task = { id: string; title: string; description: string; stage_id: string; assignees: string[]; due_at: string | null; priority: Priority; goal_id: string | null; reviewer_id: string | null; requires_review: boolean; version: number }
+export type Period = { id: string; name: string; description: string; starts_on: string | null; ends_on: string | null; is_active: boolean; version: number; task_count: number; goal_count: number }
+export type Goal = { id: string; period_id: string; title: string; description: string; due_at: string | null; owners: string[]; kind: 'tasks' | 'numeric'; target: number; actual: number; unit: string; version: number }
+export type Task = { id: string; period_id: string; title: string; description: string; stage_id: string; assignees: string[]; due_at: string | null; priority: Priority; goal_id: string | null; reviewer_id: string | null; requires_review: boolean; version: number }
 export type ChecklistItem = { id: string; task_id: string; label: string; done: boolean; version: number }
 export type Person = { id: string; name: string | null; avatar: string | null; level: string }
-export type Workspace = { project: { id: string; title: string; slug: string }; manager: boolean; stages: Stage[]; tasks: Task[]; goals: Goal[]; checklist: ChecklistItem[]; members: Person[] }
+export type Workspace = { project: { id: string; title: string; slug: string }; manager: boolean; periods: Period[]; selectedPeriod?: string; readOnly?: boolean; stages: Stage[]; tasks: Task[]; goals: Goal[]; checklist: ChecklistItem[]; members: Person[] }
 export type Details = {
   comments: { id: string; author_id: string | null; name: string | null; avatar: string | null; body: string; created_at: string }[]
-  history: { id: number; name: string | null; action: string; details: { reason?: string }; created_at: string }[]
+  history: { id: number; name: string | null; action: string; details: { reason?: string; from?: string; to?: string; mode?: string }; created_at: string }[]
 }
 export const kinds: Record<Kind, string> = { todo: 'A fazer', doing: 'Em andamento', review: 'Em revisão', done: 'Concluído' }
 export const priorities: Record<Priority, string> = { low: 'Baixa', medium: 'Média', high: 'Alta', urgent: 'Urgente' }
 export const historyLabels: Record<string, string> = {
+  transfer_task: 'Atividade reorganizada por período', transfer_goal: 'Meta transferida entre períodos',
   save_task: 'Atividade criada ou editada', move: 'Status alterado', approve: 'Entrega aprovada', return: 'Entrega devolvida',
   comment: 'Comentário adicionado', checklist: 'Checklist atualizado', delete_checklist: 'Item removido', delete_task: 'Atividade excluída',
   save_goal: 'Meta criada ou editada', delete_goal: 'Meta excluída', save_stage: 'Etapa configurada', delete_stage: 'Etapa removida', reorder_stages: 'Etapas reorganizadas',
@@ -28,7 +30,7 @@ export const taskKind = (task: Task, stages: Stage[]) => stages.find((stage) => 
 export const overdue = (due: string | null, done: boolean, now = Date.now()) => !done && Boolean(due && Date.parse(due) < now)
 export const dueSoon = (due: string | null, done: boolean, now = Date.now()) => !done && Boolean(due && Date.parse(due) >= now && Date.parse(due) <= now + 3 * 86_400_000)
 export function goalProgress(goal: Goal, tasks: Task[], stages: Stage[]) {
-  const linked = tasks.filter((task) => task.goal_id === goal.id)
+  const linked = tasks.filter((task) => task.goal_id === goal.id && task.period_id === goal.period_id)
   const total = goal.kind === 'numeric' ? Number(goal.target) : linked.length
   const actual = goal.kind === 'numeric' ? Number(goal.actual) : linked.filter((task) => taskKind(task, stages) === 'done').length
   return { total, actual, percent: total > 0 ? actual >= total ? 100 : Math.min(99, Math.round(actual / total * 100)) : 0 }

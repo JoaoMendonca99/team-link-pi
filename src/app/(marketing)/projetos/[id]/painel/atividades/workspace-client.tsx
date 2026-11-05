@@ -9,6 +9,7 @@ import { UserAvatar } from '@/components/team-link/user-avatar'
 import { useSupabaseSession } from '@/hooks/use-supabase-session'
 import { getSupabaseClient } from '@/lib/supabase/client'
 import { activityDate, activityRpc, dueSoon, goalProgress, kinds, overdue, priorities, taskKind, type Goal, type Task, type Workspace } from '@/lib/activities'
+import { PeriodManager, PeriodTransfer } from './workspace-periods'
 import { ActivityEditor, GoalEditor, StageEditor, Dialog } from './workspace-editors'
 
 export function ActivitiesClient({ slug }: { slug: string }) {
@@ -19,6 +20,10 @@ export function ActivitiesClient({ slug }: { slug: string }) {
 }
 
 function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
+  const [periodId,setPeriodId]=useState('')
+  const [historyEditing,setHistoryEditing]=useState(false)
+  const [periodsOpen,setPeriodsOpen]=useState(false)
+  const [transfer,setTransfer]=useState<{task?:string;goal?:string}|null>(null)
   const [data, setData] = useState<Workspace>()
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -56,7 +61,11 @@ function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
     if (!data || navigationApplied.current === navigationKey) return
     navigationApplied.current = navigationKey
     const query = new URLSearchParams(navigationKey)
-    setTask(null);setGoal(null)
+    setTask(null);setGoal(null);setHistoryEditing(false)
+    const requested = query.get('periodo')
+    const linkedTask=data.tasks.find(item=>item.id===query.get('atividade'))
+    const linkedGoal=data.goals.find(item=>item.id===query.get('meta'))
+    setPeriodId((linkedTask??linkedGoal)?.period_id ?? data.periods.find(p=>p.id===requested)?.id ?? data.periods.find(p=>p.is_active)?.id ?? '')
     const kind = query.get('estado')
     if (kind && Object.hasOwn(kinds,kind)) {  setFilter(kind) }
     const taskId = query.get('atividade')
@@ -84,7 +93,7 @@ function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
     if (!projectId) throw new Error('Projeto indisponível')
     setBusy(true)
     try {
-      const result = await activityRpc<string>('mutate_activity', { p_project: projectId, p_action: action, p_data: input })
+      const result = await activityRpc<string>('mutate_activity', { p_project: projectId, p_action: action, p_data: {...input,period_id:input.period_id??periodId,historical_edit:historyEditing} })
       await load()
       return result
     } catch (err) { await load(); throw err }
@@ -93,7 +102,18 @@ function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
 
   if (!data) return <main className="space-y-3 p-6"><Link href={'/projetos/' + slug + '/painel'} className="text-primary underline">Voltar ao painel</Link>
     <p role={error ? 'alert' : 'status'}>{error || 'Carregando atividades…'}</p>{error && <Button onClick={() => void load()}>Tentar novamente</Button>}</main>
-  const { tasks, goals, stages, manager, members } = data
+  const { stages, manager, members } = data
+  const period=data.periods.find(p=>p.id===periodId)??data.periods.find(p=>p.is_active)
+  const historical=Boolean(period&&!period.is_active)
+  const readOnly=historical&&(!manager||!historyEditing)
+  const tasks=data.tasks.filter(t=>t.period_id===period?.id)
+  const goals=data.goals.filter(g=>g.period_id===period?.id)
+  const scoped={...data,tasks,goals,selectedPeriod:period?.id,readOnly}
+  function selectPeriod(id:string){
+    setPeriodId(id);setHistoryEditing(false);setTask(null);setGoal(null);setAllGoalsOpen(false)
+    const url=new URL(window.location.href);url.searchParams.set('periodo',id);url.searchParams.delete('atividade');url.searchParams.delete('meta')
+    window.history.replaceState(null,'',url)
+  }
   const done = (item: Task) => taskKind(item, stages) === 'done'
   const percent = tasks.length ? Math.round(tasks.filter(done).length / tasks.length * 100) : 0
   const selected = tasks.find((item) => item.id === task)
@@ -122,7 +142,7 @@ function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
   const taskCard = (item: Task) => {
     const checks = data.checklist.filter((entry) => entry.task_id === item.id)
     const mine = item.assignees.includes(userId)
-    return <article key={item.id} draggable={manager || mine} onDragStart={(event) => event.dataTransfer.setData('text/plain', item.id)}
+    return <article key={item.id} draggable={!readOnly&&(manager || mine)} onDragStart={(event) => event.dataTransfer.setData('text/plain', item.id)}
       className={'space-y-2 rounded-xl border bg-card p-3 ' + (overdue(item.due_at, done(item)) ? 'border-destructive/60' : 'border-card-outline')}>
       <button type="button" onClick={() => setTask(item.id)} className="block w-full break-words text-left text-sm font-semibold hover:text-primary">{item.title}</button>
       <p className={'text-xs ' + (item.priority === 'urgent' ? 'font-semibold text-destructive' : 'text-muted-foreground')}>{priorities[item.priority]} · {activityDate(item.due_at)}</p>
@@ -135,7 +155,7 @@ function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
       {checks.length > 0 && <p className="text-xs text-muted-foreground">Checklist {checks.filter((entry) => entry.done).length}/{checks.length}</p>}
       {item.goal_id && <p className="truncate text-xs text-primary">{goals.find((entry) => entry.id === item.goal_id)?.title}</p>}
       <label className="block text-xs text-muted-foreground">Etapa
-        <select aria-label={'Etapa de ' + item.title} value={item.stage_id} disabled={busy || (!manager && !mine)}
+        <select aria-label={'Etapa de ' + item.title} value={item.stage_id} disabled={busy || readOnly || (!manager && !mine)}
           className="mt-1 w-full rounded-lg border border-border bg-background p-1.5 text-foreground"
           onChange={(event) => void mutate('move', { id: item.id, version: item.version, stage_id: event.target.value }).catch((err: Error) => setError(err.message))}>
           {stages.map((stage) => <option key={stage.id} value={stage.id}>{stage.name}</option>)}
@@ -147,10 +167,14 @@ function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
     <header className="flex flex-wrap items-center justify-between gap-3">
       <div><Link href={'/projetos/' + slug + '/painel'} className="text-sm text-primary hover:underline">Voltar ao painel</Link>
         <p className="mt-2 text-sm text-muted-foreground">{data.project.title}</p><h1 className="text-2xl font-bold">Controle de Atividades</h1></div>
-      {manager && <div className="flex flex-wrap gap-2"><Button onClick={() => setTask('new')}>Nova atividade</Button>
-        <Button variant="outline" onClick={() => setGoal('new')}>Nova meta</Button><Button variant="outline" onClick={() => setStagesOpen(true)}>Gerenciar etapas</Button></div>}
+      {manager && <div className="flex flex-wrap gap-2"><Button disabled={readOnly} onClick={() => setTask('new')}>Nova atividade</Button>
+        <Button disabled={readOnly} variant="outline" onClick={() => setGoal('new')}>Nova meta</Button><Button variant="outline" onClick={() => setStagesOpen(true)}>Gerenciar etapas</Button><Button variant="outline" onClick={()=>setPeriodsOpen(true)}>Gerenciar períodos</Button><Button variant="outline" onClick={()=>setTransfer({})}>Organizar atividades por período</Button></div>}
     </header>
 
+    <section className="space-y-2 rounded-2xl border border-border bg-card p-3" aria-label="Períodos do projeto">
+      <label className="block text-sm font-medium">Período<select aria-label="Período do projeto" className="mt-1 w-full rounded-xl border bg-background p-2 sm:max-w-xl" value={period?.id??''} onChange={e=>selectPeriod(e.target.value)}>{data.periods.map(p=><option key={p.id} value={p.id}>{p.name}{p.is_active?' · Ativo':' · Histórico'}</option>)}</select></label>
+      {historical&&<div className="flex flex-wrap items-center gap-2"><p className="text-sm text-muted-foreground">Período histórico · {historyEditing?'Edição administrativa habilitada.':'Somente consulta.'}</p>{manager&&<Button size="sm" variant="outline" onClick={()=>setHistoryEditing(v=>!v)}>{historyEditing?'Voltar à consulta':'Habilitar edição deste histórico'}</Button>}</div>}
+    </section>
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     <section aria-label="Dashboard do projeto" className="grid gap-4 rounded-2xl border border-card-outline bg-card p-4 xl:grid-cols-2">
       <div className="space-y-3">
@@ -180,7 +204,7 @@ function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
           <label>Prazo até<Input type="date" value={deadline} onChange={e=>setDeadline(e.target.value)} /></label>
           <label className="flex items-center gap-1 py-2"><input type="checkbox" checked={lateOnly} onChange={e=>setLateOnly(e.target.checked)} />Somente atrasadas</label>
         </div>
-        <div className="grid min-w-0 grid-cols-1 gap-3 pb-3 @min-[32rem]/kanban:grid-cols-2 @min-[54rem]/kanban:grid-cols-4" aria-label="Quadro Kanban">{stages.map(stage=><section key={stage.id} aria-label={stage.name} className="flex max-h-[65dvh] min-w-0 flex-col rounded-2xl border border-border bg-muted/30" onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();const moved=tasks.find(item=>item.id===e.dataTransfer.getData('text/plain'));if(moved)void mutate('move',{id:moved.id,version:moved.version,stage_id:stage.id}).catch((err:Error)=>setError(err.message))}}>
+        <div className="grid min-w-0 grid-cols-1 gap-3 pb-3 @min-[32rem]/kanban:grid-cols-2 @min-[54rem]/kanban:grid-cols-4" aria-label="Quadro Kanban">{stages.map(stage=><section key={stage.id} aria-label={stage.name} className="flex max-h-[65dvh] min-w-0 flex-col rounded-2xl border border-border bg-muted/30" onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();const moved=tasks.find(item=>item.id===e.dataTransfer.getData('text/plain'));if(moved&&!readOnly)void mutate('move',{id:moved.id,version:moved.version,stage_id:stage.id}).catch((err:Error)=>setError(err.message))}}>
           <h3 className="shrink-0 break-words p-3 font-semibold">{stage.name} · {filtered.filter(item=>item.stage_id===stage.id).length}</h3><div className="min-h-20 space-y-3 overflow-y-auto overscroll-contain p-3 pt-0">{filtered.filter(item=>item.stage_id===stage.id).map(taskCard)}</div>
         </section>)}</div>{!filtered.length&&<p className="text-sm text-muted-foreground">Nenhuma atividade neste filtro.</p>}
       </section>
@@ -193,9 +217,11 @@ function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
         {!tasks.some(item=>item.assignees.includes(userId)&&(mineFilter==='all'||mineFilter==='pending'&&!done(item)||taskKind(item,stages)===mineFilter))&&<p className="text-sm text-muted-foreground">Nenhuma atividade atribuída neste filtro.</p>}
       </aside>
     </div>
-    {allGoalsOpen&&<Dialog title="Todas as metas" busy={busy} close={()=>setAllGoalsOpen(false)}>{manager&&<Button onClick={()=>setGoal('new')}>Nova meta</Button>}{goalCards(goals)}{!goals.length&&<p className="text-sm text-muted-foreground">Nenhuma meta cadastrada.</p>}</Dialog>}
-    {task && (task === 'new' || selected) && <ActivityEditor key={task} data={data} task={selected} userId={userId} revision={revision} busy={busy} mutate={mutate} close={() => setTask(null)} />}
-    {goal && (goal === 'new' || selectedGoal) && <GoalEditor key={goal} data={data} goal={selectedGoal} revision={revision} busy={busy} mutate={mutate} close={() => setGoal(null)} openTask={(id) => {setGoal(null);setTask(id)}} />}
+    {allGoalsOpen&&<Dialog title="Todas as metas" busy={busy} close={()=>setAllGoalsOpen(false)}>{manager&&!readOnly&&<Button onClick={()=>setGoal('new')}>Nova meta</Button>}{goalCards(goals)}{!goals.length&&<p className="text-sm text-muted-foreground">Nenhuma meta cadastrada.</p>}</Dialog>}
+    {task && (task === 'new' || selected) && <ActivityEditor key={task} data={scoped} requestTransfer={()=>setTransfer({task:selected?.id})} task={selected} userId={userId} revision={revision} busy={busy} mutate={mutate} close={() => setTask(null)} />}
+    {goal && (goal === 'new' || selectedGoal) && <GoalEditor key={goal} data={scoped} requestTransfer={()=>setTransfer({goal:selectedGoal?.id})} goal={selectedGoal} revision={revision} busy={busy} mutate={mutate} close={() => setGoal(null)} openTask={(id) => {setGoal(null);setTask(id)}} />}
+    {periodsOpen&&<PeriodManager data={data} busy={busy} mutate={mutate} close={()=>setPeriodsOpen(false)} />}
+    {transfer&&<PeriodTransfer data={data} source={period?.id??''} initial={transfer} busy={busy} mutate={mutate} close={()=>setTransfer(null)} completed={()=>{setTransfer(null);setTask(null);setGoal(null)}} />}
     {stagesOpen && <StageEditor data={data} busy={busy} mutate={mutate} close={() => setStagesOpen(false)} />}
   </main>
 }

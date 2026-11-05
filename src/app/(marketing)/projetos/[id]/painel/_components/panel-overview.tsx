@@ -10,7 +10,7 @@ import { getSupabaseClient } from '@/lib/supabase/client'
 import { kinds, type Kind } from '@/lib/activities'
 
 type Member = { id: string; name: string | null; avatar: string | null; role: string | null; level: string; last_active_at: string | null }
-type Summary = { states: Record<Kind,number>; goals: { done: number; doing: number; pending: number; late: number }; members: Member[]; as_of: string }
+type Summary = { period?: {id:string;name:string}; states: Record<Kind,number>; goals: { done: number; doing: number; pending: number; late: number }; members: Member[]; as_of: string }
 const levels: Record<string,string> = { owner:'Líder', manager:'Gestor', reviewer:'Revisor', member:'Membro' }
 const order: Record<string,number> = { owner:0, manager:1, reviewer:2, member:3 }
 const colors: Record<Kind,string> = { todo:'#94a3b8', doing:'#3b82f6', review:'#f59e0b', done:'#10b981' }
@@ -69,6 +69,7 @@ export function ActivityOverview({ data, error, slug }: { data?: Summary; error:
   const href='/projetos/'+slug+'/painel/atividades'
   return <section aria-label="Resumo do Controle de Atividades" className="space-y-5 rounded-3xl border border-primary/30 bg-card p-4 shadow-sm sm:p-5">
     <header className="flex flex-wrap items-center justify-between gap-3"><h2 className="flex items-center gap-2 text-xl font-semibold"><SquareKanban className="size-5 text-primary" aria-hidden />Controle de Atividades</h2><Button asChild size="sm"><Link href={href}>Abrir atividades</Link></Button></header>
+    {data?.period&&<p className="text-sm text-muted-foreground">Período atual: {data.period.name}</p>}
     {error?<p role="alert" className="text-sm text-destructive">{error}</p>:!data?<p role="status" className="text-sm text-muted-foreground">Carregando resumo…</p>:<div className="grid min-w-0 gap-6 sm:grid-cols-2">
       <div className="space-y-4"><div role="img" aria-label={`Atividades: ${entries.map(item=>statusNames[item.kind]+': '+item.value).join(', ')}`} className="relative mx-auto size-40 rounded-full" style={{background:total?`conic-gradient(${gradient})`:'var(--muted)'}}>
         <div className="absolute inset-5 flex flex-col items-center justify-center rounded-full bg-card"><strong className="text-3xl">{total}</strong><span className="text-xs text-muted-foreground">atividades</span></div>

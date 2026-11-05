@@ -52,20 +52,22 @@ function useDetails(project: string, task: string | undefined, goal: string | un
   },[project,task,goal,revision])
   return {details,error}
 }
-function History({ details }: { details?: Details }) {
+function History({ details, periods }: { details?: Details; periods: Workspace['periods'] }) {
   return <section className="space-y-2"><h3 className="font-semibold">Histórico</h3>
     {!details?<p role="status" className="text-sm">Carregando histórico…</p>:<ol className="space-y-2">{details.history.map((entry)=><li key={entry.id} className="rounded-xl border border-border p-2 text-xs">
       <p className="font-semibold">{historyLabels[entry.action]||'Atualização'} · {entry.name||'Usuário indisponível'}</p>
       <time dateTime={entry.created_at} className="text-muted-foreground">{activityDate(entry.created_at)}</time>
+      {entry.action.startsWith('transfer_')&&entry.details.from&&<p>Origem: {periods.find(p=>p.id===entry.details.from)?.name||'Período indisponível'} · Destino: {periods.find(p=>p.id===entry.details.to)?.name||'Período indisponível'}{entry.details.mode==='unlink'?' · Vínculos removidos':''}</p>}
       {entry.details.reason&&<p className="mt-1 whitespace-pre-wrap break-words">{entry.details.reason}</p>}
     </li>)}</ol>}
   </section>
 }
 
-export function ActivityEditor({data,task,userId,revision,busy,mutate,close}:{
- data:Workspace;task?:Task;userId:string;revision:number;busy:boolean;mutate:Mutation;close:()=>void
+export function ActivityEditor({data,task,userId,revision,busy,mutate,close,requestTransfer}:{
+ data:Workspace;task?:Task;userId:string;revision:number;busy:boolean;mutate:Mutation;close:()=>void;requestTransfer:()=>void
 }) {
  const [editing,setEditing]=useState(!task)
+ const writable=!data.readOnly
  const [draft,setDraft]=useState(()=>({
    id:task?.id,version:task?.version,title:task?.title??'',description:task?.description??'',
    stage_id:task?.stage_id??data.stages.find((stage)=>stage.kind==='todo')?.id??data.stages[0]?.id??'',
@@ -81,14 +83,15 @@ export function ActivityEditor({data,task,userId,revision,busy,mutate,close}:{
  const current=data.tasks.find((item)=>item.id===task?.id)
  const assigned=Boolean(current?.assignees.includes(userId))
  const ownLevel=data.members.find((person)=>person.id===userId)?.level
- const review=data.manager||(current?.reviewer_id===userId&&ownLevel==='reviewer')
- const canComment=data.manager||assigned||ownLevel==='reviewer'
- const canCheck=data.manager||assigned
+ const review=writable&&(data.manager||(current?.reviewer_id===userId&&ownLevel==='reviewer'))
+ const canComment=writable&&(data.manager||assigned||ownLevel==='reviewer')
+ const canCheck=writable&&(data.manager||assigned)
  async function perform(action:string,input:Record<string,unknown>,after?:()=>void){
    setError('')
    try{await mutate(action,input);after?.()}catch(err){setError(err instanceof Error?err.message:'Falha ao atualizar')}
  }
  return <Dialog title={task?'Detalhes da atividade':'Nova atividade'} busy={busy} close={close}>
+   <p className="text-sm text-muted-foreground">Período: {data.periods.find(p=>p.id===data.selectedPeriod)?.name}{data.readOnly?' · Somente consulta':''}</p>
    {(error||detailError)&&<p role="alert" className="text-sm text-destructive">{error||detailError}</p>}
    {editing ? <form className="space-y-4" onSubmit={(event)=>{event.preventDefault();void perform('save_task',{...draft,due_at:isoDateTime(draft.due_at)},close)}}>
      <Field label="Título"><Input required maxLength={160} value={draft.title} onChange={(event)=>setDraft({...draft,title:event.target.value})} /></Field>
@@ -102,7 +105,8 @@ export function ActivityEditor({data,task,userId,revision,busy,mutate,close}:{
      <PeoplePicker members={data.members} selected={draft.assignees} change={(assignees)=>setDraft({...draft,assignees})} />
      <Field label="Revisor responsável"><select className={selectClass} value={draft.reviewer_id} onChange={(event)=>setDraft({...draft,reviewer_id:event.target.value})}><option value="">Administradores do projeto</option>{data.members.filter((person)=>['owner','manager','reviewer'].includes(person.level)).map((person)=><option key={person.id} value={person.id}>{person.name||'Integrante'}</option>)}</select></Field>
      <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={draft.requires_review} onChange={(event)=>setDraft({...draft,requires_review:event.target.checked})} />Exigir revisão antes da conclusão</label>
-     <Button disabled={busy||!draft.stage_id}>Salvar atividade</Button>
+     <Button disabled={busy||!writable||!draft.stage_id}>Salvar atividade</Button>
+     {task&&writable&&<div className="space-y-2"><p className="text-xs text-muted-foreground">A transferência mantém os dados já salvos. Salve suas alterações antes de transferir.</p><Button type="button" variant="outline" disabled={busy} onClick={requestTransfer}>Alterar período da atividade</Button></div>}
    </form>:current&&<>
      <h3 className="break-words font-semibold">{current.title}</h3>
      <p className="whitespace-pre-wrap break-words text-sm">{current.description||'Sem descrição.'}</p>
@@ -110,7 +114,7 @@ export function ActivityEditor({data,task,userId,revision,busy,mutate,close}:{
      <p className="text-sm">Responsáveis: {current.assignees.map((id)=>data.members.find((person)=>person.id===id)?.name||'Integrante indisponível').join(', ')||'Nenhum'}</p>
      <p className="text-sm">Revisor: {data.members.find((person)=>person.id===current.reviewer_id)?.name||'Administradores do projeto'}{current.requires_review?' · Revisão obrigatória':''}</p>
      {current.goal_id&&<p className="text-sm">Meta: {data.goals.find((goal)=>goal.id===current.goal_id)?.title}</p>}
-     {(data.manager||assigned)&&<Field label="Alterar etapa"><select className={selectClass} disabled={busy} value={current.stage_id}
+     {writable&&(data.manager||assigned)&&<Field label="Alterar etapa"><select className={selectClass} disabled={busy} value={current.stage_id}
        onChange={(event)=>void perform('move',{id:current.id,version:current.version,stage_id:event.target.value})}>
        {data.stages.map((stage)=><option key={stage.id} value={stage.id}>{stage.name}</option>)}</select></Field>}
      {review&&taskKind(current,data.stages)==='review'&&<section className="space-y-2 rounded-xl border border-primary/30 p-3">
@@ -119,8 +123,9 @@ export function ActivityEditor({data,task,userId,revision,busy,mutate,close}:{
        <div className="flex flex-wrap gap-2"><Button disabled={busy} onClick={()=>void perform('approve',{id:current.id,version:current.version})}>Aprovar entrega</Button>
          <Button disabled={busy||!reason.trim()} variant="outline" onClick={()=>void perform('return',{id:current.id,version:current.version,reason},()=>setReason(''))}>Devolver entrega</Button></div>
      </section>}
-     {data.manager&&<div className="flex flex-wrap gap-2">
+     {data.manager&&writable&&<div className="flex flex-wrap gap-2">
        <Button variant="outline" disabled={busy} onClick={()=>{setDraft({...current,due_at:localDateTime(current.due_at),goal_id:current.goal_id??'',reviewer_id:current.reviewer_id??''});setEditing(true)}}>Editar atividade</Button>
+       <Button variant="outline" disabled={busy} onClick={requestTransfer}>Alterar período da atividade</Button>
        <Button variant="ghost" disabled={busy} onClick={()=>setConfirmDelete(true)}>Excluir atividade</Button>
      </div>}
      {confirmDelete&&<div className="space-y-2 rounded-xl border border-destructive p-3"><p className="text-sm">Excluir esta atividade e seus comentários e itens? O registro da exclusão permanecerá no histórico do projeto.</p>
@@ -148,15 +153,16 @@ export function ActivityEditor({data,task,userId,revision,busy,mutate,close}:{
          <Button disabled={busy||!comment.trim()}>Comentar</Button>
        </form>}
      </section>
-     <History details={details} />
+     <History details={details} periods={data.periods} />
    </>}
  </Dialog>
 }
 
-export function GoalEditor({data,goal,revision,busy,mutate,close,openTask}:{
- data:Workspace;goal?:Goal;revision:number;busy:boolean;mutate:Mutation;close:()=>void;openTask:(id:string)=>void
+export function GoalEditor({data,goal,revision,busy,mutate,close,openTask,requestTransfer}:{
+ data:Workspace;goal?:Goal;revision:number;busy:boolean;mutate:Mutation;close:()=>void;openTask:(id:string)=>void;requestTransfer:()=>void
 }) {
  const [editing,setEditing]=useState(!goal)
+ const writable=!data.readOnly
  const [draft,setDraft]=useState(()=>({id:goal?.id,version:goal?.version,title:goal?.title??'',description:goal?.description??'',
    due_at:localDateTime(goal?.due_at??null),owners:goal?.owners??[],kind:goal?.kind??'tasks',target:String(goal?.target??1),actual:String(goal?.actual??0),unit:goal?.unit??''}))
  const [error,setError]=useState('')
@@ -169,6 +175,7 @@ export function GoalEditor({data,goal,revision,busy,mutate,close,openTask}:{
    try{await mutate(action,input);close()}catch(err){setError(err instanceof Error?err.message:'Falha ao salvar')}
  }
  return <Dialog title={goal?'Detalhes da meta':'Nova meta'} busy={busy} close={close}>
+   <p className="text-sm text-muted-foreground">Período: {data.periods.find(p=>p.id===data.selectedPeriod)?.name}{data.readOnly?' · Somente consulta':''}</p>
    {(error||detailsError)&&<p role="alert" className="text-sm text-destructive">{error||detailsError}</p>}
    {editing?<form className="space-y-4" onSubmit={(event)=>{event.preventDefault();void perform('save_goal',{...draft,due_at:isoDateTime(draft.due_at),target:Number(draft.target),actual:Number(draft.actual)})}}>
      <Field label="Nome da meta"><Input required maxLength={160} value={draft.title} onChange={(event)=>setDraft({...draft,title:event.target.value})} /></Field>
@@ -182,20 +189,22 @@ export function GoalEditor({data,goal,revision,busy,mutate,close,openTask}:{
        <Field label="Quantidade realizada"><Input type="number" required min={0} step="any" value={draft.actual} onChange={(event)=>setDraft({...draft,actual:event.target.value})} /></Field>
        <Field label="Unidade"><Input maxLength={80} value={draft.unit} onChange={(event)=>setDraft({...draft,unit:event.target.value})} /></Field>
      </div>}
-     <Button disabled={busy}>Salvar meta</Button>
+     <Button disabled={busy||!writable}>Salvar meta</Button>
+     {goal&&writable&&<div className="space-y-2"><p className="text-xs text-muted-foreground">A transferência mantém os dados já salvos. Salve suas alterações antes de transferir.</p><Button type="button" variant="outline" disabled={busy} onClick={requestTransfer}>Alterar período da meta</Button></div>}
    </form>:current&&progress&&<>
      <h3 className="break-words font-semibold">{current.title}</h3><p className="whitespace-pre-wrap break-words text-sm">{current.description||'Sem descrição.'}</p>
      <p className="text-sm">{activityDate(current.due_at)} · {progress.percent===100?'Concluída':'Em andamento'}</p>
      <p className="text-sm">{progress.percent}% · {progress.actual}/{progress.total} {current.kind==='numeric'?current.unit:'atividades'}</p>
      <progress max={100} value={progress.percent} aria-label="Progresso da meta" className="h-3 w-full accent-primary" />
      <p className="text-sm">Responsáveis: {current.owners.map((id)=>data.members.find((person)=>person.id===id)?.name||'Integrante indisponível').join(', ')||'Nenhum'}</p>
-     {data.manager&&<div className="flex flex-wrap gap-2"><Button variant="outline" disabled={busy} onClick={()=>{setDraft({...current,due_at:localDateTime(current.due_at),target:String(current.target),actual:String(current.actual)});setEditing(true)}}>Editar meta</Button>
+     {data.manager&&writable&&<div className="flex flex-wrap gap-2"><Button variant="outline" disabled={busy} onClick={()=>{setDraft({...current,due_at:localDateTime(current.due_at),target:String(current.target),actual:String(current.actual)});setEditing(true)}}>Editar meta</Button>
+       <Button variant="outline" disabled={busy} onClick={requestTransfer}>Alterar período da meta</Button>
        <Button variant="ghost" disabled={busy} onClick={()=>setConfirmDelete(true)}>Excluir meta</Button></div>}
      {confirmDelete&&<div className="space-y-2"><p className="text-sm">Excluir a meta? As atividades vinculadas serão preservadas.</p>
        <Button variant="destructive" disabled={busy} onClick={()=>void perform('delete_goal',{id:current.id,version:current.version})}>Confirmar exclusão</Button><Button variant="ghost" onClick={()=>setConfirmDelete(false)}>Cancelar</Button></div>}
      <section className="space-y-2"><h3 className="font-semibold">Atividades vinculadas</h3>{data.tasks.filter((item)=>item.goal_id===current.id).map((item)=>
        <button type="button" key={item.id} className="block w-full break-words rounded-xl border border-border p-2 text-left text-sm hover:bg-muted" onClick={()=>openTask(item.id)}>{item.title}</button>)}</section>
-     <History details={details} />
+     <History details={details} periods={data.periods} />
    </>}
  </Dialog>
 }
