@@ -19,35 +19,14 @@ export type { ActivitySource, CommitVisibility, ProjectGithubRepositoryRow }
 export { defaultActivitySource }
 
 export async function assertProjectManager(
-  admin: SupabaseClient,
+  _admin: SupabaseClient,
   projectId: string,
-  userId: string,
+  _userId: string,
   userClient?: SupabaseClient | null,
 ): Promise<boolean> {
-  if (userClient) {
-    const { data, error } = await userClient.rpc('github_is_project_manager', {
-      p_project_id: projectId,
-    })
-    if (!error && data === true) return true
-  }
-
-  const { data: project } = await admin
-    .from('projects')
-    .select('owner_id')
-    .eq('id', projectId)
-    .maybeSingle()
-
-  if (project?.owner_id === userId) return true
-
-  const { data: member } = await admin
-    .from('project_members')
-    .select('role')
-    .eq('project_id', projectId)
-    .eq('user_id', userId)
-    .eq('status', 'active')
-    .maybeSingle()
-
-  return Boolean(member && (member.role === 'owner' || member.role === 'admin'))
+  if (!userClient) return false
+  const { data, error } = await userClient.rpc('github_is_project_manager', { p_project_id: projectId })
+  return !error && data === true
 }
 
 export type UpsertGithubInstallationResult =

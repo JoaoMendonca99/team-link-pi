@@ -88,13 +88,13 @@ export function GithubSetupClient() {
 
   const panelHref = useMemo(() => {
     if (setupData?.project_slug) {
-      return `/projetos/${setupData.project_slug}/painel`
+      return `/projetos/${setupData.project_slug}/painel?ferramenta=github`
     }
     if (pendingProject?.panel_url) {
-      return pendingProject.panel_url
+      return pendingProject.panel_url.split(/[?#]/, 1)[0] + '?ferramenta=github'
     }
     if (pendingProject?.project_slug) {
-      return `/projetos/${pendingProject.project_slug}/painel`
+      return `/projetos/${pendingProject.project_slug}/painel?ferramenta=github`
     }
     return null
   }, [pendingProject, setupData?.project_slug])

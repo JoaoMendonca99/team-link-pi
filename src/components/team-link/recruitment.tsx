@@ -30,9 +30,15 @@ function Modal({ title, close, children, dismissOutside = false }: { title: stri
   useEffect(() => {
     const dialog = ref.current
     dialog?.showModal()
-    const overflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => { dialog?.close(); document.body.style.overflow = overflow }
+    const viewport = document.documentElement
+    const { overflow, scrollbarGutter } = viewport.style
+    if (viewport.clientWidth < window.innerWidth) viewport.style.scrollbarGutter = 'stable'
+    viewport.style.overflow = 'hidden'
+    return () => {
+      dialog?.close()
+      viewport.style.overflow = overflow
+      viewport.style.scrollbarGutter = scrollbarGutter
+    }
   }, [])
   return (
     <dialog ref={ref} aria-label={title} onCancel={(event) => { event.preventDefault(); close() }}
@@ -163,12 +169,17 @@ function useApplications(project: string | null, enabled: boolean, viewer?: stri
     loading: loadedScope !== scope, updates, connection }
 }
 
-function ApplicationDetails({ item, manager, vacancies, reload, version, onApproved }: {
+function ApplicationDetails({ item, manager, vacancies, reload, version, onApproved, draft, onDraftChange, onBusyChange }: {
   item: Application; manager?: boolean; vacancies?: Vacancy[]; reload: () => Promise<void>; version: number
   onApproved?: () => void
+  draft?: string
+  onDraftChange?: (value: string) => void
+  onBusyChange?: (busy: boolean) => void
 }) {
   const [messages, setMessages] = useState<Message[]>([])
-  const [content, setContent] = useState('')
+  const [localContent, setLocalContent] = useState('')
+  const content = draft ?? localContent
+  const setContent = onDraftChange ?? setLocalContent
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [approval, setApproval] = useState(false)
@@ -193,10 +204,10 @@ function ApplicationDetails({ item, manager, vacancies, reload, version, onAppro
     if (history.current && follow.current) history.current.scrollTop = history.current.scrollHeight
   }, [messages])
   async function perform(action: () => Promise<unknown>, onSuccess?: () => void) {
-    setBusy(true); setError(null)
+    setBusy(true); onBusyChange?.(true); setError(null)
     try { await action(); onSuccess?.(); await load() }
     catch (err) { setError(errorText(err)) }
-    finally { setBusy(false) }
+    finally { setBusy(false); onBusyChange?.(false) }
   }
   const decide = (action: string) => recruitmentRpc('recruitment_decide', { p_request: item.id, p_action: action, p_vacancies: action === 'approve' ? selected : [] })
   const options = vacancies?.filter((v) => v.open && v.available > 0 && (item.vacancies.length ? item.vacancies.some((x) => x.id === v.id) : v.legacy)) ?? []
@@ -229,13 +240,16 @@ function ApplicationDetails({ item, manager, vacancies, reload, version, onAppro
       </div> : <Button disabled={busy} variant="outline" onClick={() => void perform(() => decide('cancel'))}>Cancelar candidatura</Button>}
     </> : <p className="text-sm text-muted-foreground">Conversa encerrada. O histórico permanece disponível.</p>}
     <Failure message={error} />
-    {approval ? <Modal title="Confirmar aprovação" close={() => setApproval(false)}>
+    {approval && active(item) ? <section aria-label="Confirmar aprovação" className="space-y-3 rounded-2xl border border-border p-3">
       <p className="text-sm text-muted-foreground">Selecione quais posições serão atribuídas.</p>
       <VacancyOptions options={options} selected={selected} setSelected={setSelected} />
       {!options.length ? <p className="text-sm">Nenhuma posição disponível para esta candidatura.</p> : null}
       <Failure message={error} />
-      <Button disabled={busy || !selected.length} onClick={() => void perform(() => decide('approve'), () => { setApproval(false); onApproved?.() })}>Confirmar aprovação</Button>
-    </Modal> : null}
+      <div className="flex flex-wrap gap-2">
+        <Button type="button" variant="outline" disabled={busy} onClick={() => setApproval(false)}>Cancelar</Button>
+        <Button disabled={busy || !selected.length} onClick={() => void perform(() => decide('approve'), () => { setApproval(false); onApproved?.() })}>Confirmar aprovação</Button>
+      </div>
+    </section> : null}
   </div>
 }
 
@@ -324,50 +338,75 @@ export function MyApplications({ userId }: { userId: string }) {
 }
 
 const emptyVacancy = { title: '', description: '', skills: [], positions: 1, open: true }
-function RecruitmentManager({ projectId }: { projectId: string }) {
+const applicationFilters = [
+  ['pending', 'Pendentes'], ['approved', 'Aprovadas'], ['rejected', 'Recusadas'], ['history', 'Histórico'],
+] as const
+type ApplicationFilter = typeof applicationFilters[number][0]
+
+export function RecruitmentManager({ projectId }: { projectId: string }) {
   const { items, reload, error, updates, connection } = useApplications(projectId, true)
   const { vacancies, reload: reloadVacancies, error: vacancyError } = useVacancies(projectId)
   const [selected, setSelected] = useState<string | null>(null)
   const [editing, setEditing] = useState<Vacancy | 'new' | null>(null)
+  const [filter, setFilter] = useState<ApplicationFilter>('pending')
+  const [drafts, setDrafts] = useState<Record<string, string>>({})
+  const [busy, setBusy] = useState(false)
   const item = items.find((entry) => entry.id === selected)
+  const visible = items.filter((entry) => filter === 'pending' ? active(entry) :
+    filter === 'history' ? !active(entry) : entry.status === filter)
   useEffect(() => { if (connection || Object.keys(updates).length) void reloadVacancies() }, [connection, reloadVacancies, updates])
   const activeVacancies = vacancies.filter(hasPositions)
   const inactiveVacancies = vacancies.filter((vacancy) => !hasPositions(vacancy))
   return <section id="candidaturas" className={card}>
-    <header className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-lg font-semibold">Vagas e candidaturas</h2><Button onClick={() => setEditing('new')}>Criar vaga</Button></header>
+    <header className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-lg font-semibold">Vagas</h2><Button onClick={() => setEditing('new')}>Criar vaga</Button></header>
     <Failure message={vacancyError || error} />
     <div className="flex flex-wrap gap-2">{activeVacancies.map((v) => <Button key={v.id} variant="outline" className="h-auto whitespace-normal text-left" onClick={() => setEditing(v)}>{v.title} · {v.available}/{v.positions}</Button>)}</div>
     {inactiveVacancies.length > 0 && <details className="rounded-xl border border-border p-3">
       <summary className="cursor-pointer text-sm font-semibold">Editar vagas preenchidas ou encerradas</summary>
       <div className="mt-3 flex flex-wrap gap-2">{inactiveVacancies.map((v) => <Button key={v.id} variant="outline" className="h-auto whitespace-normal text-left" onClick={() => setEditing(v)}>{v.title} · {vacancyStatus(v)}</Button>)}</div>
     </details>}
-    <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-      <div className="space-y-2">{items.length ? items.map((entry) => <article key={entry.id} data-selected={entry.id === selected}
-        className="space-y-2 break-words rounded-xl border border-border p-3 text-sm data-[selected=true]:border-primary">
-        <ApplicationPerson id={entry.user_id} name={entry.name || 'Candidato'} avatar={entry.avatar} />
-        <p>{statuses[entry.status]}</p>
-        <p className="text-xs text-muted-foreground">{date(entry.created_at)}{entry.unread ? ' · ' + entry.unread + ' nova(s)' : ''}</p>
-        <p className="text-xs text-muted-foreground">{entry.vacancies.map((v) => v.title).join(' · ')}</p>
-        <Button type="button" size="sm" variant="outline" aria-pressed={entry.id === selected} onClick={() => setSelected(entry.id)}>Abrir candidatura</Button>
-      </article>) : <p className="text-sm text-muted-foreground">Nenhuma candidatura.</p>}</div>
-      {item ? <div className="min-w-0 space-y-3"><Link className="text-sm font-semibold text-primary" href={'/usuarios/' + item.user_id}>Ver perfil do candidato</Link>
+    {!activeVacancies.length && <p className="text-sm text-muted-foreground">Nenhuma vaga aberta com posições disponíveis.</p>}
+    <section className="space-y-3 border-t border-border pt-4">
+      <h2 className="text-lg font-semibold">Candidaturas</h2>
+      <div className="flex flex-wrap gap-2" aria-label="Filtrar candidaturas">
+        {applicationFilters.map(([value, label]) => <Button key={value} size="sm" type="button" aria-pressed={filter === value}
+          variant={filter === value ? 'default' : 'outline'} onClick={() => setFilter(value)}>{label}</Button>)}
+      </div>
+      <ul className="space-y-2">{visible.map((entry) => <li key={entry.id}
+        className={'flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3 text-sm ' + (active(entry) ? 'border-primary/35 bg-primary/5' : 'border-border')}>
+        <div className="min-w-0 space-y-1">
+          <ApplicationPerson id={entry.user_id} name={entry.name || 'Candidato'} avatar={entry.avatar} />
+          <p className="break-words text-xs">{entry.vacancies.map((v) => v.title).join(' · ') || 'Candidatura anterior'}</p>
+          <p className="text-xs text-muted-foreground">{statuses[entry.status]} · {date(entry.created_at)}{entry.unread ? ' · ' + entry.unread + ' nova(s)' : ''}</p>
+        </div>
+        <Button type="button" size="sm" variant="outline" onClick={() => setSelected(entry.id)}>Ver candidatura</Button>
+      </li>)}</ul>
+      {!visible.length && <p className="text-sm text-muted-foreground">Nenhuma candidatura neste filtro.</p>}
+    </section>
+    {item && <Modal title="Detalhes da candidatura" close={() => { if (!busy) setSelected(null) }}
+      dismissOutside={!busy && !drafts[item.id]?.trim()}>
+        <CandidateSummary key={item.user_id} item={item} />
         <ApplicationDetails key={item.id} item={item} manager vacancies={vacancies} reload={reload} onApproved={() => void reloadVacancies()}
-          version={connection + (updates[item.id] ?? 0)} />
-      </div> : null}
-    </div>
+          version={connection + (updates[item.id] ?? 0)} draft={drafts[item.id] ?? ''}
+          onDraftChange={(value) => setDrafts((current) => ({ ...current, [item.id]: value }))} onBusyChange={setBusy} />
+    </Modal>}
     {editing ? <VacancyEditor projectId={projectId} vacancy={editing === 'new' ? null : editing} close={() => setEditing(null)} reload={reloadVacancies} /> : null}
   </section>
 }
 
-export function RecruitmentPanel({ projectId, userId }: { projectId: string; userId?: string }) {
-  const [allowed, setAllowed] = useState(false)
+function CandidateSummary({ item }: { item: Application }) {
+  const [academic, setAcademic] = useState<{ course: string | null; university: string | null }>()
   useEffect(() => {
-    let active = true
-    if (userId) void recruitmentRpc<boolean>('is_project_join_manager', { p_project_id: projectId })
-      .then((value) => { if (active) setAllowed(value) }).catch(() => { if (active) setAllowed(false) })
-    return () => { active = false }
-  }, [projectId, userId])
-  return allowed && userId ? <RecruitmentManager projectId={projectId} /> : null
+    let current = true
+    void getSupabaseClient().from('profiles').select('course, university').eq('id', item.user_id).maybeSingle()
+      .then(({ data }) => { if (current && data) setAcademic(data) })
+    return () => { current = false }
+  }, [item.user_id])
+  return <div className="space-y-2 border-b border-border pb-3">
+    <ApplicationPerson id={item.user_id} name={item.name || 'Candidato'} avatar={item.avatar} />
+    {academic && <p className="text-sm text-muted-foreground">{[academic.course, academic.university].filter(Boolean).join(' · ')}</p>}
+    <Link href={'/usuarios/' + item.user_id} className="text-sm font-semibold text-primary hover:underline">Ver perfil do candidato</Link>
+  </div>
 }
 
 function VacancyEditor({ projectId, vacancy, close, reload }: { projectId: string; vacancy: Vacancy | null; close: () => void; reload: () => Promise<void> }) {

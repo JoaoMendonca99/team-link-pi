@@ -21,120 +21,39 @@ export function readExternalHeaders(req: Request): {
 }
 
 export async function assertProjectAdmin(
-  admin: SupabaseClient,
+  _admin: SupabaseClient,
   projectId: string,
-  userId: string,
+  _userId: string,
   userClient?: SupabaseClient | null,
 ): Promise<boolean> {
-  if (userClient) {
-    const { data, error } = await userClient.rpc('github_is_project_manager', {
-      p_project_id: projectId,
-    })
-    if (!error && data === true) return true
-  }
-
-  const { data: project } = await admin
-    .from('projects')
-    .select('owner_id')
-    .eq('id', projectId)
-    .maybeSingle()
-
-  if (project?.owner_id === userId) return true
-
-  const { data: member } = await admin
-    .from('project_members')
-    .select('role')
-    .eq('project_id', projectId)
-    .eq('user_id', userId)
-    .eq('status', 'active')
-    .maybeSingle()
-
-  return Boolean(member && (member.role === 'owner' || member.role === 'admin'))
+  if (!userClient) return false
+  const { data, error } = await userClient.rpc('support_is_project_manager', { p_project_id: projectId })
+  return !error && data === true
 }
 
 export async function assertSupportCanAccess(
-  admin: SupabaseClient,
+  _admin: SupabaseClient,
   projectId: string,
-  userId: string,
+  _userId: string,
   userClient?: SupabaseClient | null,
 ): Promise<boolean> {
-  if (userClient) {
-    const { data, error } = await userClient.rpc('support_can_access_project', {
-      p_project_id: projectId,
-    })
-    if (!error && data === true) return true
-  }
-
-  const { data, error } = await admin.rpc('support_can_access_project', {
-    p_project_id: projectId,
-    p_user_id: userId,
-  })
-  if (!error && data === true) return true
-
-  const { data: alt, error: altError } = await admin.rpc('support_can_access_project', {
-    project_id: projectId,
-    user_id: userId,
-  })
-  if (!altError && alt === true) return true
-
-  if (await assertProjectAdmin(admin, projectId, userId)) return true
-
-  const { data: member } = await admin
-    .from('project_members')
-    .select('role, support_access')
-    .eq('project_id', projectId)
-    .eq('user_id', userId)
-    .eq('status', 'active')
-    .maybeSingle()
-
-  if (!member) return false
-  if (member.support_access === true) return true
-  return member.role === 'owner' || member.role === 'admin'
+  if (!userClient) return false
+  const { data, error } = await userClient.rpc('support_can_access_project', { p_project_id: projectId })
+  return !error && data === true
 }
 
-export async function assertCanUpdateTicketStatus(
-  admin: SupabaseClient,
-  projectId: string,
-  userId: string,
-  userClient?: SupabaseClient | null,
-): Promise<boolean> {
-  if (await assertProjectAdmin(admin, projectId, userId, userClient)) return true
+export const assertCanUpdateTicketStatus = assertSupportCanAccess
 
-  const { data: member } = await admin
-    .from('project_members')
-    .select('support_access, status')
-    .eq('project_id', projectId)
-    .eq('user_id', userId)
-    .eq('status', 'active')
-    .maybeSingle()
-
-  return member?.support_access === true
-}
-
-/** Dono ou membro ativo — leitura de status da integração no painel. */
+/** Only active team members can read the integration status of an active module. */
 export async function assertProjectPanelAccess(
-  admin: SupabaseClient,
+  _admin: SupabaseClient,
   projectId: string,
-  userId: string,
-  _userClient?: SupabaseClient | null,
+  _userId: string,
+  userClient?: SupabaseClient | null,
 ): Promise<boolean> {
-  const { data: project } = await admin
-    .from('projects')
-    .select('owner_id')
-    .eq('id', projectId)
-    .maybeSingle()
-
-  if (project?.owner_id === userId) return true
-
-  const { data: member } = await admin
-    .from('project_members')
-    .select('id')
-    .eq('project_id', projectId)
-    .eq('user_id', userId)
-    .eq('status', 'active')
-    .maybeSingle()
-
-  return Boolean(member)
+  if (!userClient) return false
+  const { data, error } = await userClient.rpc('get_workspace_modules', { p_project: projectId })
+  return !error && Array.isArray(data) && data.includes('support')
 }
 
 export async function requireAuthenticatedUser(req: Request) {

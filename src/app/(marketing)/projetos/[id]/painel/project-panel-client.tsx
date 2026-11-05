@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useCallback, useEffect, useState } from 'react'
 import {
   ArrowLeft,
   LayoutDashboard,
@@ -35,9 +36,6 @@ import type {
 } from '@/lib/github/types'
 import { mapPublicDetailToDisplay, type ProjectDisplay } from '@/lib/projects/display'
 import {
-  canAccessProjectPanel,
-  canAccessProjectSupport,
-  isProjectManager,
   type ProjectMembership,
 } from '@/lib/projects/membership'
 import {
@@ -50,7 +48,6 @@ import {
   type SupportIntegrationInfo,
   type SupportProjectTicketStats,
 } from '@/lib/support/types'
-import { cn } from '@/lib/utils'
 import { getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase/client'
 import { useSupabaseSession } from '@/hooks/use-supabase-session'
 import type { MemberBadgeColor, ProjectPublicDetailRow } from '@/types/database'
@@ -62,13 +59,14 @@ import { PanelAccessDenied } from './_components/panel-access-denied'
 import { PanelGithubSection } from './_components/panel-github-section'
 import { PanelSupportSection } from './_components/panel-support-section'
 import { useProjectLeadership } from '@/hooks/use-project-leadership'
-import { RecruitmentPanel } from '@/components/team-link/recruitment'
+import { ProjectTools, type WorkspaceModule } from './_components/project-tools'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 type MembershipRole = 'owner' | 'admin' | 'member' | 'mentor'
 
 export function ProjectPanelClient({ slug }: { slug: string }) {
+  const router = useRouter()
   const { user, isAuthenticated, loading: sessionLoading } = useSupabaseSession()
 
   const [project, setProject] = useState<ProjectDisplay | null>(null)
@@ -79,6 +77,11 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
 
   const [membership, setMembership] = useState<ProjectMembership | null>(null)
   const [membershipLoaded, setMembershipLoaded] = useState(false)
+  const [modules, setModules] = useState<WorkspaceModule[]>([])
+  const [modulesLoading, setModulesLoading] = useState(true)
+  const [modulesError, setModulesError] = useState<string | null>(null)
+  const [opened, setOpened] = useState<WorkspaceModule | null>(null)
+  const [pending, setPending] = useState(0)
 
   const [repository, setRepository] = useState<GithubRepositoryLink | null>(null)
   const [commits, setCommits] = useState<GithubCommitItem[]>([])
@@ -202,22 +205,59 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
     void loadMembership()
   }, [loadMembership])
 
-  const hasPanelAccess = useMemo(() => {
-    if (!project) return false
-    return canAccessProjectPanel(user?.id, project.ownerId, membership)
-  }, [membership, project, user?.id])
+  const hasPanelAccess = Boolean(user && membership)
+  const isManager = useProjectLeadership(project?.id, user?.id)
+  const canEditProject = isManager
+  const canViewSupport = isManager || membership?.supportAccess === true
+  const projectId = project?.id
+  const recruitmentHref = project ? '/projetos/' + project.slug + '/painel/candidaturas' : ''
+  const githubOpen = opened === 'github' && modules.includes('github')
+  const supportOpen = opened === 'support' && modules.includes('support')
 
-  const isManager = useMemo(() => {
-    if (!project) return false
-    return isProjectManager(user?.id, project.ownerId, membership)
-  }, [membership, project, user?.id])
+  useEffect(() => {
+    if (!hasPanelAccess || !projectId) return
+    let current = true
+    setModulesLoading(true)
+    setModules([])
+    setModulesError(null)
+    void getSupabaseClient().rpc('get_workspace_modules', { p_project: projectId }).then(({ data, error }) => {
+      if (!current) return
+      if (error) setModulesError('Não foi possível carregar as ferramentas.')
+      else setModules(Array.isArray(data) ? data : [])
+      setModulesLoading(false)
+    })
+    return () => { current = false }
+  }, [hasPanelAccess, projectId])
 
-  const canEditProject = useProjectLeadership(project?.id, user?.id)
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get('ferramenta') === 'github') setOpened('github')
+  }, [slug])
 
-  const canViewSupport = useMemo(() => {
-    if (!project) return false
-    return canAccessProjectSupport(user?.id, project.ownerId, membership)
-  }, [membership, project, user?.id])
+  useEffect(() => {
+    if (!isManager || !projectId) return
+    if (window.location.hash === '#candidaturas') router.replace(recruitmentHref)
+    let current = true
+    const client = getSupabaseClient()
+    const refresh = async () => {
+      const { data, error } = await client.rpc('get_workspace_pending_count', { p_project: projectId })
+      if (current && !error) setPending(Number(data) || 0)
+    }
+    void refresh()
+    const channel = client.channel('workspace-count:' + projectId + ':' + crypto.randomUUID())
+    for (const event of ['INSERT', 'UPDATE'] as const) {
+      channel.on('postgres_changes', { event, schema: 'public', table: 'recruitment_updates', filter: 'project_id=eq.' + projectId }, refresh)
+    }
+    channel.subscribe((status) => { if (status === 'SUBSCRIBED') void refresh() })
+    return () => { current = false; void client.removeChannel(channel) }
+  }, [isManager, projectId, recruitmentHref, router])
+
+  async function toggleModule(module: WorkspaceModule, active: boolean) {
+    if (!projectId) return
+    const { error } = await getSupabaseClient().rpc('set_workspace_module', { p_project: projectId, p_module: module, p_active: active })
+    if (error) throw error
+    setModules((current) => active ? [...new Set([...current, module])] : current.filter((entry) => entry !== module))
+    if (!active) setOpened((current) => current === module ? null : current)
+  }
 
   const refreshSupportIntegration = useCallback(async () => {
     if (!project || !hasPanelAccess) {
@@ -279,11 +319,6 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
     }
   }, [canViewSupport, hasPanelAccess, project, supportIntegration])
 
-  const showSupportColumn = useMemo(() => {
-    if (!hasPanelAccess) return false
-    return isManager || isSupportSacActive(supportIntegration)
-  }, [hasPanelAccess, isManager, supportIntegration])
-
   useEffect(() => {
     if (!isSupportSacActive(supportIntegration)) {
       setSupportStats(null)
@@ -329,19 +364,19 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
   }, [hasPanelAccess, project])
 
   useEffect(() => {
-    if (!hasPanelAccess || !project) return
+    if (!hasPanelAccess || !project || !githubOpen) return
     void refreshGithub()
-  }, [hasPanelAccess, project, refreshGithub])
+  }, [githubOpen, hasPanelAccess, project, refreshGithub])
 
   useEffect(() => {
-    if (!hasPanelAccess || !project) return
+    if (!hasPanelAccess || !project || !supportOpen) return
     void refreshSupportIntegration()
-  }, [hasPanelAccess, project, refreshSupportIntegration])
+  }, [hasPanelAccess, project, refreshSupportIntegration, supportOpen])
 
   useEffect(() => {
-    if (!hasPanelAccess || !project || !isSupportSacActive(supportIntegration)) return
+    if (!hasPanelAccess || !project || !supportOpen || !isSupportSacActive(supportIntegration)) return
     void refreshSupportStats()
-  }, [hasPanelAccess, project, supportIntegration, refreshSupportStats])
+  }, [hasPanelAccess, project, supportIntegration, refreshSupportStats, supportOpen])
 
   async function handleSync() {
     if (!repository) return
@@ -495,18 +530,22 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
                 <Link href={`/projetos/${project.slug}/editar`}>Editar projeto</Link>
               </Button>
             ) : null}
+            {isManager && <Button asChild variant="outline" size="sm" className="rounded-2xl">
+              <Link id="candidaturas" href={recruitmentHref}>Candidaturas{pending > 0 && <span className="rounded-full bg-primary/10 px-2 text-primary" aria-label={pending + ' pendentes'}>{pending}</span>}</Link>
+            </Button>}
           </div>
 
           <PageHeader
             eyebrow="Área da equipe"
             title={project.title}
-            description="Resumo do projeto, GitHub, suporte e atividade recente."
+            description="Resumo do projeto e ferramentas da equipe."
+            actions={<ProjectStatusBadge status={project.status} />}
           />
         </Container>
       </div>
 
       <Container className="space-y-8 py-10">
-        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <SummaryTile
             icon={Users}
             label="Membros"
@@ -525,9 +564,6 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
                 : 'Sem vagas abertas'
             }
           />
-          <SummaryTile label="Status">
-            <ProjectStatusBadge status={project.status} />
-          </SummaryTile>
         </section>
 
         <section className="flex flex-wrap items-center gap-2">
@@ -537,21 +573,18 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
           </Button>
         </section>
 
-        {githubError ? (
+        <ProjectTools active={modules} manager={isManager} loading={modulesLoading} error={modulesError}
+          open={setOpened} toggle={toggleModule} />
+
+        {githubOpen && githubError ? (
           <p className="rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
             {githubError}
           </p>
         ) : null}
 
-        <RecruitmentPanel key={project.id + (user?.id ?? '')} projectId={project.id} userId={user?.id} />
-
-        <section
-          className={cn(
-            'grid gap-6 lg:items-start',
-            showSupportColumn && 'lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]',
-          )}
-        >
-          <PanelGithubSection
+        {(githubOpen || supportOpen) && <section className="space-y-3" aria-label="Ferramenta selecionada">
+          <Button type="button" variant="ghost" size="sm" onClick={() => setOpened(null)}>Fechar ferramenta</Button>
+          {githubOpen && <PanelGithubSection
             className="min-w-0"
             repository={repository}
             commits={commits}
@@ -568,8 +601,8 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
             onToggleVisibility={() => void handleToggleVisibility()}
             onChangeActivitySource={(source) => void handleChangeActivitySource(source)}
             onOpenCommit={setSelectedCommit}
-          />
-          {showSupportColumn ? (
+          />}
+          {supportOpen ? (
             <PanelSupportSection
               className="h-fit min-w-0 self-start"
               projectId={project.id}
@@ -584,11 +617,11 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
               onRefreshStats={refreshSupportStats}
             />
           ) : null}
-        </section>
+        </section>}
       </Container>
 
       <ConnectGithubDialog
-        open={linkOpen}
+        open={linkOpen && githubOpen}
         onClose={() => setLinkOpen(false)}
         projectId={project.id}
         projectSlug={project.slug}
@@ -600,7 +633,7 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
       />
 
       <CommitDetailModal
-        commit={selectedCommit}
+        commit={githubOpen ? selectedCommit : null}
         onClose={() => setSelectedCommit(null)}
       />
     </main>
