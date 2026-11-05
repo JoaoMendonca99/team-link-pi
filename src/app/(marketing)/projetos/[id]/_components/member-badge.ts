@@ -3,7 +3,7 @@ import type { MemberBadgeColor } from '@/types/database'
 /**
  * Limite visual do cargo exibido. O banco também valida.
  */
-export const DISPLAY_ROLE_MAX_LENGTH = 40
+export const DISPLAY_ROLE_MAX_LENGTH = 120
 
 /**
  * Sugestões rápidas exibidas no modal de edição.

@@ -7,11 +7,8 @@ import {
   ArrowLeft,
   LayoutDashboard,
   Loader2,
-  MessageCircle,
-  Users,
 } from 'lucide-react'
 
-import { CategoryBadge } from '@/components/team-link/category-badge'
 import { EmptyState } from '@/components/team-link/empty-state'
 import { PageHeader } from '@/components/team-link/page-header'
 import { ProjectStatusBadge } from '@/components/team-link/project-status-badge'
@@ -497,27 +494,7 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
   return (
     <main className="bg-background pb-20">
       <div className="border-b border-border bg-gradient-to-b from-muted/50 to-transparent">
-        <Container className="space-y-6 py-8 sm:py-10">
-          <nav aria-label="Breadcrumb" className="text-xs text-muted-foreground sm:text-sm">
-            <ol className="flex flex-wrap items-center gap-1.5">
-              <li>
-                <Link href="/" className="font-semibold text-primary hover:underline">
-                  Início
-                </Link>
-              </li>
-              <li aria-hidden>/</li>
-              <li>
-                <Link href="/meus-projetos" className="font-semibold text-primary hover:underline">
-                  Meus projetos
-                </Link>
-              </li>
-              <li aria-hidden>/</li>
-              <li className="min-w-0 max-w-full truncate font-semibold text-foreground">
-                {project.title}
-              </li>
-            </ol>
-          </nav>
-
+        <Container className="space-y-4 py-5 sm:py-6">
           <div className="flex flex-wrap items-center gap-3">
             <Button asChild variant="outline" size="sm" className="rounded-2xl font-semibold">
               <Link href={`/projetos/${project.slug}`}>
@@ -533,46 +510,19 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
             {isManager && <Button asChild variant="outline" size="sm" className="rounded-2xl">
               <Link id="candidaturas" href={recruitmentHref}>Candidaturas{pending > 0 && <span className="rounded-full bg-primary/10 px-2 text-primary" aria-label={pending + ' pendentes'}>{pending}</span>}</Link>
             </Button>}
+            <Button asChild variant="ghost" size="sm"><Link href="/mensagens">Mensagens da equipe</Link></Button>
           </div>
 
           <PageHeader
             eyebrow="Área da equipe"
             title={project.title}
-            description="Resumo do projeto e ferramentas da equipe."
+            className="border-0 pb-0"
             actions={<ProjectStatusBadge status={project.status} />}
           />
         </Container>
       </div>
 
-      <Container className="space-y-8 py-10">
-        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <SummaryTile
-            icon={Users}
-            label="Membros"
-            value={String(project.membersCount)}
-          />
-          <SummaryTile
-            icon={MessageCircle}
-            label="Comentários"
-            value={String(project.commentsCount)}
-          />
-          <SummaryTile
-            label="Vagas abertas"
-            value={
-              project.openSpots > 0
-                ? String(project.openSpots)
-                : 'Sem vagas abertas'
-            }
-          />
-        </section>
-
-        <section className="flex flex-wrap items-center gap-2">
-          {project.category ? <CategoryBadge label={project.category} /> : null}
-          <Button asChild variant="outline" size="sm" className="rounded-2xl font-semibold">
-            <Link href="/mensagens">Mensagens da equipe</Link>
-          </Button>
-        </section>
-
+      <Container className="space-y-5 py-5 sm:py-6">
         <ProjectTools active={modules} manager={isManager} loading={modulesLoading} error={modulesError}
           open={setOpened} toggle={toggleModule} />
 
@@ -637,31 +587,5 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
         onClose={() => setSelectedCommit(null)}
       />
     </main>
-  )
-}
-
-function SummaryTile({
-  icon: Icon,
-  label,
-  value,
-  children,
-}: {
-  icon?: React.ComponentType<{ className?: string; 'aria-hidden'?: boolean }>
-  label: string
-  value?: string
-  children?: React.ReactNode
-}) {
-  return (
-    <div className="rounded-2xl border border-card-outline bg-card px-4 py-3 shadow-sm">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-        {label}
-      </p>
-      <div className="mt-1 flex items-center gap-2">
-        {Icon ? <Icon className="h-4 w-4 text-primary" aria-hidden /> : null}
-        {children ?? (
-          <p className="text-lg font-bold text-foreground">{value ?? '—'}</p>
-        )}
-      </div>
-    </div>
   )
 }

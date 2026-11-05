@@ -58,7 +58,7 @@ export const MembersList = forwardRef<MembersListHandle, MembersListProps>(
       const { data, error } = await client
         .from('project_public_members')
         .select(
-          'id, project_id, user_id, role, status, joined_at, full_name, course, avatar_url, display_role, badge_color, vacancy_roles',
+          'id, project_id, user_id, role, status, joined_at, full_name, course, avatar_url, display_role, badge_color',
         )
         .eq('project_id', projectId)
         .order('joined_at', { ascending: true })
@@ -240,9 +240,6 @@ export const MembersList = forwardRef<MembersListHandle, MembersListProps>(
                   {member.course ? (
                     <p className="truncate text-xs text-muted-foreground">{member.course}</p>
                   ) : null}
-                  {member.vacancy_roles?.filter((role) => role !== member.display_role).map((role) => (
-                    <p key={role} className="text-xs text-muted-foreground [overflow-wrap:anywhere]">{role}</p>
-                  ))}
                 </div>
                 <span
                   className={cn(

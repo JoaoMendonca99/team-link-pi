@@ -10,10 +10,13 @@ import { UserAvatar } from '@/components/team-link/user-avatar'
 import { getSupabaseClient } from '@/lib/supabase/client'
 
 export type Vacancy = { id: string; title: string; description: string; skills: string[]; positions: number; available: number; open: boolean; legacy: boolean }
-type Application = { id: string; project_title: string; slug: string; user_id: string; name: string | null; avatar: string | null; created_at: string; decided_at: string | null; status: 'pending' | 'review' | 'approved' | 'rejected' | 'canceled'; vacancies: { id: string; title: string; approved: boolean }[]; message: string | null; unread: number }
+type Application = { id: string; project_title: string; slug: string; user_id: string; name: string | null; avatar: string | null; created_at: string; decided_at: string | null; status: 'pending' | 'review' | 'approved' | 'rejected' | 'canceled'; decision_reason?: 'vacancy_filled' | null; vacancies: { id: string; title: string; approved: boolean; rejected?: boolean }[]; message: string | null; unread: number }
 type Message = { id: number; sender_id: string | null; name: string | null; avatar: string | null; content: string; created_at: string }
 
 const statuses = { pending: 'Pendente', review: 'Em análise', approved: 'Aprovada', rejected: 'Recusada', canceled: 'Cancelada' }
+const applicationStatus = (item: Application) => statuses[item.status] + (item.decision_reason === 'vacancy_filled' ? ' · Vaga preenchida' : '')
+const vacancyDecision = (vacancy: Application['vacancies'][number]) =>
+  vacancy.title + (vacancy.approved ? ' (atribuída)' : vacancy.rejected ? ' (vaga preenchida)' : '')
 const active = (item: Application) => item.status === 'pending' || item.status === 'review'
 const date = (value: string) => new Date(value).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
 const card = 'min-w-0 space-y-4 rounded-3xl border border-card-outline bg-card p-4 sm:p-5'
@@ -210,12 +213,13 @@ function ApplicationDetails({ item, manager, vacancies, reload, version, onAppro
     finally { setBusy(false); onBusyChange?.(false) }
   }
   const decide = (action: string) => recruitmentRpc('recruitment_decide', { p_request: item.id, p_action: action, p_vacancies: action === 'approve' ? selected : [] })
-  const options = vacancies?.filter((v) => v.open && v.available > 0 && (item.vacancies.length ? item.vacancies.some((x) => x.id === v.id) : v.legacy)) ?? []
+  const options = vacancies?.filter((v) => v.open && v.available > 0 && (item.vacancies.length ? item.vacancies.some((x) => x.id === v.id && !x.rejected) : v.legacy)) ?? []
   return <div className="min-w-0 space-y-4">
     <div className="space-y-1">
-      <p className="break-words font-semibold">{item.project_title} · {statuses[item.status]}</p>
+      <p className="break-words font-semibold">{item.project_title} · {applicationStatus(item)}</p>
       <p className="text-xs text-muted-foreground">Enviada em {date(item.created_at)}{item.decided_at ? ' · Decisão em ' + date(item.decided_at) : ''}</p>
-      <p className="break-words text-sm">{item.vacancies.length ? item.vacancies.map((v) => v.title + (v.approved ? ' (atribuída)' : '')).join(' · ') : 'Candidatura do sistema anterior'}</p>
+      <p className="break-words text-sm">{item.vacancies.length ? item.vacancies.map(vacancyDecision).join(' · ') : 'Candidatura do sistema anterior'}</p>
+      {item.vacancies.some((vacancy) => vacancy.rejected) && <Link href={'/projetos/' + item.slug + '#participar'} className="text-sm text-primary hover:underline">Consultar outras vagas do projeto</Link>}
       {item.message ? <p className="whitespace-pre-wrap break-words text-sm text-muted-foreground">{item.message}</p> : null}
     </div>
     <div ref={history} aria-label="Histórico da candidatura" className="max-h-64 space-y-3 overflow-y-auto overscroll-contain rounded-2xl border border-border p-3"
@@ -329,7 +333,7 @@ export function MyApplications({ userId }: { userId: string }) {
     <Failure message={error} />
     {!error && !items.length ? <p className="text-sm text-muted-foreground">{loading ? 'Carregando…' : 'Nenhuma candidatura enviada.'}</p> : null}
     {items.map((entry) => <Button key={entry.id} variant="outline" className="mr-2 h-auto whitespace-normal text-left" onClick={() => setSelected(entry.id)}>
-      {entry.project_title} · {statuses[entry.status]}{entry.unread ? ' · ' + entry.unread + ' nova(s)' : ''}
+      {entry.project_title} · {applicationStatus(entry)}{entry.unread ? ' · ' + entry.unread + ' nova(s)' : ''}
     </Button>)}
     {item ? <Modal title="Acompanhar candidatura" close={() => setSelected(null)}>
       <ApplicationDetails key={item.id} item={item} reload={reload} version={connection + (updates[item.id] ?? 0)} />
@@ -376,8 +380,8 @@ export function RecruitmentManager({ projectId }: { projectId: string }) {
         className={'flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3 text-sm ' + (active(entry) ? 'border-primary/35 bg-primary/5' : 'border-border')}>
         <div className="min-w-0 space-y-1">
           <ApplicationPerson id={entry.user_id} name={entry.name || 'Candidato'} avatar={entry.avatar} />
-          <p className="break-words text-xs">{entry.vacancies.map((v) => v.title).join(' · ') || 'Candidatura anterior'}</p>
-          <p className="text-xs text-muted-foreground">{statuses[entry.status]} · {date(entry.created_at)}{entry.unread ? ' · ' + entry.unread + ' nova(s)' : ''}</p>
+          <p className="break-words text-xs">{entry.vacancies.map(vacancyDecision).join(' · ') || 'Candidatura anterior'}</p>
+          <p className="text-xs text-muted-foreground">{applicationStatus(entry)} · {date(entry.created_at)}{entry.unread ? ' · ' + entry.unread + ' nova(s)' : ''}</p>
         </div>
         <Button type="button" size="sm" variant="outline" onClick={() => setSelected(entry.id)}>Ver candidatura</Button>
       </li>)}</ul>
