@@ -1,12 +1,13 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Github, Headphones, Settings2, X } from 'lucide-react'
+import { Github, Headphones, Settings2, SquareKanban, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 const catalog = [
   { id: 'github', name: 'GitHub', description: 'Repositórios, commits e atividades do projeto.', icon: Github },
   { id: 'support', name: 'Suporte (SAC)', description: 'Atendimento e gerenciamento de chamados.', icon: Headphones },
+  { id: 'activities', name: 'Controle de Atividades', description: 'Organize tarefas, distribua responsabilidades, acompanhe metas e visualize o progresso da equipe.', icon: SquareKanban },
 ] as const
 export type WorkspaceModule = typeof catalog[number]['id']
 

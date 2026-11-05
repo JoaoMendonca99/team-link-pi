@@ -524,7 +524,10 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
 
       <Container className="space-y-5 py-5 sm:py-6">
         <ProjectTools active={modules} manager={isManager} loading={modulesLoading} error={modulesError}
-          open={setOpened} toggle={toggleModule} />
+          open={(module) => {
+            if (module === 'activities') router.push('/projetos/' + project.slug + '/painel/atividades')
+            else setOpened(module)
+          }} toggle={toggleModule} />
 
         {githubOpen && githubError ? (
           <p className="rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
