@@ -232,7 +232,7 @@ export default function ProfilePage() {
             <section className="space-y-3">
               <h2 className="text-lg font-semibold">Participações em projetos de outras pessoas</h2>
               {participations.length ? <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {participations.map(({ membershipId, project, joinedAt }) => <div key={membershipId} className="min-w-0 space-y-2">
+                {participations.map(({ membershipId, project, joinedAt }) => <div key={membershipId} className="flex min-w-0 flex-col gap-2">
                   {joinedAt && <p className="text-xs text-muted-foreground">Desde {formatDate(joinedAt)}</p>}
                   <ProfileProject project={project} userId={user.id} />
                 </div>)}
@@ -241,7 +241,7 @@ export default function ProfilePage() {
           </div>
         )}
         {tab === 'Amigos' && <FriendsPanel key={user.id} />}
-        {tab === 'Candidaturas' && <MyApplications key={user.id} />}
+        {tab === 'Candidaturas' && <MyApplications key={user.id} userId={user.id} />}
       </Container>
     </main>
   )
@@ -249,11 +249,8 @@ export default function ProfilePage() {
 
 function ProfileProject({ project, userId }: { project: ProjectDisplay; userId: string }) {
   const canEdit = useProjectLeadership(project.id, userId)
-  return <div className="min-w-0 space-y-2">
-    <ProjectCard project={project} />
-    <div className="flex flex-wrap gap-2">
+  return <ProjectCard project={project} className="h-auto min-w-0 flex-1" footer={<>
       <Button asChild size="sm" variant="outline"><Link href={'/projetos/' + project.slug}>Ver projeto</Link></Button>
       {canEdit && <Button asChild size="sm" variant="ghost"><Link href={'/projetos/' + project.slug + '/editar'}>Editar</Link></Button>}
-    </div>
-  </div>
+  </>} />
 }

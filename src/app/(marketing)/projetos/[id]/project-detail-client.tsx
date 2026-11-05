@@ -176,6 +176,12 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
     void loadMembership()
   }, [loadMembership])
 
+  useEffect(() => {
+    if (!applications.connection && !Object.keys(applications.updates).length) return
+    void reloadVacancies()
+    void loadMembership()
+  }, [applications.connection, applications.updates, loadMembership, reloadVacancies])
+
   // -------------------------------------------------------------------------
   // Derivados de tipo de usuário
   // -------------------------------------------------------------------------

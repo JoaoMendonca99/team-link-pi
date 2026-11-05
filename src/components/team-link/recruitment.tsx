@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -77,7 +77,7 @@ const vacancyStatus = (vacancy: Vacancy) => !vacancy.open ? 'Encerrada' : vacanc
 export function VacancySummary({ vacancies, error, onApply }: { vacancies: Vacancy[]; error: string | null; onApply?: (id: string) => void }) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const selected = vacancies.find((vacancy) => vacancy.id === selectedId)
-  const ordered = [...vacancies].sort((a, b) => Number(b.open) - Number(a.open))
+  const ordered = vacancies.filter((vacancy) => vacancy.available > 0).sort((a, b) => Number(b.open) - Number(a.open))
   return <section id="participar" className={card}>
     <h2 className="text-lg font-semibold">Vagas disponíveis</h2>
     <Failure message={error} />
@@ -117,28 +117,81 @@ function useApplications(project: string | null, enabled: boolean, viewer?: stri
   const [items, setItems] = useState<Application[]>([])
   const [error, setError] = useState<string | null>(null)
   const [loadedScope, setLoadedScope] = useState<string | null>(null)
+  const [updates, setUpdates] = useState<Record<string, number>>({})
+  const [connection, setConnection] = useState(0)
+  const request = useRef(0)
   const reload = useCallback(async () => {
     if (!enabled) return
-    try { setItems(await recruitmentRpc<Application[]>('recruitment_applications', { p_project: project })); setError(null) }
-    catch (err) { setError(errorText(err)) }
-    finally { setLoadedScope(scope) }
+    const id = ++request.current
+    try {
+      const rows = await recruitmentRpc<Application[]>('recruitment_applications', { p_project: project })
+      if (id === request.current) { setItems(rows); setError(null) }
+    } catch (err) { if (id === request.current) setError(errorText(err)) }
+    finally { if (id === request.current) setLoadedScope(scope) }
   }, [enabled, project, scope])
-  useEffect(() => { void reload() }, [reload])
-  return { items: loadedScope === scope ? items : [], reload, error: loadedScope === scope ? error : null, loading: loadedScope !== scope }
+  useEffect(() => {
+    if (!enabled || (!project && !viewer)) return
+    void reload()
+    let timer: number | undefined
+    const refresh = () => {
+      window.clearTimeout(timer)
+      timer = window.setTimeout(() => void reload(), 100)
+    }
+    const client = getSupabaseClient()
+    const channel = client.channel('recruitment:' + crypto.randomUUID())
+    for (const event of ['INSERT', 'UPDATE'] as const) channel.on('postgres_changes', {
+      event, schema: 'public', table: 'recruitment_updates',
+      filter: project ? 'project_id=eq.' + project : 'user_id=eq.' + viewer,
+    }, ({ new: row }) => {
+      if (!('request_id' in row) || typeof row.request_id !== 'string') return
+      const id = row.request_id
+      setUpdates((current) => ({ ...current, [id]: (current[id] ?? 0) + 1 }))
+      refresh()
+    })
+    channel.subscribe((status) => {
+      if (status !== 'SUBSCRIBED') return
+      setConnection((value) => value + 1)
+      refresh()
+    })
+    return () => {
+      request.current += 1
+      window.clearTimeout(timer)
+      void client.removeChannel(channel)
+    }
+  }, [enabled, project, reload, viewer])
+  return { items: loadedScope === scope ? items : [], reload, error: loadedScope === scope ? error : null,
+    loading: loadedScope !== scope, updates, connection }
 }
 
-function ApplicationDetails({ item, manager, vacancies, reload }: { item: Application; manager?: boolean; vacancies?: Vacancy[]; reload: () => Promise<void> }) {
+function ApplicationDetails({ item, manager, vacancies, reload, version, onApproved }: {
+  item: Application; manager?: boolean; vacancies?: Vacancy[]; reload: () => Promise<void>; version: number
+  onApproved?: () => void
+}) {
   const [messages, setMessages] = useState<Message[]>([])
   const [content, setContent] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [approval, setApproval] = useState(false)
   const [selected, setSelected] = useState<string[]>([])
+  const history = useRef<HTMLDivElement>(null)
+  const follow = useRef(true)
+  const request = useRef(0)
   const load = useCallback(async () => {
-    try { setMessages(await recruitmentRpc<Message[]>('recruitment_messages', { p_request: item.id })); await reload() }
-    catch (err) { setError(errorText(err)) }
+    const id = ++request.current
+    try {
+      const rows = await recruitmentRpc<Message[]>('recruitment_messages', { p_request: item.id })
+      if (id !== request.current) return
+      setMessages(rows)
+      await reload()
+    } catch (err) { if (id === request.current) setError(errorText(err)) }
   }, [item.id, reload])
-  useEffect(() => { void load() }, [load])
+  useEffect(() => {
+    void load()
+    return () => { request.current += 1 }
+  }, [load, version])
+  useLayoutEffect(() => {
+    if (history.current && follow.current) history.current.scrollTop = history.current.scrollHeight
+  }, [messages])
   async function perform(action: () => Promise<unknown>, onSuccess?: () => void) {
     setBusy(true); setError(null)
     try { await action(); onSuccess?.(); await load() }
@@ -154,14 +207,16 @@ function ApplicationDetails({ item, manager, vacancies, reload }: { item: Applic
       <p className="break-words text-sm">{item.vacancies.length ? item.vacancies.map((v) => v.title + (v.approved ? ' (atribuída)' : '')).join(' · ') : 'Candidatura do sistema anterior'}</p>
       {item.message ? <p className="whitespace-pre-wrap break-words text-sm text-muted-foreground">{item.message}</p> : null}
     </div>
-    <div className="max-h-64 space-y-3 overflow-y-auto rounded-2xl border border-border p-3">
-      {messages.length ? messages.map((m) => <article key={m.id} className="flex min-w-0 gap-2">
-        <UserAvatar name={m.name || 'Usuário'} imageUrl={m.avatar ?? undefined} sizeClassName="h-8 w-8 shrink-0" />
-        <div className="min-w-0"><p className="break-words text-xs font-semibold">{m.name || 'Usuário'} · {date(m.created_at)}</p>
-          <p className="whitespace-pre-wrap break-words text-sm">{m.content}</p></div>
+    <div ref={history} aria-label="Histórico da candidatura" className="max-h-64 space-y-3 overflow-y-auto overscroll-contain rounded-2xl border border-border p-3"
+      onScroll={(event) => { const el = event.currentTarget; follow.current = el.scrollHeight - el.clientHeight - el.scrollTop <= 64 }}>
+      {messages.length ? messages.map((m) => <article key={m.id} className="min-w-0 space-y-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <ApplicationPerson id={m.sender_id} name={m.name || 'Usuário'} avatar={m.avatar} />
+          <time dateTime={m.created_at} className="text-xs text-muted-foreground">{date(m.created_at)}</time>
+        </div>
+        <p className="whitespace-pre-wrap break-words pl-10 text-sm">{m.content}</p>
       </article>) : <p className="text-sm text-muted-foreground">Nenhuma mensagem.</p>}
     </div>
-    <Button type="button" variant="ghost" size="sm" onClick={() => void load()}>Atualizar conversa</Button>
     {active(item) ? <>
       <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); void perform(() => recruitmentRpc('recruitment_send_message', { p_request: item.id, p_content: content }), () => setContent('')) }}>
         <Textarea aria-label="Mensagem privada" value={content} maxLength={4000} onChange={(e) => setContent(e.target.value)} placeholder="Escreva uma mensagem privada" />
@@ -179,9 +234,17 @@ function ApplicationDetails({ item, manager, vacancies, reload }: { item: Applic
       <VacancyOptions options={options} selected={selected} setSelected={setSelected} />
       {!options.length ? <p className="text-sm">Nenhuma posição disponível para esta candidatura.</p> : null}
       <Failure message={error} />
-      <Button disabled={busy || !selected.length} onClick={() => void perform(() => decide('approve'), () => setApproval(false))}>Confirmar aprovação</Button>
+      <Button disabled={busy || !selected.length} onClick={() => void perform(() => decide('approve'), () => { setApproval(false); onApproved?.() })}>Confirmar aprovação</Button>
     </Modal> : null}
   </div>
+}
+
+function ApplicationPerson({ id, name, avatar }: { id: string | null; name: string; avatar: string | null }) {
+  const body = <><UserAvatar name={name} imageUrl={avatar ?? undefined} sizeClassName="size-8 shrink-0" />
+    <span className="break-words">{name}</span></>
+  const classes = 'inline-flex min-w-0 max-w-full items-center gap-2 text-sm font-semibold'
+  return id ? <Link href={'/usuarios/' + id} className={classes + ' text-primary hover:underline'}>{body}</Link>
+    : <span className={classes}>{body}</span>
 }
 
 function VacancyOptions({ options, selected, setSelected }: { options: Vacancy[]; selected: string[]; setSelected: (ids: string[]) => void }) {
@@ -223,7 +286,8 @@ export function ApplyButton({ projectId, title, vacancies, userId, canApply, isV
   return <>
     <Button onClick={() => setTarget('')}>{current || !available ? 'Acompanhar candidatura' : 'Participar'}</Button>
     {target !== null ? <Modal title={title} close={close}>
-      {current || !available ? (previous ? <ApplicationDetails key={previous.id} item={previous} reload={reload} /> : null) : (
+      {current || !available ? (previous ? <ApplicationDetails key={previous.id} item={previous} reload={reload}
+        version={applications.connection + (applications.updates[previous.id] ?? 0)} /> : null) : (
         <form className="space-y-3" onSubmit={async (e) => {
           e.preventDefault(); setBusy(true); setFeedback(null)
           try { await recruitmentRpc('recruitment_send_application', { p_project: projectId, p_vacancies: selected, p_message: message }); setSelected([]); setMessage(''); await reload() }
@@ -242,8 +306,8 @@ export function ApplyButton({ projectId, title, vacancies, userId, canApply, isV
   </>
 }
 
-export function MyApplications() {
-  const { items, reload, error, loading } = useApplications(null, true)
+export function MyApplications({ userId }: { userId: string }) {
+  const { items, reload, error, loading, updates, connection } = useApplications(null, true, userId)
   const [selected, setSelected] = useState<string | null>(null)
   const item = items.find((entry) => entry.id === selected)
   return <section id="minhas-candidaturas" className={card}>
@@ -253,31 +317,43 @@ export function MyApplications() {
     {items.map((entry) => <Button key={entry.id} variant="outline" className="mr-2 h-auto whitespace-normal text-left" onClick={() => setSelected(entry.id)}>
       {entry.project_title} · {statuses[entry.status]}{entry.unread ? ' · ' + entry.unread + ' nova(s)' : ''}
     </Button>)}
-    {item ? <Modal title="Acompanhar candidatura" close={() => setSelected(null)}><ApplicationDetails key={item.id} item={item} reload={reload} /></Modal> : null}
+    {item ? <Modal title="Acompanhar candidatura" close={() => setSelected(null)}>
+      <ApplicationDetails key={item.id} item={item} reload={reload} version={connection + (updates[item.id] ?? 0)} />
+    </Modal> : null}
   </section>
 }
 
 const emptyVacancy = { title: '', description: '', skills: [], positions: 1, open: true }
 function RecruitmentManager({ projectId }: { projectId: string }) {
-  const { items, reload, error } = useApplications(projectId, true)
+  const { items, reload, error, updates, connection } = useApplications(projectId, true)
   const { vacancies, reload: reloadVacancies, error: vacancyError } = useVacancies(projectId)
   const [selected, setSelected] = useState<string | null>(null)
   const [editing, setEditing] = useState<Vacancy | 'new' | null>(null)
   const item = items.find((entry) => entry.id === selected)
-  const refresh = useCallback(async () => { await Promise.all([reload(), reloadVacancies()]) }, [reload, reloadVacancies])
+  useEffect(() => { if (connection || Object.keys(updates).length) void reloadVacancies() }, [connection, reloadVacancies, updates])
+  const activeVacancies = vacancies.filter(hasPositions)
+  const inactiveVacancies = vacancies.filter((vacancy) => !hasPositions(vacancy))
   return <section id="candidaturas" className={card}>
     <header className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-lg font-semibold">Vagas e candidaturas</h2><Button onClick={() => setEditing('new')}>Criar vaga</Button></header>
     <Failure message={vacancyError || error} />
-    <div className="flex flex-wrap gap-2">{vacancies.map((v) => <Button key={v.id} variant="outline" className="h-auto whitespace-normal text-left" onClick={() => setEditing(v)}>{v.title} · {v.open ? v.available + '/' + v.positions : 'Encerrada'}</Button>)}</div>
+    <div className="flex flex-wrap gap-2">{activeVacancies.map((v) => <Button key={v.id} variant="outline" className="h-auto whitespace-normal text-left" onClick={() => setEditing(v)}>{v.title} · {v.available}/{v.positions}</Button>)}</div>
+    {inactiveVacancies.length > 0 && <details className="rounded-xl border border-border p-3">
+      <summary className="cursor-pointer text-sm font-semibold">Editar vagas preenchidas ou encerradas</summary>
+      <div className="mt-3 flex flex-wrap gap-2">{inactiveVacancies.map((v) => <Button key={v.id} variant="outline" className="h-auto whitespace-normal text-left" onClick={() => setEditing(v)}>{v.title} · {vacancyStatus(v)}</Button>)}</div>
+    </details>}
     <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-      <div className="space-y-2">{items.length ? items.map((entry) => <button type="button" key={entry.id} aria-pressed={entry.id === selected}
-        className="block w-full break-words rounded-xl border border-border p-3 text-left text-sm aria-pressed:border-primary"
-        onClick={() => setSelected(entry.id)}>
-        <span className="font-semibold">{entry.name || 'Candidato'}</span> · {statuses[entry.status]}
-        <span className="block text-xs text-muted-foreground">{date(entry.created_at)}{entry.unread ? ' · ' + entry.unread + ' nova(s)' : ''}</span>
-        <span className="block text-xs text-muted-foreground">{entry.vacancies.map((v) => v.title).join(' · ')}</span>
-      </button>) : <p className="text-sm text-muted-foreground">Nenhuma candidatura.</p>}</div>
-      {item ? <div className="min-w-0 space-y-3"><Link className="text-sm font-semibold text-primary" href={'/usuarios/' + item.user_id}>Ver perfil do candidato</Link><ApplicationDetails key={item.id} item={item} manager vacancies={vacancies} reload={refresh} /></div> : null}
+      <div className="space-y-2">{items.length ? items.map((entry) => <article key={entry.id} data-selected={entry.id === selected}
+        className="space-y-2 break-words rounded-xl border border-border p-3 text-sm data-[selected=true]:border-primary">
+        <ApplicationPerson id={entry.user_id} name={entry.name || 'Candidato'} avatar={entry.avatar} />
+        <p>{statuses[entry.status]}</p>
+        <p className="text-xs text-muted-foreground">{date(entry.created_at)}{entry.unread ? ' · ' + entry.unread + ' nova(s)' : ''}</p>
+        <p className="text-xs text-muted-foreground">{entry.vacancies.map((v) => v.title).join(' · ')}</p>
+        <Button type="button" size="sm" variant="outline" aria-pressed={entry.id === selected} onClick={() => setSelected(entry.id)}>Abrir candidatura</Button>
+      </article>) : <p className="text-sm text-muted-foreground">Nenhuma candidatura.</p>}</div>
+      {item ? <div className="min-w-0 space-y-3"><Link className="text-sm font-semibold text-primary" href={'/usuarios/' + item.user_id}>Ver perfil do candidato</Link>
+        <ApplicationDetails key={item.id} item={item} manager vacancies={vacancies} reload={reload} onApproved={() => void reloadVacancies()}
+          version={connection + (updates[item.id] ?? 0)} />
+      </div> : null}
     </div>
     {editing ? <VacancyEditor projectId={projectId} vacancy={editing === 'new' ? null : editing} close={() => setEditing(null)} reload={reloadVacancies} /> : null}
   </section>

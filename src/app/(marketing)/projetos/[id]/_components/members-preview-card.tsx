@@ -144,7 +144,7 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
       const { data, error } = await client
         .from('project_public_members')
         .select(
-          'id, project_id, user_id, role, status, joined_at, full_name, course, avatar_url, display_role, badge_color',
+          'id, project_id, user_id, role, status, joined_at, full_name, course, avatar_url, display_role, badge_color, vacancy_roles',
         )
         .eq('project_id', projectId)
         .order('joined_at', { ascending: true })
@@ -379,6 +379,9 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
                     >
                       {badge.label}
                     </span> : null}
+                    {member.vacancy_roles?.filter((role) => role !== member.display_role).map((role) => (
+                      <p key={role} className="text-xs font-medium text-muted-foreground [overflow-wrap:anywhere]">{role}</p>
+                    ))}
                   </div>
                 </li>
               )
@@ -449,6 +452,16 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
                     <span className="sr-only">{member.full_name || 'Integrante'} · </span>{badge.label}
                   </li>
                 })}
+              </ul>
+            )}
+            {preview.some((member) => member.vacancy_roles?.some((role) => role !== member.display_role)) && (
+              <ul className="mb-3 flex flex-wrap gap-1.5" aria-label="Cargos das vagas">
+                {preview.flatMap((member) => member.vacancy_roles?.filter((role) => role !== member.display_role).map((role) => (
+                  <li key={member.user_id + ':' + role} title={member.full_name ?? undefined}
+                    className="max-w-full rounded-xl border border-border px-2 py-0.5 text-[10px] font-semibold [overflow-wrap:anywhere]">
+                    <span className="sr-only">{member.full_name || 'Integrante'} · </span>{role}
+                  </li>
+                )) ?? [])}
               </ul>
             )}
             <ul className="flex flex-wrap gap-1.5" aria-label="Distribuição por nível de acesso">

@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import type { ReactNode } from "react"
 import { motion } from "framer-motion"
 import { Heart, MessageCircle, Users } from "lucide-react"
 
@@ -16,12 +17,14 @@ export function ProjectCard({
   className,
   href,
   disableLink = false,
+  footer,
 }: {
   project: ProjectDisplay
   className?: string
   /** Override link target (default: `/projetos/[slug]`). */
   href?: string
   disableLink?: boolean
+  footer?: ReactNode
 }) {
   const target = href ?? `/projetos/${project.slug}`
 
@@ -53,7 +56,7 @@ export function ProjectCard({
         </ul>
       )}
       <h3 className="mt-4 break-words text-balance text-lg font-semibold leading-snug text-foreground sm:text-xl">
-        {project.title}
+        {footer ? <Link href={target} className="hover:underline">{project.title}</Link> : project.title}
       </h3>
 
       {project.shortDescription ? (
@@ -94,6 +97,7 @@ export function ProjectCard({
           </span>
         </div>
       </div>
+      {footer && <div className="mt-4 flex flex-wrap gap-2">{footer}</div>}
     </>
   )
 
@@ -102,10 +106,10 @@ export function ProjectCard({
       layout
       whileHover={disableLink ? undefined : { translateY: -4, scale: 1.01 }}
       transition={{ duration: 0.22, ease: "easeOut" }}
-      className={cn("h-full", className)}
+      className={cn("flex h-full flex-col", className)}
     >
-      {disableLink ? (
-        <div className={interactiveClasses}>{cardBody}</div>
+      {disableLink || footer ? (
+        <div className={cn(interactiveClasses, footer && "h-auto flex-1")}>{cardBody}</div>
       ) : (
         <Link href={target} className={interactiveClasses}>
           {cardBody}

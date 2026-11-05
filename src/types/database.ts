@@ -253,6 +253,7 @@ export interface ProjectPublicDetailRow extends ProjectPublicCardRow {
  * `display_role` e `badge_color` são puramente visuais.
  */
 export interface ProjectPublicMemberRow {
+  vacancy_roles?: string[]
   /** Presente quando a view propaga o `id` da tabela `project_members`. */
   id?: string
   project_id: string
