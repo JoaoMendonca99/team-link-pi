@@ -1,13 +1,15 @@
 'use client'
 
 import Link from 'next/link'
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { UserPlus } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { ChevronDown, UserCheck, UserPlus } from 'lucide-react'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { useFriendships } from './friendships-provider'
 
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { UserAvatar } from '@/components/team-link/user-avatar'
-import { FRIENDSHIPS_CHANGED, ONLINE_WINDOW, profileRpc, type Friend, type FriendshipAction, type Relationship, type SocialSummary } from '@/lib/profile-social'
+import { FRIENDSHIPS_CHANGED, ONLINE_WINDOW, profileRpc, type FriendshipAction, type Relationship, type SocialSummary } from '@/lib/profile-social'
 
 export function useProfileSocial(userId?: string, viewerId?: string) {
   const [result, setResult] = useState<{ key: string; data: SocialSummary }>()
@@ -85,17 +87,19 @@ export function FriendshipControls({ userId, relationship, onChanged }: {
   return <div className="min-w-0 space-y-1">
     <div className="flex flex-wrap items-center gap-2">
       {relationship === 'none' && <Button type="button" disabled={busy} onClick={() => void change('send')}><UserPlus aria-hidden /> Adicionar amigo</Button>}
-      {relationship === 'sent' && <>
-        <span className="text-xs text-muted-foreground">Solicitação enviada</span>
-        <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void change('cancel')}>Cancelar solicitação</Button>
-      </>}
+      {relationship === 'sent' && <DropdownMenu modal={false}>
+        <DropdownMenuTrigger asChild><Button type="button" variant="outline" disabled={busy}><UserPlus aria-hidden /> Solicitação enviada <ChevronDown aria-hidden /></Button></DropdownMenuTrigger>
+        <DropdownMenuContent align="end"><DropdownMenuItem disabled={busy} onSelect={() => void change('cancel')}>Cancelar solicitação</DropdownMenuItem></DropdownMenuContent>
+      </DropdownMenu>}
       {relationship === 'received' && <>
-        <Button type="button" size="sm" disabled={busy} onClick={() => void change('accept')}>Aceitar</Button>
-        <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void change('decline')}>Recusar</Button>
+        <Button type="button" disabled={busy} onClick={() => void change('accept')}>Aceitar solicitação</Button>
+        <Button type="button" variant="outline" disabled={busy} onClick={() => void change('decline')}>Recusar</Button>
       </>}
       {relationship === 'accepted' && <>
-        <span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">Amigos</span>
-        <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => { setError(''); confirm.current?.showModal() }}>Desfazer amizade</Button>
+        <DropdownMenu modal={false}>
+          <DropdownMenuTrigger asChild><Button type="button" variant="outline" disabled={busy}><UserCheck aria-hidden /> Amigos <ChevronDown aria-hidden /></Button></DropdownMenuTrigger>
+          <DropdownMenuContent align="end"><DropdownMenuItem variant="destructive" onSelect={() => { setError(''); confirm.current?.showModal() }}>Desfazer amizade</DropdownMenuItem></DropdownMenuContent>
+        </DropdownMenu>
         <dialog ref={confirm} aria-label="Desfazer amizade?" onCancel={(event) => { if (pending.current) event.preventDefault() }}
           className="fixed inset-0 m-auto w-[calc(100%_-_2rem)] max-w-sm rounded-2xl border border-border bg-card p-5 text-card-foreground shadow-xl backdrop:bg-black/70">
           <div className="space-y-3">
@@ -120,39 +124,21 @@ const sections = [
   ['sent', 'Solicitações enviadas', 'Nenhuma solicitação enviada.'],
 ] as const
 
-export function FriendsPanel() {
-  const [rows, setRows] = useState<Friend[]>()
-  const [error, setError] = useState(false)
+export function FriendsPanel({ initialSection = 'accepted' }: { initialSection?: 'accepted' | 'received' | 'sent' }) {
+  const { rows, error, reload: load } = useFriendships()
+  const [section, setSection] = useState(initialSection)
   const [search, setSearch] = useState('')
-  const request = useRef(0)
-  const load = useCallback(() => {
-    if (document.hidden) return
-    const id = ++request.current
-    void profileRpc<Friend[]>('get_my_friendships').then((data) => {
-      if (id === request.current) { setRows(data); setError(false) }
-    }).catch(() => {
-      if (id === request.current) { setRows(undefined); setError(true) }
-    })
-  }, [])
-  useEffect(() => {
-    load()
-    const timer = window.setInterval(load, 60_000)
-    window.addEventListener(FRIENDSHIPS_CHANGED, load)
-    document.addEventListener('visibilitychange', load)
-    return () => {
-      request.current += 1
-      window.clearInterval(timer)
-      window.removeEventListener(FRIENDSHIPS_CHANGED, load)
-      document.removeEventListener('visibilitychange', load)
-    }
-  }, [load])
+  useEffect(() => { setSection(initialSection) }, [initialSection])
 
   const normalize = (text: string) => text.normalize('NFD').replace(/\p{M}/gu, '').toLocaleLowerCase('pt-BR')
   if (error) return <div className="space-y-2"><p role="alert">Não foi possível carregar as amizades.</p><Button onClick={load}>Tentar novamente</Button></div>
   if (!rows) return <p role="status">Carregando amizades…</p>
   return <div className="space-y-4">
+    <div role="group" aria-label="Tipos de amizade" className="flex flex-wrap gap-1">
+      {sections.map(([state, title]) => <Button key={state} type="button" size="sm" variant={section === state ? 'default' : 'ghost'} aria-pressed={section === state} onClick={() => setSection(state)}>{title} ({rows.filter(row => row.relationship === state).length})</Button>)}
+    </div>
     <Input type="search" aria-label="Buscar amigos por nome" placeholder="Buscar amigos por nome" value={search} onChange={(event) => setSearch(event.target.value)} />
-    {sections.map(([state, title, empty]) => {
+    {sections.filter(([state]) => state === section).map(([state, title, empty]) => {
       const filtered = rows.filter((row) => row.relationship === state &&
         (state !== 'accepted' || normalize(row.full_name ?? '').includes(normalize(search.trim()))))
       return <section key={state} className="rounded-2xl border border-card-outline bg-card p-4">

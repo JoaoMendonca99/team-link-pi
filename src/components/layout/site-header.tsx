@@ -20,6 +20,14 @@ import { useThemeMode } from "@/components/providers/theme-provider"
 import { useProfilePresence } from "@/hooks/use-profile-presence"
 import { useSupabaseSession } from "@/hooks/use-supabase-session"
 import { cn } from "@/lib/utils"
+import { usePendingFriendships } from '@/components/profile/friendships-provider'
+
+const friendshipRequestsHref = '/perfil?aba=amigos&secao=recebidas'
+
+function PendingFriendshipBadge({ count, avatar = false }: { count: number; avatar?: boolean }) {
+  if (!count) return null
+  return <span aria-label={`${count} solicitações de amizade recebidas pendentes`} className={cn('inline-flex min-w-5 shrink-0 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold leading-5 text-primary-foreground', avatar && 'absolute -bottom-1 -right-2 ring-2 ring-background')}>{count}</span>
+}
 
 const primaryLinks = [
   { href: "/", label: "Início", icon: Home },
@@ -74,6 +82,7 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
   const { darkMode, toggleTheme } = useThemeMode()
   const { isAuthenticated, profile, user, signOut } = useSupabaseSession()
   useProfilePresence(user?.id)
+  const pendingFriendships = usePendingFriendships()
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const displayName =
@@ -182,7 +191,7 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
                     variant="ghost"
                     className="flex items-center gap-2 rounded-full px-2"
                   >
-                    <UserAvatar name={displayName} imageUrl={avatarUrl} sizeClassName="h-9 w-9" />
+                    <span className="relative shrink-0"><UserAvatar name={displayName} imageUrl={avatarUrl} sizeClassName="h-9 w-9" /><PendingFriendshipBadge count={pendingFriendships} avatar /></span>
                     <span className="whitespace-nowrap text-sm font-semibold">{displayName}</span>
                   </Button>
                 </DropdownMenuTrigger>
@@ -219,6 +228,9 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
                   >
                     <Link href="/mensagens">Mensagens</Link>
                   </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="cursor-pointer rounded-lg px-3 py-2 text-sm font-medium">
+                    <Link href={friendshipRequestsHref} className="flex items-center justify-between gap-2">Solicitações de amizade <PendingFriendshipBadge count={pendingFriendships} /></Link>
+                  </DropdownMenuItem>
                   <DropdownMenuSeparator className="my-1.5" />
                   <DropdownMenuItem
                     variant="destructive"
@@ -248,13 +260,14 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
             type="button"
             variant="outline"
             size="icon"
-            className="lg:hidden"
+            className="relative lg:hidden"
             onClick={() => setMobileOpen(true)}
             aria-label="Abrir menu de navegação"
             aria-expanded={mobileOpen}
             aria-controls="mobile-nav-panel"
           >
             <Menu className="h-5 w-5" aria-hidden />
+            <PendingFriendshipBadge count={pendingFriendships} avatar />
           </Button>
           </div>
         </HeaderShell>
@@ -310,7 +323,7 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
             <HeaderShell fullBleed={fullBleed} className="flex flex-col gap-4 py-5">
               {isAuthenticated && (
                 <Link href="/perfil" onClick={closeMobile} className="flex items-center gap-3 rounded-2xl border border-card-outline bg-card p-3 hover:bg-muted">
-                  <UserAvatar name={displayName} imageUrl={avatarUrl} sizeClassName="h-12 w-12 shrink-0" />
+                  <span className="relative shrink-0"><UserAvatar name={displayName} imageUrl={avatarUrl} sizeClassName="h-12 w-12 shrink-0" /><PendingFriendshipBadge count={pendingFriendships} avatar /></span>
                   <span className="min-w-0 break-words text-sm font-semibold">{displayName}</span>
                 </Link>
               )}
@@ -336,6 +349,9 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
                   </Button>
                   <Button asChild variant="secondary" className="w-full font-semibold" onClick={closeMobile}>
                     <Link href="/mensagens"><MessageCircle aria-hidden /> Mensagens</Link>
+                  </Button>
+                  <Button asChild variant="secondary" className="w-full font-semibold" onClick={closeMobile}>
+                    <Link href={friendshipRequestsHref}>Solicitações de amizade <PendingFriendshipBadge count={pendingFriendships} /></Link>
                   </Button>
                   <Button
                     type="button"

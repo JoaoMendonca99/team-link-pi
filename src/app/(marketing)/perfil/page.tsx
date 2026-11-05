@@ -2,54 +2,38 @@
 
 import Link from 'next/link'
 import { MyApplications } from '@/components/team-link/recruitment'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Suspense, useCallback, useEffect, useMemo, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Layers, PlusCircle } from 'lucide-react'
 
 import { EmptyState } from '@/components/team-link/empty-state'
 import { ProjectCard } from '@/components/team-link/project-card'
 import { Button } from '@/components/ui/button'
 import { Container } from '@/components/layout/container'
-import { getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase/client'
-import { mapPublicCardToDisplay, type ProjectDisplay } from '@/lib/projects/display'
-import type {
-  ProjectMemberRoleValue,
-  ProjectMemberStatusValue,
-  ProjectPublicCardRow,
-} from '@/types/database'
+import { isSupabaseConfigured } from '@/lib/supabase/client'
+import { loadProfileProjects, type ProfileProjects as ProfileProjectsData } from '@/lib/profile-projects'
+import { ProfileProjects } from '@/components/profile/profile-projects'
+import type { ProjectDisplay } from '@/lib/projects/display'
 import { AcademicTags, ProfileHeading } from '@/components/profile/profile-heading'
 import { FriendsPanel, useProfileSocial } from '@/components/profile/friendships'
 import { useProjectLeadership } from '@/hooks/use-project-leadership'
 import { useSupabaseSession } from '@/hooks/use-supabase-session'
 
-interface Participation {
-  membershipId: string
-  role: ProjectMemberRoleValue
-  joinedAt: string
-  project: ProjectDisplay
-}
-
-interface MembershipRow {
-  id: string
-  role: ProjectMemberRoleValue
-  status: ProjectMemberStatusValue
-  joined_at: string
-  project_id: string
-}
-
-function formatDate(value: string | null | undefined): string {
-  if (!value) return ''
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
-  return date.toLocaleDateString('pt-BR')
-}
-
 export default function ProfilePage() {
+  return <Suspense fallback={<p role="status">Carregando perfil…</p>}><ProfileContent /></Suspense>
+}
+
+function ProfileContent() {
+  const params = useSearchParams()
+  const router = useRouter()
+  const tab = params.get('aba') === 'amigos' ? 'Amigos' : params.get('aba') === 'candidaturas' ? 'Candidaturas' : 'Projetos'
   const { loading, isAuthenticated, profile, user } = useSupabaseSession()
 
   const social = useProfileSocial(user?.id, user?.id)
-  const [tab, setTab] = useState<'Projetos' | 'Amigos' | 'Candidaturas'>('Projetos')
-  const [ownProjects, setOwnProjects] = useState<ProjectDisplay[]>([])
-  const [participations, setParticipations] = useState<Participation[]>([])
+  const [projectResult, setProjectResult] = useState<{ userId: string; data: ProfileProjectsData }>()
+  const projects = projectResult?.userId === user?.id && projectResult ? projectResult.data : { created: [], participating: [], total: 0 }
+  const ownProjects = projects.created
+  const participations = projects.participating
   const [projectsLoading, setProjectsLoading] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [envMissing, setEnvMissing] = useState(false)
@@ -66,71 +50,15 @@ export default function ProfilePage() {
     setFetchError(null)
 
     try {
-      const client = getSupabaseClient()
-
-      const ownResult = await client
-        .from('project_public_cards')
-        .select('*')
-        .eq('owner_id', user.id)
-        .order('created_at', { ascending: false })
-
-      if (ownResult.error) throw ownResult.error
-
-      const ownRows = (ownResult.data ?? []) as ProjectPublicCardRow[]
-      const ownDisplay = ownRows.map(mapPublicCardToDisplay)
-      setOwnProjects(ownDisplay)
-
-      const memberResult = await client
-        .from('project_members')
-        .select('id, role, status, joined_at, project_id')
-        .eq('user_id', user.id)
-        .eq('status', 'active')
-        .neq('role', 'owner')
-        .order('joined_at', { ascending: false })
-
-      if (memberResult.error) throw memberResult.error
-
-      const memberRows = (memberResult.data ?? []) as MembershipRow[]
-
-      if (memberRows.length === 0) {
-        setParticipations([])
-        return
-      }
-
-      const projectIds = memberRows.map((row) => row.project_id)
-      const participatingResult = await client
-        .from('project_public_cards')
-        .select('*')
-        .in('id', projectIds)
-
-      if (participatingResult.error) throw participatingResult.error
-
-      const byId = new Map<string, ProjectDisplay>()
-      const participatingRows = (participatingResult.data ?? []) as ProjectPublicCardRow[]
-      participatingRows.forEach((row) => byId.set(row.id, mapPublicCardToDisplay(row)))
-
-      const list: Participation[] = memberRows
-        .map((row) => {
-          const project = byId.get(row.project_id)
-          if (!project) return null
-          return {
-            membershipId: row.id,
-            role: row.role,
-            joinedAt: row.joined_at,
-            project,
-          }
-        })
-        .filter((value): value is Participation => value !== null)
-
-      setParticipations(list)
+      const data = await loadProfileProjects(user.id)
+      setProjectResult({ userId: user.id, data })
     } catch (error) {
       setFetchError(
         error instanceof Error
           ? error.message
           : 'Não foi possível carregar suas informações no momento.',
       )
-      setOwnProjects([])
-      setParticipations([])
+      setProjectResult(undefined)
     } finally {
       setProjectsLoading(false)
     }
@@ -140,6 +68,10 @@ export default function ProfilePage() {
     if (loading) return
     if (!isAuthenticated) return
     void loadData()
+    const refresh = () => { if (!document.hidden) void loadData() }
+    window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', refresh)
+    return () => { window.removeEventListener('focus', refresh); document.removeEventListener('visibilitychange', refresh) }
   }, [isAuthenticated, loadData, loading])
 
   const stats = useMemo(() => {
@@ -190,7 +122,7 @@ export default function ProfilePage() {
     <main className="bg-background pb-12">
       <Container className="space-y-4 py-8">
         {profile ? <ProfileHeading profile={profile} projects={ownProjects}
-          projectCount={new Set([...ownProjects.map(({ id }) => id), ...participations.map(({ project }) => project.id)]).size}
+          projectCount={projects.total}
           social={social} own>
           <Button asChild variant="ghost"><Link href="/meus-projetos">Meus projetos</Link></Button>
         </ProfileHeading> : <p role="alert">Não foi possível carregar seu perfil.</p>}
@@ -210,7 +142,7 @@ export default function ProfilePage() {
         <nav aria-label="Seções do perfil" className="flex flex-wrap gap-1 rounded-2xl border border-card-outline bg-card p-1">
           {(['Projetos', 'Amigos', 'Candidaturas'] as const).map((label) => <Button
             key={label} type="button" variant={tab === label ? 'default' : 'ghost'} size="sm"
-            aria-pressed={tab === label} onClick={() => setTab(label)}>{label}</Button>)}
+            aria-pressed={tab === label} onClick={() => router.replace(label === 'Projetos' ? '/perfil' : '/perfil?aba=' + label.toLocaleLowerCase('pt-BR'), { scroll: false })}>{label}</Button>)}
         </nav>
 
         {tab === 'Projetos' && (
@@ -220,27 +152,12 @@ export default function ProfilePage() {
               <Button type="button" variant="outline" onClick={() => void loadData()}>Tentar novamente</Button>
             </div>}
             {projectsLoading && <p role="status" className="text-sm text-muted-foreground">Carregando projetos…</p>}
-            <section className="space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <h2 className="text-lg font-semibold">Projetos criados por você</h2>
-                <Button asChild variant="outline" size="sm"><Link href="/nova-ideia"><PlusCircle aria-hidden /> Nova ideia</Link></Button>
-              </div>
-              {ownProjects.length ? <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {ownProjects.map((project) => <ProfileProject key={project.id} project={project} userId={user.id} />)}
-              </div> : !projectsLoading && <p className="text-sm text-muted-foreground">Nenhum projeto público criado.</p>}
-            </section>
-            <section className="space-y-3">
-              <h2 className="text-lg font-semibold">Participações em projetos de outras pessoas</h2>
-              {participations.length ? <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {participations.map(({ membershipId, project, joinedAt }) => <div key={membershipId} className="flex min-w-0 flex-col gap-2">
-                  {joinedAt && <p className="text-xs text-muted-foreground">Desde {formatDate(joinedAt)}</p>}
-                  <ProfileProject project={project} userId={user.id} />
-                </div>)}
-              </div> : !projectsLoading && <p className="text-sm text-muted-foreground">Nenhuma participação registrada.</p>}
-            </section>
+            {!projectsLoading && !fetchError && !envMissing && <ProfileProjects data={projects}
+              renderProject={project => <ProfileProject project={project} userId={user.id} />}
+              action={<Button asChild variant="outline" size="sm"><Link href="/nova-ideia"><PlusCircle aria-hidden /> Nova ideia</Link></Button>} />}
           </div>
         )}
-        {tab === 'Amigos' && <FriendsPanel key={user.id} />}
+        {tab === 'Amigos' && <FriendsPanel key={user.id} initialSection={params.get('secao') === 'recebidas' ? 'received' : 'accepted'} />}
         {tab === 'Candidaturas' && <MyApplications key={user.id} userId={user.id} />}
       </Container>
     </main>

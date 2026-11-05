@@ -7,6 +7,7 @@ import { SiteFooter } from "@/components/layout/site-footer"
 import { SiteHeader } from "@/components/layout/site-header"
 import { ProjectChatWidget } from "@/components/chat/project-chat-widget"
 import { PushSettings } from '@/components/notifications/push-settings'
+import { FriendshipsProvider } from '@/components/profile/friendships-provider'
 
 function normalizePathname(pathname: string | null): string {
   if (!pathname) return ""
@@ -23,6 +24,7 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
 
   return (
     <ThemeProvider>
+      <FriendshipsProvider>
       <div className="flex min-h-dvh flex-col overflow-x-clip bg-background text-foreground">
         <SiteHeader fullBleed={isMessagesPage} />
         <div
@@ -38,6 +40,7 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
       </div>
       {isMessagesPage ? null : <ProjectChatWidget />}
       <PushSettings automatic />
+      </FriendshipsProvider>
     </ThemeProvider>
   )
 }

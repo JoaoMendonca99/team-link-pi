@@ -5,43 +5,48 @@ import { useEffect, useState } from 'react'
 import { ArrowLeft, MessageCircle, User } from 'lucide-react'
 import { Container } from '@/components/layout/container'
 import { EmptyState } from '@/components/team-link/empty-state'
-import { ProjectCard } from '@/components/team-link/project-card'
+import { ProfileProjects } from '@/components/profile/profile-projects'
 import { Button } from '@/components/ui/button'
 import { AcademicTags, ProfileHeading } from '@/components/profile/profile-heading'
 import { FriendshipControls, useProfileSocial } from '@/components/profile/friendships'
 import { getSupabaseClient } from '@/lib/supabase/client'
 import { PROFILE_FIELDS } from '@/lib/profile-social'
-import { mapPublicCardToDisplay, type ProjectDisplay } from '@/lib/projects/display'
+import { loadProfileProjects, type ProfileProjects as ProfileProjectsData } from '@/lib/profile-projects'
 import { useSupabaseSession } from '@/hooks/use-supabase-session'
-import type { ProfileRow, ProjectPublicCardRow } from '@/types/database'
+import type { ProfileRow } from '@/types/database'
 
 export function PublicProfileClient({ userId }: { userId: string }) {
   const { user } = useSupabaseSession()
-  const [data, setData] = useState<{ profile: ProfileRow; projects: ProjectDisplay[] } | null>()
+  const [result, setResult] = useState<{ key: string; data: { profile: ProfileRow; projects: ProfileProjectsData } | null }>()
+  const key = userId + ':' + (user?.id ?? '')
+  const data = result?.key === key ? result.data : undefined
   const [error, setError] = useState(false)
   const social = useProfileSocial(userId, user?.id)
 
   useEffect(() => {
     let active = true
     async function load() {
-      setData(undefined)
+      setResult(undefined)
       setError(false)
       try {
         const client = getSupabaseClient()
         const [profile, projects] = await Promise.all([
           client.from('profiles').select(PROFILE_FIELDS).eq('id', userId).maybeSingle(),
-          client.from('project_public_cards').select('*').eq('owner_id', userId).order('created_at', { ascending: false }),
+          loadProfileProjects(userId),
         ])
-        if (profile.error || projects.error) throw new Error('Falha na consulta.')
-        if (active) setData(profile.data ? { profile: profile.data as ProfileRow,
-          projects: (projects.data as ProjectPublicCardRow[]).map(mapPublicCardToDisplay) } : null)
+        if (profile.error) throw new Error('Falha na consulta.')
+        if (active) setResult({ key, data: profile.data ? { profile: profile.data as ProfileRow,
+          projects } : null })
       } catch {
         if (active) setError(true)
       }
     }
     void load()
-    return () => { active = false }
-  }, [userId])
+    const refresh = () => { if (!document.hidden) void load() }
+    window.addEventListener('focus', refresh)
+    document.addEventListener('visibilitychange', refresh)
+    return () => { active = false; window.removeEventListener('focus', refresh); document.removeEventListener('visibilitychange', refresh) }
+  }, [key, userId, user?.id])
 
   return <main className="bg-background">
     <Container className="space-y-4 py-8">
@@ -50,7 +55,7 @@ export function PublicProfileClient({ userId }: { userId: string }) {
         : data === undefined ? <p role="status">Carregando perfil…</p>
         : data === null ? <EmptyState icon={User} title="Perfil não encontrado" description="O perfil pode ter sido removido." />
         : <>
-          <ProfileHeading profile={data.profile} projects={data.projects} social={social}>
+          <ProfileHeading profile={data.profile} projects={data.projects.created} projectCount={data.projects.total} social={social}>
             {user?.id === userId ? <Button asChild><Link href="/perfil">Meu perfil</Link></Button> :
               user && social && <>
                 <FriendshipControls userId={userId} relationship={social.relationship} />
@@ -60,12 +65,7 @@ export function PublicProfileClient({ userId }: { userId: string }) {
               </>}
           </ProfileHeading>
           <AcademicTags profile={data.profile} />
-          <section className="space-y-3">
-            <h2 className="text-lg font-semibold">Projetos públicos</h2>
-            {data.projects.length ? <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {data.projects.map((project) => <ProjectCard key={project.id} project={project} />)}
-            </div> : <p className="text-sm text-muted-foreground">Nenhum projeto público cadastrado.</p>}
-          </section>
+          <ProfileProjects key={userId} data={data.projects} />
         </>}
     </Container>
   </main>
