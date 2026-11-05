@@ -169,7 +169,7 @@ function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
       </div>
     </section>
     <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]">
-      <section id="team-kanban" aria-label="Kanban da equipe" className="min-w-0 scroll-mt-24 space-y-3">
+      <section id="team-kanban" aria-label="Kanban da equipe" className="@container/kanban min-w-0 scroll-mt-24 space-y-3">
         <header className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-lg font-semibold">Kanban da equipe</h2><Button size="sm" variant="ghost" onClick={()=>{setFilter('all');setPriority('all');setDeadline('');setSearch('');setAssignee('all');setStageFilter('all');setLateOnly(false)}}>Limpar filtros</Button></header>
         <div className="flex flex-wrap items-end gap-2 text-xs">
           <Input aria-label="Buscar atividades" placeholder="Buscar título" value={search} onChange={e=>setSearch(e.target.value)} className="max-w-48" />
@@ -180,8 +180,8 @@ function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
           <label>Prazo até<Input type="date" value={deadline} onChange={e=>setDeadline(e.target.value)} /></label>
           <label className="flex items-center gap-1 py-2"><input type="checkbox" checked={lateOnly} onChange={e=>setLateOnly(e.target.checked)} />Somente atrasadas</label>
         </div>
-        <div className="flex min-w-0 gap-3 overflow-x-auto pb-3" aria-label="Quadro Kanban">{stages.map(stage=><section key={stage.id} aria-label={stage.name} className="flex max-h-[65dvh] w-72 shrink-0 flex-col rounded-2xl border border-border bg-muted/30" onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();const moved=tasks.find(item=>item.id===e.dataTransfer.getData('text/plain'));if(moved)void mutate('move',{id:moved.id,version:moved.version,stage_id:stage.id}).catch((err:Error)=>setError(err.message))}}>
-          <h3 className="shrink-0 p-3 font-semibold">{stage.name} · {filtered.filter(item=>item.stage_id===stage.id).length}</h3><div className="min-h-20 space-y-3 overflow-y-auto overscroll-contain p-3 pt-0">{filtered.filter(item=>item.stage_id===stage.id).map(taskCard)}</div>
+        <div className="grid min-w-0 grid-cols-1 gap-3 pb-3 @min-[32rem]/kanban:grid-cols-2 @min-[54rem]/kanban:grid-cols-4" aria-label="Quadro Kanban">{stages.map(stage=><section key={stage.id} aria-label={stage.name} className="flex max-h-[65dvh] min-w-0 flex-col rounded-2xl border border-border bg-muted/30" onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();const moved=tasks.find(item=>item.id===e.dataTransfer.getData('text/plain'));if(moved)void mutate('move',{id:moved.id,version:moved.version,stage_id:stage.id}).catch((err:Error)=>setError(err.message))}}>
+          <h3 className="shrink-0 break-words p-3 font-semibold">{stage.name} · {filtered.filter(item=>item.stage_id===stage.id).length}</h3><div className="min-h-20 space-y-3 overflow-y-auto overscroll-contain p-3 pt-0">{filtered.filter(item=>item.stage_id===stage.id).map(taskCard)}</div>
         </section>)}</div>{!filtered.length&&<p className="text-sm text-muted-foreground">Nenhuma atividade neste filtro.</p>}
       </section>
       <aside aria-label="Minhas atividades" className="min-w-0 space-y-3 rounded-2xl border border-border bg-card p-3"><h2 className="text-lg font-semibold">Minhas atividades</h2>
