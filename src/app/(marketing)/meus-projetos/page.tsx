@@ -10,12 +10,12 @@ import { EmptyState } from '@/components/team-link/empty-state'
 import { Container } from '@/components/layout/container'
 import { Button } from '@/components/ui/button'
 import { getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase/client'
-import { mapProjectRowToDisplay, type ProjectDisplay } from '@/lib/projects/display'
-import type { ProjectRow } from '@/types/database'
+import { mapPublicDetailToDisplay, type ProjectDisplay } from '@/lib/projects/display'
+import type { ProjectPublicDetailRow } from '@/types/database'
 import { useSupabaseSession } from '@/hooks/use-supabase-session'
 
 export default function MeusProjetosPage() {
-  const { loading: sessionLoading, isAuthenticated, user, profile } = useSupabaseSession()
+  const { loading: sessionLoading, isAuthenticated, user } = useSupabaseSession()
   const [projects, setProjects] = useState<ProjectDisplay[]>([])
   const [loading, setLoading] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
@@ -34,7 +34,7 @@ export default function MeusProjetosPage() {
     try {
       const client = getSupabaseClient()
       const { data, error } = await client
-        .from('projects')
+        .from('project_public_details')
         .select('*')
         .eq('owner_id', user.id)
         .order('created_at', { ascending: false })
@@ -45,25 +45,27 @@ export default function MeusProjetosPage() {
         return
       }
 
-      const rows = (data ?? []) as ProjectRow[]
-      const ownerContext = {
-        ownerName: profile?.full_name ?? null,
-        ownerCourse: profile?.course ?? null,
-        ownerAvatarUrl: profile?.avatar_url ?? null,
+      const rows = (data ?? []) as ProjectPublicDetailRow[]
+      if (rows.some(row => typeof row.likes_count !== 'number' || !Number.isSafeInteger(row.likes_count) || row.likes_count < 0 || typeof row.comments_count !== 'number' || !Number.isSafeInteger(row.comments_count) || row.comments_count < 0)) {
+        throw new Error('Não foi possível carregar as contagens dos projetos.')
       }
-      setProjects(rows.map((row) => mapProjectRowToDisplay(row, ownerContext)))
+      setProjects(rows.map(mapPublicDetailToDisplay))
     } catch (error) {
       setFetchError(error instanceof Error ? error.message : 'Erro desconhecido ao carregar projetos.')
       setProjects([])
     } finally {
       setLoading(false)
     }
-  }, [profile?.avatar_url, profile?.course, profile?.full_name, user])
+  }, [user])
 
   useEffect(() => {
     if (sessionLoading) return
     if (!isAuthenticated) return
     void loadProjects()
+    const refresh = () => { if (!document.hidden) void loadProjects() }
+    window.addEventListener('focus', refresh); window.addEventListener('pageshow', refresh)
+    document.addEventListener('visibilitychange', refresh)
+    return () => { window.removeEventListener('focus', refresh); window.removeEventListener('pageshow', refresh); document.removeEventListener('visibilitychange', refresh) }
   }, [isAuthenticated, loadProjects, sessionLoading])
 
   return (

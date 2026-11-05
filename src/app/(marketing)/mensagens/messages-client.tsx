@@ -364,7 +364,9 @@ export function MessagesClient({ active = true, requestedProject, requestedConve
     setMobileStep('conversations')
   }, [])
 
+  const pendingSend = useRef(false)
   const handleSend = useCallback(async () => {
+    if (pendingSend.current) return
     if (!user || !selectedConversation) return
     const content = draft.trim()
     if (content.length === 0) {
@@ -375,6 +377,7 @@ export function MessagesClient({ active = true, requestedProject, requestedConve
       setSendError(`A mensagem deve ter no máximo ${MESSAGE_MAX_LENGTH} caracteres.`)
       return
     }
+    pendingSend.current = true
     setSending(true)
     setSendError(null)
     try {
@@ -389,6 +392,7 @@ export function MessagesClient({ active = true, requestedProject, requestedConve
       console.error('[mensagens] sendMessage', error)
       setSendError('Não foi possível enviar a mensagem agora.')
     } finally {
+      pendingSend.current = false
       setSending(false)
     }
   }, [draft, reloadMessages, selectedConversation, user])

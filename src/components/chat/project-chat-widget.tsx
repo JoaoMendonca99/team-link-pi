@@ -30,7 +30,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
+import { MessageTextarea } from "@/components/chat/message-textarea"
 import { UserAvatar } from "@/components/team-link/user-avatar"
 import { FriendThread, useFriendChats } from "@/app/(marketing)/mensagens/_components/friend-chats"
 import { chatSearch, WidgetFriends } from "./widget-friends"
@@ -831,7 +831,9 @@ function ChatWidget({ session }: { session: ReturnType<typeof useSupabaseSession
     }
   }, [selectedConversation, view])
 
+  const pendingSend = React.useRef(false)
   const handleSend = React.useCallback(async () => {
+    if (pendingSend.current) return
     if (!user) return
     if (!selectedConversation) return
     const content = draft.trim()
@@ -847,6 +849,7 @@ function ChatWidget({ session }: { session: ReturnType<typeof useSupabaseSession
       setSendError("Não foi possível conectar ao serviço de dados.")
       return
     }
+    pendingSend.current = true
     setSending(true)
     setSendError(null)
     try {
@@ -865,6 +868,7 @@ function ChatWidget({ session }: { session: ReturnType<typeof useSupabaseSession
         error instanceof Error ? error.message : "Não foi possível enviar a mensagem.",
       )
     } finally {
+      pendingSend.current = false
       setSending(false)
     }
   }, [draft, loadMessages, selectedConversation, supabaseReady, user])
@@ -1714,12 +1718,7 @@ function ThreadView({
   const trimmed = draft.trim()
   const sendDisabled = sending || trimmed.length === 0 || draft.length > MESSAGE_MAX_LENGTH
 
-  function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (event.key === "Enter" && !event.shiftKey) {
-      event.preventDefault()
-      if (!sendDisabled) onSend()
-    }
-  }
+
 
   return (
     <>
@@ -1805,10 +1804,10 @@ function ThreadView({
           </p>
         ) : null}
         <div className="flex items-end gap-2">
-          <Textarea
+          <MessageTextarea
             value={draft}
             onChange={(event) => onDraftChange(event.target.value)}
-            onKeyDown={handleKeyDown}
+            sending={sending} canSend={!sendDisabled} onSend={onSend}
             placeholder="Escreva uma mensagem..."
             rows={1}
             maxLength={MESSAGE_MAX_LENGTH + 200}

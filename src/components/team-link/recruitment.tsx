@@ -5,6 +5,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNo
 import { X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { MessageTextarea } from '@/components/chat/message-textarea'
 import { Textarea } from '@/components/ui/textarea'
 import { UserAvatar } from '@/components/team-link/user-avatar'
 import { getSupabaseClient } from '@/lib/supabase/client'
@@ -206,12 +207,16 @@ function ApplicationDetails({ item, manager, vacancies, reload, version, onAppro
   useLayoutEffect(() => {
     if (history.current && follow.current) history.current.scrollTop = history.current.scrollHeight
   }, [messages])
+  const pendingAction = useRef(false)
   async function perform(action: () => Promise<unknown>, onSuccess?: () => void) {
+    if (pendingAction.current) return
+    pendingAction.current = true
     setBusy(true); onBusyChange?.(true); setError(null)
     try { await action(); onSuccess?.(); await load() }
     catch (err) { setError(errorText(err)) }
-    finally { setBusy(false); onBusyChange?.(false) }
+    finally { pendingAction.current = false; setBusy(false); onBusyChange?.(false) }
   }
+  const send = () => { if (!content.trim() || content.length>4000) return; void perform(() => recruitmentRpc('recruitment_send_message', { p_request: item.id, p_content: content }), () => setContent('')) }
   const decide = (action: string) => recruitmentRpc('recruitment_decide', { p_request: item.id, p_action: action, p_vacancies: action === 'approve' ? selected : [] })
   const options = vacancies?.filter((v) => v.open && v.available > 0 && (item.vacancies.length ? item.vacancies.some((x) => x.id === v.id && !x.rejected) : v.legacy)) ?? []
   return <div className="min-w-0 space-y-4">
@@ -233,8 +238,8 @@ function ApplicationDetails({ item, manager, vacancies, reload, version, onAppro
       </article>) : <p className="text-sm text-muted-foreground">Nenhuma mensagem.</p>}
     </div>
     {active(item) ? <>
-      <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); void perform(() => recruitmentRpc('recruitment_send_message', { p_request: item.id, p_content: content }), () => setContent('')) }}>
-        <Textarea aria-label="Mensagem privada" value={content} maxLength={4000} onChange={(e) => setContent(e.target.value)} placeholder="Escreva uma mensagem privada" />
+      <form className="space-y-2" onSubmit={(e) => { e.preventDefault(); send() }}>
+        <MessageTextarea sending={busy} canSend={Boolean(content.trim()) && content.length<=4000} onSend={send} aria-label="Mensagem privada" value={content} maxLength={4000} onChange={(e) => setContent(e.target.value)} placeholder="Escreva uma mensagem privada" />
         <Button disabled={busy || !content.trim()}>Enviar mensagem</Button>
       </form>
       {manager ? <div className="flex flex-wrap gap-2">

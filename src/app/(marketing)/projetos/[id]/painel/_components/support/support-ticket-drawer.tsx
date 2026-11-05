@@ -150,19 +150,21 @@ export function SupportTicketDrawer({
   }, [open, canViewSupport, refreshAll])
 
   async function handleSendReply(message: string) {
-    if (!selectedTicketId) return
+    if (!selectedTicketId) return false
     setSending(true)
+    try {
     const result = await sendSupportReply(selectedTicketId, message)
-    setSending(false)
     if (!result.ok) {
       setDetailError(result.message)
-      return
+      return false
     }
     await Promise.all([
       loadDetail(selectedTicketId, true),
       loadTickets(true),
       Promise.resolve(onRefreshStats()),
     ])
+    return true
+    } finally { setSending(false) }
   }
 
   async function handleStatusChange(status: SupportTicketStatus) {

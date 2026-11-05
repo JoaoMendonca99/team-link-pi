@@ -14,7 +14,7 @@ import {
 
 import { formatMessageTime, MessageDay } from '@/components/chat/message-time'
 import { Button } from '@/components/ui/button'
-import { Textarea } from '@/components/ui/textarea'
+import { MessageTextarea } from '@/components/chat/message-textarea'
 import { UserAvatar } from '@/components/team-link/user-avatar'
 import { cn } from '@/lib/utils'
 
@@ -108,12 +108,7 @@ export function ThreadPanel({
   const sendDisabled =
     sending || trimmed.length === 0 || draft.length > MESSAGE_MAX_LENGTH
 
-  function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (event.key === 'Enter' && !event.shiftKey) {
-      event.preventDefault()
-      if (!sendDisabled) onSend()
-    }
-  }
+
 
   return (
     <section
@@ -261,10 +256,10 @@ export function ThreadPanel({
           </p>
         ) : null}
         <div className="flex min-w-0 items-end gap-2">
-          <Textarea
+          <MessageTextarea
             value={draft}
             onChange={(event) => onDraftChange(event.target.value)}
-            onKeyDown={handleKeyDown}
+            sending={sending} canSend={!sendDisabled} onSend={onSend}
             placeholder="Escreva uma mensagem..."
             rows={1}
             maxLength={MESSAGE_MAX_LENGTH + 200}

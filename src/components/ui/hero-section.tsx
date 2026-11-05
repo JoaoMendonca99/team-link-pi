@@ -15,12 +15,12 @@ const platformPreviewRows = [
 
 export function HeroSection() {
   return (
-    <section className="relative overflow-hidden border-b border-white/15 bg-[#071028] pb-16 pt-12 text-white sm:pb-20 sm:pt-14 lg:pb-24 lg:pt-16">
+    <section className="team-link-hero relative overflow-hidden border-b border-white/15 bg-[#071028] pb-16 pt-12 text-white sm:pb-20 sm:pt-14 lg:pb-24 lg:pt-16">
       <div className="pointer-events-none absolute inset-0 opacity-95">
         <div className="absolute -left-[10%] top-[-20%] h-[28rem] w-[28rem] rounded-full bg-[radial-gradient(circle,#2563EB_0%,transparent_65%)] blur-3xl" />
         <div className="absolute right-[-5%] top-[10%] h-[30rem] w-[30rem] rounded-full bg-[radial-gradient(circle,#4F46E5_0%,transparent_70%)] blur-3xl" />
         <div className="absolute bottom-[-30%] left-[20%] h-[26rem] w-[26rem] rounded-full bg-[radial-gradient(circle,#14B8A6_0%,transparent_70%)] blur-3xl" />
-        <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(15,23,42,0.75),rgba(15,23,42,0.45))]" />
+        <div className="team-link-hero-shade absolute inset-0 bg-[linear-gradient(120deg,rgba(15,23,42,0.75),rgba(15,23,42,0.45))]" />
       </div>
 
       <Container className="relative z-10">
@@ -107,7 +107,7 @@ export function HeroSection() {
                   return (
                     <li
                       key={row.label}
-                      className="flex flex-col gap-2 rounded-xl border border-white/10 bg-[#071028]/50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+                      className="team-link-hero-row flex flex-col gap-2 rounded-xl border border-white/10 bg-[#071028]/50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
                     >
                       <span className="flex min-w-0 items-center gap-3 text-sm text-white/85">
                         <Icon className="h-4 w-4 shrink-0 text-[#F59E0B]" aria-hidden />

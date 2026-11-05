@@ -9,7 +9,7 @@ import { PresenceLabel } from '@/components/profile/friendships'
 import { formatMessageTime, MessageDay } from '@/components/chat/message-time'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
+import { MessageTextarea } from '@/components/chat/message-textarea'
 import { UserAvatar } from '@/components/team-link/user-avatar'
 import { FRIEND_MESSAGE_LIMIT, FRIEND_PAGE_SIZE, listFriendMessages, watchFriendChats, type FriendChat, type FriendMessage } from '@/lib/chat/friends'
 import { FRIENDSHIPS_CHANGED, profileRpc } from '@/lib/profile-social'
@@ -238,8 +238,8 @@ export function FriendThread({ chat, profile, userId, onChange, onBack }: {
     }
   }
 
-  async function send(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
+  async function send(event?: FormEvent<HTMLFormElement>) {
+    event?.preventDefault()
     if (!chat.can_send || pendingSend.current || !draft.trim()) return
     pendingSend.current = true
     setSending(true)
@@ -303,7 +303,7 @@ export function FriendThread({ chat, profile, userId, onChange, onBack }: {
     {chat.can_send ? <form onSubmit={(event) => void send(event)} className="shrink-0 space-y-2 border-t border-border p-3">
       {sendError && <p role="alert" className="text-sm text-destructive">{sendError}</p>}
       <div className="flex min-w-0 items-end gap-2">
-        <Textarea aria-label="Mensagem privada" placeholder="Escreva sua mensagem" rows={2} maxLength={FRIEND_MESSAGE_LIMIT} value={draft} disabled={sending}
+        <MessageTextarea sending={sending} canSend={chat.can_send && Boolean(draft.trim()) && draft.length<=FRIEND_MESSAGE_LIMIT} onSend={()=>void send()} aria-label="Mensagem privada" placeholder="Escreva sua mensagem" rows={2} maxLength={FRIEND_MESSAGE_LIMIT} value={draft}
           onChange={(event) => { setDraft(event.target.value); sendKey.current = null; setSendError('') }} />
         <Button type="submit" disabled={sending || !draft.trim()} aria-label="Enviar mensagem"><Send aria-hidden /></Button>
       </div>

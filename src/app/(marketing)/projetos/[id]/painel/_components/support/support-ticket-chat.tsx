@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { ArrowLeft, Loader2, Send } from 'lucide-react'
 
+import { MessageTextarea } from '@/components/chat/message-textarea'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { formatSupportDateTime } from '@/lib/support/format'
@@ -40,11 +41,12 @@ export function SupportTicketChat({
   updatingStatus: boolean
   showBackOnMobile: boolean
   onBack: () => void
-  onSendReply: (message: string) => Promise<void>
+  onSendReply: (message: string) => Promise<boolean>
   onStatusChange: (status: SupportTicketStatus) => Promise<void>
   onRetry: () => void
 }) {
   const [reply, setReply] = useState('')
+  const pendingSend = useRef(false)
   const scrollRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
@@ -101,9 +103,9 @@ export function SupportTicketChat({
 
   async function handleSend() {
     const text = reply.trim()
-    if (!text || sending) return
-    await onSendReply(text)
-    setReply('')
+    if (!text || sending || pendingSend.current || ticket.status==='closed') return
+    pendingSend.current = true
+    try { if (await onSendReply(text)) setReply('') } finally { pendingSend.current = false }
   }
 
   return (
@@ -198,11 +200,11 @@ export function SupportTicketChat({
         <label className="sr-only" htmlFor="support-reply">
           Resposta ao ticket
         </label>
-        <textarea
+        <MessageTextarea plain sending={sending} canSend={Boolean(reply.trim()) && ticket.status!=='closed'} onSend={()=>void handleSend()}
           id="support-reply"
           rows={3}
           value={reply}
-          disabled={sending || ticket.status === 'closed'}
+          disabled={ticket.status === 'closed'}
           onChange={(event) => setReply(event.target.value)}
           placeholder={
             ticket.status === 'closed'

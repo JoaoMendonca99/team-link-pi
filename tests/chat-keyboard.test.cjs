@@ -1,0 +1,21 @@
+const {test}=require('node:test')
+const assert=require('node:assert/strict')
+const fs=require('node:fs'),vm=require('node:vm'),ts=require('typescript')
+const exported={}
+vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/lib/chat/keyboard.ts','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS}}).outputText,{exports:exported})
+function event(extra={}){return {key:'Enter',shiftKey:false,ctrlKey:false,altKey:false,metaKey:false,repeat:false,keyCode:13,nativeEvent:{isComposing:false},preventDefault(){this.prevented=true},...extra}}
+test('Enter sends once and cancels native form submission',()=>{let sends=0;const e=event();exported.sendOnEnter(e,true,()=>sends++);assert.equal(sends,1);assert.equal(e.prevented,true)})
+test('Shift+Enter and IME composition are preserved without sending',()=>{for(const extra of [{shiftKey:true},{nativeEvent:{isComposing:true}},{keyCode:229},{key:'a'},{ctrlKey:true}]){const e=event(extra);exported.sendOnEnter(e,true,()=>assert.fail('unexpected send'));assert.equal(e.prevented,undefined)}})
+test('busy, empty and repeated Enter never submit',()=>{for(const [allowed,extra] of [[false,{}],[true,{repeat:true}]]){const e=event(extra);exported.sendOnEnter(e,allowed,()=>assert.fail('unexpected send'));assert.equal(e.prevented,true)}})
+test('dark tokens and hero geometry classes remain unchanged',()=>{
+ const {execFileSync}=require('node:child_process')
+ const original=execFileSync('git',['show','9d332f9:src/app/globals.css'],{encoding:'utf8'})
+ const next=fs.readFileSync('src/app/globals.css','utf8')
+ const dark=css=>css.slice(css.indexOf('.dark {'),css.indexOf('@layer base')).replaceAll('\r\n','\n')
+ assert.equal(dark(next),dark(original))
+ const oldHero=execFileSync('git',['show','9d332f9:src/components/ui/hero-section.tsx'],{encoding:'utf8'})
+ const newHero=fs.readFileSync('src/components/ui/hero-section.tsx','utf8').replaceAll('team-link-hero-row ','').replaceAll('team-link-hero-shade ','').replaceAll('team-link-hero ','')
+ assert.equal(newHero.replaceAll('\r\n','\n'),oldHero.replaceAll('\r\n','\n'))
+ const lightOverrides=next.slice(next.indexOf('/* Light-only hero colors;'))
+ assert(!/(padding|margin|width|height|font|position|gap|radius|transform)\s*:/.test(lightOverrides))
+})
