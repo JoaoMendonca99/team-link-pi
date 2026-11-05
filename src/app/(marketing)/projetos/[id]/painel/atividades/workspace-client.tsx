@@ -9,9 +9,8 @@ import { UserAvatar } from '@/components/team-link/user-avatar'
 import { useSupabaseSession } from '@/hooks/use-supabase-session'
 import { getSupabaseClient } from '@/lib/supabase/client'
 import { activityDate, activityRpc, dueSoon, goalProgress, kinds, overdue, priorities, taskKind, type Goal, type Task, type Workspace } from '@/lib/activities'
-import { ActivityEditor, GoalEditor, StageEditor } from './workspace-editors'
+import { ActivityEditor, GoalEditor, StageEditor, Dialog } from './workspace-editors'
 
-type Tab = 'Dashboard' | 'Kanban' | 'Metas' | 'Minhas atividades'
 export function ActivitiesClient({ slug }: { slug: string }) {
   const { user, loading } = useSupabaseSession()
   if (loading) return <p role="status" className="p-6">Carregando…</p>
@@ -23,7 +22,11 @@ function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
   const [data, setData] = useState<Workspace>()
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-  const [tab, setTab] = useState<Tab>('Dashboard')
+  const [mineFilter,setMineFilter]=useState('pending')
+  const [assignee,setAssignee]=useState('all')
+  const [stageFilter,setStageFilter]=useState('all')
+  const [lateOnly,setLateOnly]=useState(false)
+  const [allGoalsOpen,setAllGoalsOpen]=useState(false)
   const [filter, setFilter] = useState('all')
   const [priority, setPriority] = useState('all')
   const [deadline, setDeadline] = useState('')
@@ -55,11 +58,11 @@ function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
     const query = new URLSearchParams(navigationKey)
     setTask(null);setGoal(null)
     const kind = query.get('estado')
-    if (kind && Object.hasOwn(kinds,kind)) { setTab('Kanban'); setFilter(kind) }
+    if (kind && Object.hasOwn(kinds,kind)) {  setFilter(kind) }
     const taskId = query.get('atividade')
     const goalId = query.get('meta')
-    if (taskId && data.tasks.some(item=>item.id===taskId)) { setTab('Kanban');setTask(taskId) }
-    else if (goalId && data.goals.some(item=>item.id===goalId)) { setTab('Metas');setGoal(goalId) }
+    if (taskId && data.tasks.some(item=>item.id===taskId)) { setTask(taskId) }
+    else if (goalId && data.goals.some(item=>item.id===goalId)) { setGoal(goalId) }
     else if (taskId || goalId) setError('Este item não está mais disponível no projeto.')
   }, [data,navigationKey])
   useEffect(() => {
@@ -95,16 +98,15 @@ function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
   const percent = tasks.length ? Math.round(tasks.filter(done).length / tasks.length * 100) : 0
   const selected = tasks.find((item) => item.id === task)
   const selectedGoal = goals.find((item) => item.id === goal)
-  const filtered = tasks.filter((item) => (tab !== 'Minhas atividades' || item.assignees.includes(userId)) &&
+  const filtered = tasks.filter((item) => (assignee==='all'||item.assignees.includes(assignee)) && (stageFilter==='all'||item.stage_id===stageFilter) && (!lateOnly||overdue(item.due_at,done(item))) &&
     (filter === 'all' || filter === 'pending' && !done(item) || filter === 'late' && overdue(item.due_at, done(item)) || taskKind(item, stages) === filter) &&
     (priority === 'all' || item.priority === priority) && (!deadline || Boolean(item.due_at && Date.parse(item.due_at) < Date.parse(deadline + 'T23:59:59'))) &&
     item.title.toLocaleLowerCase('pt-BR').includes(search.toLocaleLowerCase('pt-BR')))
   const summaries = [
     { label: 'Total de atividades', value: tasks.length, filter: 'all' },
     { label: 'Concluídas', value: tasks.filter(done).length, filter: 'done' },
-    { label: 'Pendentes', value: tasks.filter((item) => !done(item)).length, filter: 'pending' },
     { label: 'Atrasadas', value: tasks.filter((item) => overdue(item.due_at, done(item))).length, filter: 'late' },
-    { label: 'Aguardando revisão', value: tasks.filter((item) => taskKind(item, stages) === 'review').length, filter: 'review' },
+    { label: 'Em revisão', value: tasks.filter((item) => taskKind(item, stages) === 'review').length, filter: 'review' },
   ]
   const goalCards = (list: Goal[]) => <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">{list.map((item) => {
     const progress = goalProgress(item, tasks, stages)
@@ -148,42 +150,50 @@ function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
       {manager && <div className="flex flex-wrap gap-2"><Button onClick={() => setTask('new')}>Nova atividade</Button>
         <Button variant="outline" onClick={() => setGoal('new')}>Nova meta</Button><Button variant="outline" onClick={() => setStagesOpen(true)}>Gerenciar etapas</Button></div>}
     </header>
-    <nav aria-label="Abas de atividades" className="flex flex-wrap gap-2">{(['Dashboard','Kanban','Metas','Minhas atividades'] as Tab[]).map((value) =>
-      <Button key={value} variant={tab === value ? 'default' : 'outline'} aria-pressed={tab === value} onClick={() => { setTab(value); setFilter('all'); setPriority('all'); setSearch(''); setDeadline('') }}>{value}</Button>)}</nav>
+
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-    {tab === 'Dashboard' && <>
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">{summaries.map((entry) => <button type="button" key={entry.label}
-        onClick={() => { setTab('Kanban'); setFilter(entry.filter) }} className="rounded-2xl border border-card-outline bg-card p-4 text-left">
-        <p className="text-sm text-muted-foreground">{entry.label}</p><p className="text-2xl font-bold">{entry.value}</p></button>)}</div>
-      <section className="space-y-2"><h2 className="font-semibold">Progresso geral · {percent}%</h2><progress aria-label="Progresso geral" value={percent} max={100} className="h-3 w-full accent-primary" /></section>
-      <section className="space-y-3"><h2 className="font-semibold">Metas</h2>
-        <p className="text-sm text-muted-foreground">{goals.length} total · {goals.filter((g) => goalProgress(g,tasks,stages).percent===100).length} concluídas · {goals.filter((g) => { const p=goalProgress(g,tasks,stages);return p.actual>0&&p.percent<100 }).length} em andamento · {goals.filter((g) => goalProgress(g,tasks,stages).actual===0).length} pendentes · {goals.filter((g) => overdue(g.due_at,goalProgress(g,tasks,stages).percent===100)).length} atrasadas</p>
-        {goalCards(goals.slice(0,6))}{!goals.length && <p className="text-sm text-muted-foreground">Nenhuma meta cadastrada.</p>}
-      </section>
-      <section className="space-y-3"><h2 className="font-semibold">Atenção da equipe</h2><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {tasks.filter((item) => !done(item) && (taskKind(item,stages)==='review'||Boolean(item.due_at&&Date.parse(item.due_at)<Date.now()+3*86400000)))
-          .sort((a,b) => Date.parse(a.due_at??'9999-01-01')-Date.parse(b.due_at??'9999-01-01')).slice(0,12).map(taskCard)}
-      </div></section>
-    </>}
-    {(tab === 'Kanban' || tab === 'Minhas atividades') && <>
-      <div className="flex flex-wrap items-end gap-3">
-        <Input aria-label="Buscar atividades" placeholder="Buscar atividades" value={search} onChange={(event) => setSearch(event.target.value)} className="max-w-xs" />
-        <label className="text-sm">Status<select value={filter} onChange={(event) => setFilter(event.target.value)} className="ml-2 rounded-lg border bg-background p-2">
-          <option value="all">Todos</option><option value="pending">Pendentes</option><option value="late">Atrasadas</option>{Object.entries(kinds).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-        <label className="text-sm">Prioridade<select value={priority} onChange={(event) => setPriority(event.target.value)} className="ml-2 rounded-lg border bg-background p-2">
-          <option value="all">Todas</option>{Object.entries(priorities).map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-        <label className="text-sm">Prazo até<Input type="date" value={deadline} onChange={(event) => setDeadline(event.target.value)} /></label>
+    <section aria-label="Dashboard do projeto" className="grid gap-4 rounded-2xl border border-card-outline bg-card p-4 xl:grid-cols-2">
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{summaries.map(entry=><button type="button" key={entry.label} onClick={()=>{setFilter(entry.filter);setStageFilter('all');setLateOnly(false);document.getElementById('team-kanban')?.scrollIntoView({block:'start',behavior:'smooth'})}} className="rounded-xl border border-border p-3 text-left hover:border-primary"><p className="text-xs text-muted-foreground">{entry.label}</p><p className="text-xl font-bold">{entry.value}</p></button>)}</div>
+        <h2 className="text-sm font-semibold">Progresso geral do projeto — {percent}%</h2>
+        <progress aria-label="Progresso geral do projeto" value={percent} max={100} className="h-2 w-full accent-primary" />
+        <p className="text-xs text-muted-foreground">{tasks.filter(done).length} de {tasks.length} atividades concluídas · {tasks.filter(item=>!done(item)).length} pendentes{!tasks.length?' · Crie sua primeira atividade.':''}</p>
       </div>
-      {tab === 'Kanban' ? <div className="flex min-w-0 gap-4 overflow-x-auto pb-4" aria-label="Quadro Kanban">
-        {stages.map((stage) => <section key={stage.id} aria-label={stage.name} className="flex max-h-[65dvh] w-72 shrink-0 flex-col rounded-2xl border border-border bg-muted/30"
-          onDragOver={(event) => event.preventDefault()} onDrop={(event) => { event.preventDefault(); const moved=tasks.find((item) => item.id===event.dataTransfer.getData('text/plain')); if(moved)void mutate('move',{id:moved.id,version:moved.version,stage_id:stage.id}).catch((err: Error)=>setError(err.message)) }}>
-          <h2 className="shrink-0 p-3 font-semibold">{stage.name} · {filtered.filter((item) => item.stage_id===stage.id).length}</h2>
-          <div className="min-h-20 space-y-3 overflow-y-auto overscroll-contain p-3 pt-0">{filtered.filter((item) => item.stage_id===stage.id).map(taskCard)}</div>
-        </section>)}
-      </div> : <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">{filtered.map(taskCard)}</div>}
-      {!filtered.length && <p className="text-sm text-muted-foreground">Nenhuma atividade neste filtro.</p>}
-    </>}
-    {tab === 'Metas' && <>{goalCards(goals)}{!goals.length && <p className="text-sm text-muted-foreground">Nenhuma meta cadastrada.</p>}</>}
+      <div className="min-w-0 space-y-2"><div className="flex flex-wrap items-center justify-between gap-2"><h2 className="font-semibold">Metas</h2><Button size="sm" variant="outline" onClick={()=>setAllGoalsOpen(true)}>Ver todas as metas</Button></div>
+        <p className="text-xs text-muted-foreground">{goals.filter(g=>goalProgress(g,tasks,stages).percent===100).length} concluídas · {goals.filter(g=>{const p=goalProgress(g,tasks,stages);return p.actual>0&&p.percent<100}).length} em andamento · {goals.filter(g=>goalProgress(g,tasks,stages).actual===0).length} pendentes · {goals.filter(g=>overdue(g.due_at,goalProgress(g,tasks,stages).percent===100)).length} atrasadas</p>
+        <div className="grid gap-2 sm:grid-cols-3">{[...goals].sort((a,b)=>{
+          const rank=(g:Goal)=>{const p=goalProgress(g,tasks,stages);return p.percent===100?4:overdue(g.due_at,false)?0:dueSoon(g.due_at,false)?1:p.actual>0?2:3}
+          return rank(a)-rank(b)||(Date.parse(a.due_at??'9999-01-01')-Date.parse(b.due_at??'9999-01-01'))||a.title.localeCompare(b.title)
+        }).slice(0,3).map(g=><button key={g.id} type="button" onClick={()=>setGoal(g.id)} className="block w-full space-y-1 rounded-lg border border-border p-2 text-left hover:border-primary"><span className="flex justify-between gap-2 text-xs"><strong className="min-w-0 break-words">{g.title}</strong><span>{goalProgress(g,tasks,stages).percent}%</span></span><progress aria-label={'Progresso de '+g.title} value={goalProgress(g,tasks,stages).percent} max={100} className="h-1.5 w-full accent-primary" />{g.due_at&&<span className="block text-xs text-muted-foreground">{activityDate(g.due_at)}</span>}</button>)}</div>
+        {!goals.length&&<p className="text-xs text-muted-foreground">Nenhuma meta cadastrada.</p>}
+      </div>
+    </section>
+    <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]">
+      <section id="team-kanban" aria-label="Kanban da equipe" className="min-w-0 scroll-mt-24 space-y-3">
+        <header className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-lg font-semibold">Kanban da equipe</h2><Button size="sm" variant="ghost" onClick={()=>{setFilter('all');setPriority('all');setDeadline('');setSearch('');setAssignee('all');setStageFilter('all');setLateOnly(false)}}>Limpar filtros</Button></header>
+        <div className="flex flex-wrap items-end gap-2 text-xs">
+          <Input aria-label="Buscar atividades" placeholder="Buscar título" value={search} onChange={e=>setSearch(e.target.value)} className="max-w-48" />
+          <label>Responsável<select className="ml-1 rounded-lg border bg-background p-2" value={assignee} onChange={e=>setAssignee(e.target.value)}><option value="all">Todos</option>{members.map(person=><option key={person.id} value={person.id}>{person.name||'Integrante'}</option>)}</select></label>
+          <label>Status<select className="ml-1 rounded-lg border bg-background p-2" value={filter} onChange={e=>setFilter(e.target.value)}><option value="all">Todos</option><option value="pending">Pendentes</option><option value="late">Atrasadas</option>{Object.entries(kinds).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
+          <label>Etapa<select className="ml-1 rounded-lg border bg-background p-2" value={stageFilter} onChange={e=>setStageFilter(e.target.value)}><option value="all">Todas</option>{stages.map(stage=><option key={stage.id} value={stage.id}>{stage.name}</option>)}</select></label>
+          <label>Prioridade<select className="ml-1 rounded-lg border bg-background p-2" value={priority} onChange={e=>setPriority(e.target.value)}><option value="all">Todas</option>{Object.entries(priorities).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
+          <label>Prazo até<Input type="date" value={deadline} onChange={e=>setDeadline(e.target.value)} /></label>
+          <label className="flex items-center gap-1 py-2"><input type="checkbox" checked={lateOnly} onChange={e=>setLateOnly(e.target.checked)} />Somente atrasadas</label>
+        </div>
+        <div className="flex min-w-0 gap-3 overflow-x-auto pb-3" aria-label="Quadro Kanban">{stages.map(stage=><section key={stage.id} aria-label={stage.name} className="flex max-h-[65dvh] w-72 shrink-0 flex-col rounded-2xl border border-border bg-muted/30" onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();const moved=tasks.find(item=>item.id===e.dataTransfer.getData('text/plain'));if(moved)void mutate('move',{id:moved.id,version:moved.version,stage_id:stage.id}).catch((err:Error)=>setError(err.message))}}>
+          <h3 className="shrink-0 p-3 font-semibold">{stage.name} · {filtered.filter(item=>item.stage_id===stage.id).length}</h3><div className="min-h-20 space-y-3 overflow-y-auto overscroll-contain p-3 pt-0">{filtered.filter(item=>item.stage_id===stage.id).map(taskCard)}</div>
+        </section>)}</div>{!filtered.length&&<p className="text-sm text-muted-foreground">Nenhuma atividade neste filtro.</p>}
+      </section>
+      <aside aria-label="Minhas atividades" className="min-w-0 space-y-3 rounded-2xl border border-border bg-card p-3"><h2 className="text-lg font-semibold">Minhas atividades</h2>
+        <label className="block text-xs">Exibir<select className="ml-2 rounded-lg border bg-background p-2" value={mineFilter} onChange={e=>setMineFilter(e.target.value)}>{[['pending','Pendentes'],['doing','Em andamento'],['review','Em revisão'],['done','Concluídas'],['all','Todas']].map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
+        <div className="max-h-[65dvh] space-y-3 overflow-y-auto overscroll-contain">{tasks.filter(item=>item.assignees.includes(userId)&&(mineFilter==='all'||mineFilter==='pending'&&!done(item)||taskKind(item,stages)===mineFilter)).sort((a,b)=>{
+          const rank=(item:Task)=>done(item)?6:overdue(item.due_at,false)?0:dueSoon(item.due_at,false)?1:taskKind(item,stages)==='review'?2:taskKind(item,stages)==='doing'?3:4
+          return rank(a)-rank(b)||Date.parse(a.due_at??'9999-01-01')-Date.parse(b.due_at??'9999-01-01')||a.title.localeCompare(b.title)
+        }).map(taskCard)}</div>
+        {!tasks.some(item=>item.assignees.includes(userId)&&(mineFilter==='all'||mineFilter==='pending'&&!done(item)||taskKind(item,stages)===mineFilter))&&<p className="text-sm text-muted-foreground">Nenhuma atividade atribuída neste filtro.</p>}
+      </aside>
+    </div>
+    {allGoalsOpen&&<Dialog title="Todas as metas" busy={busy} close={()=>setAllGoalsOpen(false)}>{manager&&<Button onClick={()=>setGoal('new')}>Nova meta</Button>}{goalCards(goals)}{!goals.length&&<p className="text-sm text-muted-foreground">Nenhuma meta cadastrada.</p>}</Dialog>}
     {task && (task === 'new' || selected) && <ActivityEditor key={task} data={data} task={selected} userId={userId} revision={revision} busy={busy} mutate={mutate} close={() => setTask(null)} />}
     {goal && (goal === 'new' || selectedGoal) && <GoalEditor key={goal} data={data} goal={selectedGoal} revision={revision} busy={busy} mutate={mutate} close={() => setGoal(null)} openTask={(id) => {setGoal(null);setTask(id)}} />}
     {stagesOpen && <StageEditor data={data} busy={busy} mutate={mutate} close={() => setStagesOpen(false)} />}

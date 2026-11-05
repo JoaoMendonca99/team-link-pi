@@ -10,7 +10,7 @@ import { UserAvatar } from '@/components/team-link/user-avatar'
 import { activityDate, activityRpc, goalProgress, historyLabels, isoDateTime, kinds, localDateTime, priorities, taskKind, type Details, type Goal, type Person, type Stage, type Task, type Workspace } from '@/lib/activities'
 
 type Mutation = (action: string, input: Record<string, unknown>) => Promise<string>
-function Dialog({ title, busy, close, children }: { title: string; busy: boolean; close: () => void; children: ReactNode }) {
+export function Dialog({ title, busy, close, children }: { title: string; busy: boolean; close: () => void; children: ReactNode }) {
   const ref = useRef<HTMLDialogElement>(null)
   useEffect(() => {
     const el=ref.current
