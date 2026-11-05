@@ -17,12 +17,12 @@ const colors: Record<Kind,string> = { todo:'#94a3b8', doing:'#3b82f6', review:'#
 const statusNames = { ...kinds, done:'Concluídas' }
 function online(person: Member, now: number) { return Boolean(person.last_active_at && now - Date.parse(person.last_active_at) < 120_000) }
 function seen(person: Member, now: number) {
-  if (!person.last_active_at) return 'Ainda não acessou o painel'
-  if (online(person,now)) return 'Online no painel'
+  if (!person.last_active_at) return 'Ainda não acessou o projeto'
+  if (online(person,now)) return 'Online no projeto'
   const date = new Date(person.last_active_at)
   const minutes = Math.max(2,Math.floor((now-date.getTime())/60_000))
-  if (minutes < 60) return `Visto no painel há ${minutes} min`
-  return 'Visto no painel em ' + date.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})
+  if (minutes < 60) return `Visto no projeto há ${minutes} min`
+  return 'Visto no projeto em ' + date.toLocaleString('pt-BR',{dateStyle:'short',timeStyle:'short'})
 }
 
 export function usePanelSummary(projectId: string | undefined, userId: string | undefined, enabled: boolean) {
@@ -89,7 +89,6 @@ export function PanelTeam({data,error,now}:{data?:Summary;error:string;now:numbe
   const filtered=members.filter(person=>(person.name??'').toLocaleLowerCase('pt-BR').includes(search.toLocaleLowerCase('pt-BR')))
   return <aside aria-label="Equipe do projeto" className="min-w-0 self-start rounded-3xl border border-card-outline bg-card p-4">
     <header className="flex items-center justify-between gap-2"><h2 className="text-lg font-semibold">Equipe do projeto {data&&<span className="text-sm text-muted-foreground">({members.length})</span>}</h2><Button type="button" size="sm" variant="ghost" className="lg:hidden" aria-expanded={expanded} aria-controls="panel-team-list" onClick={()=>setExpanded(value=>!value)}>{expanded?'Recolher':'Expandir'}</Button></header>
-    <p className="mt-1 text-xs text-muted-foreground">Presença nesta área do projeto, visível somente à equipe.</p>
     <div id="panel-team-list" className={(expanded?'block':'hidden')+' mt-4 space-y-3 lg:block'}>
       {error?<p role="alert" className="text-sm text-destructive">{error}</p>:!data?<p role="status" className="text-sm">Carregando equipe…</p>:<>
         {members.length>8&&<Input aria-label="Buscar integrante por nome" placeholder="Buscar integrante" value={search} onChange={event=>setSearch(event.target.value)} />}

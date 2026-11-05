@@ -10,7 +10,13 @@ function load(file) {
   vm.runInNewContext(outputText, { exports, require: () => ({}) }, { filename: file })
   return exports
 }
-const { dashboardGoals, goalsByDeadline } = load('src/lib/activities.ts')
+const { dashboardGoals, goalsByDeadline, filterTasks } = load('src/lib/activities.ts')
+test('PDF and Kanban share all combined filters', () => {
+  const stages = [{id:'s1',kind:'doing'},{id:'s2',kind:'done'}]
+  const match = {id:'a',title:'Análise técnica',stage_id:'s1',assignees:['u1'],priority:'high',due_at:'2026-11-01T12:00:00Z'}
+  const tasks = [match, {...match,id:'wrong-stage',stage_id:'s2'}, {...match,id:'wrong-user',assignees:['u2']}, {...match,id:'wrong-priority',priority:'low'}, {...match,id:'wrong-date',due_at:'2027-01-01'}, {...match,id:'wrong-title',title:'Outro'}]
+  assert.deepEqual(Array.from(filterTasks(tasks,stages,{assignee:'u1',stageFilter:'s1',lateOnly:true,filter:'pending',priority:'high',deadline:'2026-11-30',search:'ANÁLISE'},Date.parse('2026-11-05')),t=>t.id),['a'])
+})
 const { lockDialogScroll } = load('src/lib/dialog-scroll-lock.ts')
 const goal = (id, due_at, actual = 0, extra = {}) => ({ id, title: id, due_at, kind: 'numeric', target: 10, actual, period_id: 'current', ...extra })
 const ids = list => Array.from(list, g => g.id)

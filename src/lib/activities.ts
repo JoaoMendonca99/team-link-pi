@@ -50,3 +50,13 @@ export const localDateTime = (value: string | null) => {
 }
 export const isoDateTime = (value: string) => value ? new Date(value).toISOString() : null
 export const activityDate = (value: string | null) => value ? new Date(value).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : 'Sem prazo'
+
+export type ActivityFilters = { assignee: string; stageFilter: string; lateOnly: boolean; filter: string; priority: string; deadline: string; search: string }
+export function filterTasks(tasks: Task[], stages: Stage[], filters: ActivityFilters, now = Date.now()) {
+  const { assignee, stageFilter, lateOnly, filter, priority, deadline, search } = filters
+  const done = (item: Task) => taskKind(item, stages) === 'done'
+  return tasks.filter(item => (assignee === 'all' || item.assignees.includes(assignee)) && (stageFilter === 'all' || item.stage_id === stageFilter) && (!lateOnly || overdue(item.due_at, done(item), now)) &&
+    (filter === 'all' || filter === 'pending' && !done(item) || filter === 'late' && overdue(item.due_at, done(item), now) || taskKind(item, stages) === filter) &&
+    (priority === 'all' || item.priority === priority) && (!deadline || Boolean(item.due_at && Date.parse(item.due_at) < Date.parse(deadline + 'T23:59:59'))) &&
+    item.title.toLocaleLowerCase('pt-BR').includes(search.toLocaleLowerCase('pt-BR')))
+}

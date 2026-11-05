@@ -29,6 +29,7 @@ import type {
   ChatThreadMessage,
 } from '@/lib/chat/types'
 import { getSupabaseClient, isSupabaseConfigured } from '@/lib/supabase/client'
+import { useProjectPresence } from '@/hooks/use-project-presence'
 import { useProjectChatRead } from '@/hooks/use-project-chat-read'
 import { useSupabaseSession } from '@/hooks/use-supabase-session'
 import type { ProfileRow, ProjectMessageRow } from '@/types/database'
@@ -238,6 +239,7 @@ export function MessagesClient({ active = true, requestedProject, requestedConve
     if (selectedProjectId) void reloadConversations(selectedProjectId)
   }, [reloadConversations, reloadProjects, selectedProjectId])
   const latest = messages.at(-1)
+  useProjectPresence(active && selectedConversation && selectedProjectId ? 'id:' + selectedProjectId : undefined)
   useProjectChatRead(user?.id, active ? selectedConversation?.id : undefined,
     latest?.conversation_id === selectedConversation?.id ? latest?.created_at : undefined, refreshReadCounts)
 

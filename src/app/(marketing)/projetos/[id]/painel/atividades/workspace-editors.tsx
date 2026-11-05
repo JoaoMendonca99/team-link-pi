@@ -20,10 +20,11 @@ export function Dialog({ title, busy, close, children }: { title: string; busy: 
     return ()=>{el?.close();unlock()}
   }, [])
   return <dialog ref={ref} aria-label={title} onCancel={(event)=>{event.preventDefault();if(!busy)close()}}
-    className="fixed inset-0 m-auto max-h-[88dvh] w-[calc(100%_-_1rem)] max-w-3xl space-y-4 overflow-y-auto overscroll-contain rounded-3xl border border-card-outline bg-card p-4 text-card-foreground shadow-xl backdrop:bg-black/70 sm:p-6">
-    <header className="flex items-start justify-between gap-3"><h2 className="break-words text-xl font-semibold">{title}</h2>
+    className="fixed inset-0 m-auto max-h-[88dvh] w-[calc(100%_-_1rem)] max-w-3xl overflow-hidden rounded-3xl border border-card-outline bg-card p-0 text-card-foreground shadow-xl backdrop:bg-black/70">
+    <div className="flex max-h-[88dvh] min-w-0 flex-col"><header className="flex shrink-0 items-start justify-between gap-3 border-b border-border p-4 sm:p-6"><h2 className="break-words text-xl font-semibold">{title}</h2>
       <Button type="button" size="icon" variant="ghost" disabled={busy} aria-label="Fechar" className="shrink-0" onClick={close}><X aria-hidden /></Button></header>
-    {children}
+    <div className="min-h-0 space-y-4 overflow-y-auto overscroll-contain p-4 sm:p-6">{children}</div>
+    </div>
   </dialog>
 }
 function Field({ label, children }: { label: string; children: ReactNode }) {
@@ -151,7 +152,7 @@ export function ActivityEditor({data,task,userId,revision,busy,mutate,close,requ
          <Button disabled={busy||!comment.trim()}>Comentar</Button>
        </form>}
      </section>
-     <History details={details} periods={data.periods} />
+
    </>}
  </Dialog>
 }

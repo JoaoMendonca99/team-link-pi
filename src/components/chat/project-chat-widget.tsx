@@ -34,6 +34,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { UserAvatar } from "@/components/team-link/user-avatar"
 import { FriendThread, useFriendChats } from "@/app/(marketing)/mensagens/_components/friend-chats"
 import { chatSearch, WidgetFriends } from "./widget-friends"
+import { useProjectPresence } from '@/hooks/use-project-presence'
 import { useProjectChatRead } from "@/hooks/use-project-chat-read"
 import { useSupabaseSession } from "@/hooks/use-supabase-session"
 import { loadMyChatProjects, loadProjectConversations } from "@/lib/chat/loaders"
@@ -458,6 +459,7 @@ function ChatWidget({ session }: { session: ReturnType<typeof useSupabaseSession
   }, [supabaseReady, user?.id])
 
   const newestMessage = messages.at(-1)
+  useProjectPresence(open && tab === "projects" && view === "thread" && selectedConversation && selectedProject ? "id:" + selectedProject.id : undefined)
   useProjectChatRead(user?.id, open && tab === "projects" && view === "thread" ? selectedConversation?.id : undefined,
     newestMessage?.conversation_id === selectedConversation?.id ? newestMessage?.created_at : undefined, refreshProjectCounts)
 

@@ -3,12 +3,14 @@
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Download } from 'lucide-react'
+import { ActivityExport } from './workspace-export'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { UserAvatar } from '@/components/team-link/user-avatar'
 import { useSupabaseSession } from '@/hooks/use-supabase-session'
 import { getSupabaseClient } from '@/lib/supabase/client'
-import { activityDate, activityRpc, dashboardGoals, dueSoon, goalProgress, goalsByDeadline, kinds, overdue, priorities, taskKind, type Goal, type Task, type Workspace } from '@/lib/activities'
+import { activityDate, activityRpc, dashboardGoals, dueSoon, filterTasks, goalProgress, goalsByDeadline, kinds, overdue, priorities, taskKind, type Goal, type Task, type Workspace } from '@/lib/activities'
 import { PeriodManager, PeriodTransfer } from './workspace-periods'
 import { ActivityEditor, GoalEditor, StageEditor, Dialog } from './workspace-editors'
 
@@ -20,6 +22,7 @@ export function ActivitiesClient({ slug }: { slug: string }) {
 }
 
 function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
+  const [exportOpen,setExportOpen]=useState(false)
   const [periodId,setPeriodId]=useState('')
   const [historyEditing,setHistoryEditing]=useState(false)
   const [periodsOpen,setPeriodsOpen]=useState(false)
@@ -118,10 +121,8 @@ function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
   const percent = tasks.length ? Math.round(tasks.filter(done).length / tasks.length * 100) : 0
   const selected = tasks.find((item) => item.id === task)
   const selectedGoal = goals.find((item) => item.id === goal)
-  const filtered = tasks.filter((item) => (assignee==='all'||item.assignees.includes(assignee)) && (stageFilter==='all'||item.stage_id===stageFilter) && (!lateOnly||overdue(item.due_at,done(item))) &&
-    (filter === 'all' || filter === 'pending' && !done(item) || filter === 'late' && overdue(item.due_at, done(item)) || taskKind(item, stages) === filter) &&
-    (priority === 'all' || item.priority === priority) && (!deadline || Boolean(item.due_at && Date.parse(item.due_at) < Date.parse(deadline + 'T23:59:59'))) &&
-    item.title.toLocaleLowerCase('pt-BR').includes(search.toLocaleLowerCase('pt-BR')))
+  const filters={assignee,stageFilter,lateOnly,filter,priority,deadline,search}
+  const filtered=filterTasks(tasks,stages,filters)
   const summaries = [
     { label: 'Total de atividades', value: tasks.length, filter: 'all' },
     { label: 'Concluídas', value: tasks.filter(done).length, filter: 'done' },
@@ -191,7 +192,7 @@ function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
     </section>
     <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]">
       <section id="team-kanban" aria-label="Kanban da equipe" className="@container/kanban min-w-0 scroll-mt-24 space-y-3">
-        <header className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-lg font-semibold">Kanban da equipe</h2><Button size="sm" variant="ghost" onClick={()=>{setFilter('all');setPriority('all');setDeadline('');setSearch('');setAssignee('all');setStageFilter('all');setLateOnly(false)}}>Limpar filtros</Button></header>
+        <header className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-lg font-semibold">Kanban da equipe</h2><div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={()=>setExportOpen(true)}><Download aria-hidden className="size-4" />Baixar PDF</Button><Button size="sm" variant="ghost" onClick={()=>{setFilter('all');setPriority('all');setDeadline('');setSearch('');setAssignee('all');setStageFilter('all');setLateOnly(false)}}>Limpar filtros</Button></div></header>
         <div className="flex flex-wrap items-end gap-2 text-xs">
           <Input aria-label="Buscar atividades" placeholder="Buscar título" value={search} onChange={e=>setSearch(e.target.value)} className="max-w-48" />
           <label>Responsável<select className="ml-1 rounded-lg border bg-background p-2" value={assignee} onChange={e=>setAssignee(e.target.value)}><option value="all">Todos</option>{members.map(person=><option key={person.id} value={person.id}>{person.name||'Integrante'}</option>)}</select></label>
@@ -214,6 +215,7 @@ function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
         {!tasks.some(item=>item.assignees.includes(userId)&&(mineFilter==='all'||mineFilter==='pending'&&!done(item)||taskKind(item,stages)===mineFilter))&&<p className="text-sm text-muted-foreground">Nenhuma atividade atribuída neste filtro.</p>}
       </aside>
     </div>
+    {exportOpen&&<ActivityExport data={scoped} filters={filters} close={()=>setExportOpen(false)} />}
     {allGoalsOpen&&<Dialog title="Todas as metas" busy={busy} close={()=>setAllGoalsOpen(false)}>{manager&&!readOnly&&<Button onClick={()=>setGoal('new')}>Nova meta</Button>}{goalCards([...goals].sort(goalsByDeadline))}{!goals.length&&<p className="text-sm text-muted-foreground">Nenhuma meta cadastrada.</p>}</Dialog>}
     {task && (task === 'new' || selected) && <ActivityEditor key={task} data={scoped} requestTransfer={()=>setTransfer({task:selected?.id})} task={selected} userId={userId} revision={revision} busy={busy} mutate={mutate} close={() => setTask(null)} />}
     {goal && (goal === 'new' || selectedGoal) && <GoalEditor key={goal} data={scoped} requestTransfer={()=>setTransfer({goal:selectedGoal?.id})} goal={selectedGoal} revision={revision} busy={busy} mutate={mutate} close={() => setGoal(null)} openTask={(id) => {setGoal(null);setTask(id)}} />}
