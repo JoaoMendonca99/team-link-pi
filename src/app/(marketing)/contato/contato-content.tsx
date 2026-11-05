@@ -44,7 +44,7 @@ export function ContatoContent() {
                 Tem uma dúvida, sugestão ou quer falar com a gente? Use o formulário abaixo. Vamos responder pelo canal indicado assim que possível.
               </p>
             </div>
-            <aside className="rounded-[2rem] border border-primary/35 bg-[#081021] p-8 text-sm text-white shadow-xl">
+            <aside className="rounded-[2rem] border border-primary/35 team-link-soft-section bg-[#081021] p-8 text-sm text-white shadow-xl">
               <p className="text-xs uppercase tracking-[0.32em] text-white/65">Como podemos ajudar</p>
               <ul className="mt-6 space-y-5">
                 {supportTopics.map((topic) => {

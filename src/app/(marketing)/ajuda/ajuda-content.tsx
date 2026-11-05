@@ -155,7 +155,7 @@ export function AjudaContent() {
       </Container>
 
       <Container className="pb-20 pt-8">
-        <div className="rounded-[2.5rem] border border-primary/30 bg-[#081021] p-12 text-white shadow-xl">
+        <div className="rounded-[2.5rem] border border-primary/30 team-link-soft-section bg-[#081021] p-12 text-white shadow-xl">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.32em] text-white/65">Pronto para começar</p>

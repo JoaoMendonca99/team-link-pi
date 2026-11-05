@@ -55,17 +55,17 @@
   --tl-warning: #f59e0b;
   --tl-danger: #ef4444;
   --background: #f0f4fb;
-  --foreground: #142844;
+  --foreground: #13294b;
   --card: #ffffff;
-  --card-foreground: #142844;
+  --card-foreground: #13294b;
   --popover: #ffffff;
-  --popover-foreground: #142844;
+  --popover-foreground: #13294b;
   --primary: #2563eb;
   --primary-foreground: #ffffff;
-  --secondary: #e8efff;
+  --secondary: #eaf1fc;
   --secondary-foreground: #244878;
-  --muted: #e8eff9;
-  --muted-foreground: #536781;
+  --muted: #eaf1fc;
+  --muted-foreground: #526785;
   --accent: #e5efff;
   --accent-foreground: #1d4ed8;
   --destructive: #ef4444;
@@ -79,11 +79,11 @@
   --chart-4: #f59e0b;
   --chart-5: #64748b;
   --sidebar: #f5f8fd;
-  --sidebar-foreground: #142844;
+  --sidebar-foreground: #13294b;
   --sidebar-primary: #2563eb;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #e8eff9;
-  --sidebar-accent-foreground: #142844;
+  --sidebar-accent: #eaf1fc;
+  --sidebar-accent-foreground: #13294b;
   --sidebar-border: #d8e3f3;
   --sidebar-ring: #2563eb;
 }
@@ -253,6 +253,26 @@ html {
 }
 
 /* Light-only hero colors; layout, effects and the approved dark palette are untouched. */
-:root:not(.dark) .team-link-hero { background-color: #16469f; border-color: #c5d5ec; }
-:root:not(.dark) .team-link-hero-shade { background-image: linear-gradient(120deg, rgba(22,62,148,.85), rgba(22,70,159,.85)); }
-:root:not(.dark) .team-link-hero-row { background-color: rgba(20,57,135,.45); }
+:root:not(.dark) .team-link-hero { background-color: #174caa; border-color: #c5d5ec; }
+:root:not(.dark) .team-link-hero-shade { background-image: linear-gradient(120deg, rgba(20,63,144,.9), rgba(29,88,188,.87)); }
+:root:not(.dark) .team-link-hero-row { background-color: rgba(22,63,141,.45); }
+
+/* The header uses the existing .dark tokens in both modes. Portalled account
+   menus remain in the selected page theme; only light-mode link accents differ. */
+:root:not(.dark) .team-link-header { background-color: var(--background); }
+:root:not(.dark) .team-link-header .text-primary,
+:root:not(.dark) .team-link-header nav a:hover { color: #93c5fd; }
+
+/* Fixed dark marketing panels receive a light palette without changing geometry. */
+:root:not(.dark) .team-link-soft-section { background-color: #ddeafe; color: var(--foreground); }
+:root:not(.dark) .team-link-cta-shade { background-image: linear-gradient(120deg, rgba(221,234,254,.95), rgba(234,241,252,.92)); }
+:root:not(.dark) .team-link-cta-blue { background-image: radial-gradient(circle, #93b8f5 0%, transparent 70%); }
+:root:not(.dark) .team-link-cta-accent { background-image: radial-gradient(circle, #c0d7fa 0%, transparent 70%); }
+:root:not(.dark) .team-link-soft-section .text-white { color: var(--foreground); }
+:root:not(.dark) .team-link-soft-section [class*="text-white/"] { color: var(--muted-foreground); }
+:root:not(.dark) .team-link-soft-section [class*="border-white/"] { border-color: var(--card-outline); }
+:root:not(.dark) .team-link-soft-section [class*="bg-white/"] { background-color: #f5f8fd; }
+:root:not(.dark) .team-link-soft-section span.text-white,
+:root:not(.dark) .team-link-soft-section svg.text-white { color: var(--primary); }
+:root:not(.dark) .team-link-soft-section a.border { color: #1d4ed8; border-color: #748aa8; }
+:root:not(.dark) .team-link-soft-section a.border:hover { background-color: var(--secondary); }

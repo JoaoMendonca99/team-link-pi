@@ -139,7 +139,7 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
 
   return (
     <>
-      <header className="sticky top-0 z-[60] w-full border-b border-border/70 bg-background/85 backdrop-blur-xl supports-[backdrop-filter]:bg-background/75">
+      <header className="dark team-link-header text-foreground sticky top-0 z-[60] w-full border-b border-border/70 bg-background/85 backdrop-blur-xl supports-[backdrop-filter]:bg-background/75">
         <HeaderShell fullBleed={fullBleed} className="flex h-[72px] min-w-0 items-center justify-between gap-2 sm:gap-3">
           <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4 lg:gap-6">
             <Link
@@ -282,7 +282,7 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
           aria-label="Menu de navegação"
           className="fixed inset-0 z-[100] flex flex-col bg-background backdrop-blur-xl lg:hidden"
         >
-          <div className="border-b border-border/70 bg-background">
+          <div className="dark team-link-header text-foreground border-b border-border/70 bg-background">
             <HeaderShell fullBleed={fullBleed} className="flex h-[72px] items-center justify-between gap-3">
               <Link
                 href="/"

@@ -27,11 +27,11 @@ const highlights = [
 
 export function CTASection() {
   return (
-    <section className="relative overflow-hidden border-b border-transparent bg-[#081021] py-16 text-white sm:py-24">
+    <section className="team-link-soft-section relative overflow-hidden border-b border-transparent bg-[#081021] py-16 text-white sm:py-24">
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute left-[10%] top-[-20%] h-[24rem] w-[24rem] rounded-full bg-[radial-gradient(circle,#2563EB_0%,transparent_70%)] blur-3xl opacity-85" />
-        <div className="absolute bottom-[-30%] right-[5%] h-[26rem] w-[26rem] rounded-full bg-[radial-gradient(circle,#14B8A6_0%,transparent_70%)] blur-3xl opacity-85" />
-        <div className="absolute inset-0 bg-[linear-gradient(120deg,rgba(8,17,39,0.95),rgba(26,78,236,0.45))]" />
+        <div className="team-link-cta-blue absolute left-[10%] top-[-20%] h-[24rem] w-[24rem] rounded-full bg-[radial-gradient(circle,#2563EB_0%,transparent_70%)] blur-3xl opacity-85" />
+        <div className="team-link-cta-accent absolute bottom-[-30%] right-[5%] h-[26rem] w-[26rem] rounded-full bg-[radial-gradient(circle,#14B8A6_0%,transparent_70%)] blur-3xl opacity-85" />
+        <div className="team-link-cta-shade absolute inset-0 bg-[linear-gradient(120deg,rgba(8,17,39,0.95),rgba(26,78,236,0.45))]" />
       </div>
 
       <Container className="relative z-10 space-y-10 text-center">
