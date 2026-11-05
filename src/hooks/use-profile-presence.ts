@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect } from 'react'
-import { profileRpc, PROFILE_CHANGED } from '@/lib/profile-social'
+import { FRIENDSHIPS_CHANGED, profileRpc, PROFILE_CHANGED } from '@/lib/profile-social'
+import { getSupabaseClient } from '@/lib/supabase/client'
 
 export function useProfilePresence(userId?: string) {
   useEffect(() => {
@@ -36,6 +37,13 @@ export function useProfilePresence(userId?: string) {
       }).catch(() => { enabled = false })
     }
     preference()
+    const client = getSupabaseClient()
+    const refreshFriends = () => window.dispatchEvent(new Event(FRIENDSHIPS_CHANGED))
+    const channel = client.channel('presence-preferences:' + userId + ':' + crypto.randomUUID())
+    for (const event of ['INSERT', 'UPDATE'] as const) {
+      channel.on('postgres_changes', { event, schema: 'public', table: 'presence_preference_updates' }, refreshFriends)
+    }
+    channel.subscribe((status) => { if (status === 'SUBSCRIBED') refreshFriends() })
     const timer = window.setInterval(record, 30_000)
     document.addEventListener('visibilitychange', visibility)
     window.addEventListener('pointerdown', activity)
@@ -44,6 +52,7 @@ export function useProfilePresence(userId?: string) {
     window.addEventListener(PROFILE_CHANGED, preference)
     return () => {
       active = false
+      void client.removeChannel(channel)
       window.clearInterval(timer)
       document.removeEventListener('visibilitychange', visibility)
       window.removeEventListener('pointerdown', activity)

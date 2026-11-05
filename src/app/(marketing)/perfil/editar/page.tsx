@@ -102,7 +102,7 @@ function ProfileForm({ profile }: { profile: ProfileRow }) {
     <FormSection title="Privacidade">
       <label className="flex items-start gap-3">
         <input type="checkbox" checked={visibility === true} disabled={saving || visibility === null}
-          onChange={(event) => setVisibility(event.target.checked)} aria-describedby="profile-presence-help" className="mt-1 size-4 accent-primary" />
+          id="profile-presence" onChange={(event) => setVisibility(event.target.checked)} aria-describedby="profile-presence-help" className="mt-1 size-4 scroll-mt-24 accent-primary" />
         <span><span className="block text-sm font-semibold">Mostrar meu status online</span>
           <span id="profile-presence-help" className="block text-xs text-muted-foreground">Permitir que seus amigos vejam quando você está online e sua última atividade.</span>
         </span>

@@ -261,21 +261,21 @@ export function useProjectApplications(projectId: string | undefined, userId: st
   const applications = useApplications(projectId ?? null, Boolean(projectId && userId), userId)
   const own = applications.items.filter((item) => item.user_id === userId)
   const current = own.find(active)
-  return { ...applications, current, previous: current ?? own[0], approved: own.some((item) => item.status === 'approved') }
+  return { ...applications, current, previous: current ?? own[0] }
 }
 
 export function ApplyButton({ projectId, title, vacancies, userId, canApply, isVisitor, applications, target, setTarget }: {
   projectId: string; title: string; vacancies: Vacancy[]; userId?: string; canApply: boolean; isVisitor: boolean
   applications: ReturnType<typeof useProjectApplications>; target: string | null; setTarget: (target: string | null) => void
 }) {
-  const { reload, error, loading, current, previous, approved } = applications
+  const { reload, error, loading, current, previous } = applications
   const [selection, setSelected] = useState<string[] | null>(null)
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
   const [feedback, setFeedback] = useState<string | null>(null)
   const options = vacancies.filter(hasPositions)
   const selected = selection ?? (target ? [target] : [])
-  const available = options.length > 0 && canApply && !approved
+  const available = options.length > 0 && canApply
   function close() {
     setSelected(null)
     setFeedback(null)

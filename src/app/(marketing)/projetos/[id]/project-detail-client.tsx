@@ -55,6 +55,7 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
   const [commentsCount, setCommentsCount] = useState(0)
   // Membership do usuário atual no projeto (para gating de UI).
   const [membership, setMembership] = useState<CurrentMembership | null>(null)
+  const [checkedMembership, setCheckedMembership] = useState<string | null>(null)
 
   const [members, setMembers] = useState<ProjectPublicMemberRow[]>([])
   const { vacancies, error: vacancyError, reload: reloadVacancies } = useVacancies(project?.id)
@@ -146,13 +147,16 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
     }
     try {
       const client = getSupabaseClient()
-      const { data } = await client
+      const { data, error } = await client
         .from('project_public_members')
         .select('role, display_role, badge_color')
         .eq('project_id', project.id)
         .eq('user_id', user.id)
         .eq('status', 'active')
         .maybeSingle()
+
+      if (error) throw error
+      setCheckedMembership(project.id + ':' + user.id)
 
       if (data) {
         setMembership({
@@ -169,6 +173,7 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
       }
     } catch {
       setMembership(null)
+      setCheckedMembership(null)
     }
   }, [project, user])
 
@@ -188,7 +193,8 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
 
   const [canEditProject, setCanEditProject] = useState(false)
   const isMember = Boolean(membership) || canEditProject
-  const isLoggedNonMember = isAuthenticated && !isMember && !sessionLoading
+  const isLoggedNonMember = isAuthenticated && !isMember && !sessionLoading &&
+    checkedMembership === project?.id + ':' + user?.id
   const isVisitor = !isAuthenticated && !sessionLoading
 
   // -------------------------------------------------------------------------
@@ -456,7 +462,7 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
             />
 
             <VacancySummary vacancies={vacancies} error={vacancyError}
-              onApply={isLoggedNonMember && !applications.loading && !applications.error && !applications.current && !applications.approved
+              onApply={isLoggedNonMember && !applications.loading && !applications.error && !applications.current
                 ? setApplicationTarget : undefined} />
           </div>
         </aside>

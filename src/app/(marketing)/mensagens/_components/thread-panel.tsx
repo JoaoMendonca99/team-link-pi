@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import Link from 'next/link'
+import { Fragment, useEffect, useRef } from 'react'
 import {
   ArrowLeft,
   Loader2,
@@ -11,6 +12,7 @@ import {
   X,
 } from 'lucide-react'
 
+import { formatMessageTime, MessageDay } from '@/components/chat/message-time'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { UserAvatar } from '@/components/team-link/user-avatar'
@@ -20,11 +22,6 @@ import type { ChatConversationListItem, ChatThreadMessage } from '@/lib/chat/typ
 
 const MESSAGE_MAX_LENGTH = 2000
 
-function formatMessageTime(iso: string): string {
-  const date = new Date(iso)
-  if (Number.isNaN(date.getTime())) return ''
-  return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-}
 
 export function ThreadPanel({
   projectTitle,
@@ -200,7 +197,7 @@ export function ThreadPanel({
           </div>
         ) : (
           <ul className="flex flex-col gap-3">
-            {messages.map((message) => {
+            {messages.map((message, index) => {
               const isOwn = currentUserId === message.sender_id
               const authorName = isOwn
                 ? currentUserName
@@ -208,50 +205,49 @@ export function ThreadPanel({
               const avatarUrl = isOwn
                 ? currentUserAvatar
                 : message.author?.avatar_url ?? undefined
+              const profileHref = "/usuarios/" + message.sender_id
               return (
-                <li
-                  key={message.id}
-                  className={cn(
-                    'flex w-full items-end gap-2',
-                    isOwn ? 'justify-end' : 'justify-start',
-                  )}
-                >
-                  {!isOwn ? (
-                    <UserAvatar
-                      name={authorName}
-                      imageUrl={avatarUrl}
-                      sizeClassName="h-8 w-8"
-                      ring={false}
-                    />
-                  ) : null}
-                  <div
+                <Fragment key={message.id}>
+                  <MessageDay value={message.created_at} previous={messages[index - 1]?.created_at} />
+                  <li
                     className={cn(
-                      'max-w-[min(78%,calc(100vw-5rem))] rounded-2xl px-3.5 py-2.5 text-sm shadow-sm',
-                      isOwn
-                        ? 'rounded-br-md bg-primary text-primary-foreground'
-                        : 'rounded-bl-md bg-card text-card-foreground border border-border/60',
+                      'flex w-full items-end gap-2',
+                      isOwn ? 'justify-end' : 'justify-start',
                     )}
                   >
-                    {!isOwn ? (
-                      <p className="mb-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        {authorName}
-                      </p>
-                    ) : null}
-                    <p className="whitespace-pre-wrap break-words leading-relaxed">
-                      {message.content}
-                    </p>
-                    <p
+                    <Link href={profileHref} aria-label={"Perfil de " + authorName} className="shrink-0 rounded-full">
+                      <UserAvatar
+                        name={authorName}
+                        imageUrl={avatarUrl}
+                        sizeClassName="h-8 w-8"
+                        ring={false}
+                      />
+                    </Link>
+                    <div
                       className={cn(
-                        'mt-1 text-[10px] tabular-nums',
+                        'max-w-[min(78%,calc(100vw-5rem))] rounded-2xl px-3.5 py-2.5 text-sm shadow-sm',
                         isOwn
-                          ? 'text-primary-foreground/75'
-                          : 'text-muted-foreground',
+                          ? 'rounded-br-md bg-primary text-primary-foreground'
+                          : 'rounded-bl-md bg-card text-card-foreground border border-border/60',
                       )}
                     >
-                      {formatMessageTime(message.created_at)}
-                    </p>
-                  </div>
-                </li>
+                      <Link href={profileHref} className="mb-0.5 block break-words text-[11px] font-semibold hover:underline">{authorName}</Link>
+                      <p className="whitespace-pre-wrap break-words leading-relaxed">
+                        {message.content}
+                      </p>
+                      <p
+                        className={cn(
+                          'mt-1 text-[10px] tabular-nums',
+                          isOwn
+                            ? 'text-primary-foreground/75'
+                            : 'text-muted-foreground',
+                        )}
+                      >
+                        {formatMessageTime(message.created_at)}
+                      </p>
+                    </div>
+                  </li>
+                </Fragment>
               )
             })}
           </ul>

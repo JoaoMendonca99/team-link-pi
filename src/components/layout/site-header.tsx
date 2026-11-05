@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useCallback, useEffect, useState } from "react"
-import { Link2, LogOut, Menu, Moon, Sun, X } from "lucide-react"
+import { Briefcase, Compass, Home, Info, Link2, LogOut, Menu, MessageCircle, Moon, Plus, Sun, X, CircleHelp } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -22,11 +22,11 @@ import { useSupabaseSession } from "@/hooks/use-supabase-session"
 import { cn } from "@/lib/utils"
 
 const primaryLinks = [
-  { href: "/", label: "Início" },
-  { href: "/explorar", label: "Explorar" },
-  { href: "/nova-ideia", label: "Nova Ideia" },
-  { href: "/sobre", label: "Sobre" },
-  { href: "/ajuda", label: "Ajuda" },
+  { href: "/", label: "Início", icon: Home },
+  { href: "/explorar", label: "Explorar", icon: Compass },
+  { href: "/nova-ideia", label: "Nova Ideia", icon: Plus },
+  { href: "/sobre", label: "Sobre", icon: Info },
+  { href: "/ajuda", label: "Ajuda", icon: CircleHelp },
 ]
 
 function HeaderShell({
@@ -46,6 +46,27 @@ function HeaderShell({
     )
   }
   return <Container className={className}>{children}</Container>
+}
+
+function PresenceNotice({ userId }: { userId: string }) {
+  const key = 'team-link:presence-default-notice:' + userId
+  const [visible, setVisible] = useState(false)
+
+  useEffect(() => {
+    try { setVisible(localStorage.getItem(key) !== 'read') }
+    catch { setVisible(true) }
+  }, [key])
+
+  if (!visible) return null
+  return <aside aria-label="Aviso de privacidade" className="border-b border-border bg-muted/60">
+    <Container className="flex items-center gap-2 py-2 text-xs text-muted-foreground">
+      <p className="min-w-0 flex-1">O status online passou a vir ativado por padrão, inclusive nas contas existentes. Só amigos aceitos podem ver sua presença. <Link href="/perfil/editar#profile-presence" className="font-semibold text-primary underline">Alterar em Privacidade</Link></p>
+      <Button type="button" variant="ghost" size="icon" className="size-8 shrink-0" aria-label="Dispensar aviso de privacidade" onClick={() => {
+        try { localStorage.setItem(key, 'read') } catch { /* The dismissal still applies for this session. */ }
+        setVisible(false)
+      }}><X className="size-4" aria-hidden /></Button>
+    </Container>
+  </aside>
 }
 
 export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
@@ -238,6 +259,7 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
           </div>
         </HeaderShell>
       </header>
+      {user && !fullBleed && <PresenceNotice key={user.id} userId={user.id} />}
 
       {mobileOpen ? (
         <div
@@ -284,17 +306,23 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
             </HeaderShell>
           </div>
 
-          <div className="flex-1 overflow-y-auto bg-background">
-            <HeaderShell fullBleed={fullBleed} className="flex flex-col gap-8 py-8">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-background">
+            <HeaderShell fullBleed={fullBleed} className="flex flex-col gap-4 py-5">
+              {isAuthenticated && (
+                <Link href="/perfil" onClick={closeMobile} className="flex items-center gap-3 rounded-2xl border border-card-outline bg-card p-3 hover:bg-muted">
+                  <UserAvatar name={displayName} imageUrl={avatarUrl} sizeClassName="h-12 w-12 shrink-0" />
+                  <span className="min-w-0 break-words text-sm font-semibold">{displayName}</span>
+                </Link>
+              )}
               <nav aria-label="Navegação principal" className="flex flex-col gap-1 text-base font-semibold">
                 {primaryLinks.map((item) => (
                   <Link
                     key={item.href}
                     href={item.href}
                     onClick={closeMobile}
-                    className="rounded-xl px-4 py-3 text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/45"
+                    className="flex items-center gap-3 rounded-xl px-4 py-3 text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/45"
                   >
-                    {item.label}
+                    <item.icon className="size-4 text-muted-foreground" aria-hidden /> {item.label}
                   </Link>
                 ))}
               </nav>
@@ -303,24 +331,11 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
 
               {isAuthenticated ? (
                 <div className="flex flex-col gap-3">
-                  <div className="flex items-center gap-3 rounded-2xl border border-card-outline bg-card p-3">
-                    <UserAvatar name={displayName} imageUrl={avatarUrl} sizeClassName="h-12 w-12" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold">{displayName}</p>
-                      <p className="truncate text-xs text-muted-foreground">{displayEmail}</p>
-                    </div>
-                  </div>
                   <Button asChild variant="secondary" className="w-full font-semibold" onClick={closeMobile}>
-                    <Link href="/perfil">Perfil</Link>
+                    <Link href="/meus-projetos"><Briefcase aria-hidden /> Meus projetos</Link>
                   </Button>
                   <Button asChild variant="secondary" className="w-full font-semibold" onClick={closeMobile}>
-                    <Link href="/meus-projetos">Meus projetos</Link>
-                  </Button>
-                  <Button asChild variant="secondary" className="w-full font-semibold" onClick={closeMobile}>
-                    <Link href="/mensagens">Mensagens</Link>
-                  </Button>
-                  <Button asChild variant="outline" className="w-full font-semibold" onClick={closeMobile}>
-                    <Link href="/nova-ideia">Criar ideia</Link>
+                    <Link href="/mensagens"><MessageCircle aria-hidden /> Mensagens</Link>
                   </Button>
                   <Button
                     type="button"
@@ -341,9 +356,6 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
                   </Button>
                   <Button asChild className="w-full font-semibold" onClick={closeMobile}>
                     <Link href="/cadastro">Cadastrar</Link>
-                  </Button>
-                  <Button asChild variant="ghost" className="w-full font-semibold" onClick={closeMobile}>
-                    <Link href="/nova-ideia">Criar ideia</Link>
                   </Button>
                 </div>
               )}

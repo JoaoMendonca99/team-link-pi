@@ -2,10 +2,11 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
 import { ArrowLeft, MessageCircle, Send } from 'lucide-react'
 
 import { PresenceLabel } from '@/components/profile/friendships'
+import { formatMessageTime, MessageDay } from '@/components/chat/message-time'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -262,13 +263,15 @@ export function FriendThread({ chat, profile, userId, onChange, onBack }: {
     <header className="flex min-w-0 shrink-0 items-center gap-3 border-b border-border p-3">
       {onBack ? <Button variant="ghost" size="icon" onClick={onBack} aria-label="Voltar às conversas"><ArrowLeft aria-hidden /></Button> :
         <Button asChild variant="ghost" size="icon" className="lg:hidden"><Link href={baseUrl} aria-label="Voltar às conversas"><ArrowLeft aria-hidden /></Link></Button>}
-      <UserAvatar name={nameOf(chat)} imageUrl={chat.avatar_url ?? undefined} sizeClassName="size-10 shrink-0" />
-      <div className="min-w-0">
-        <Link href={'/usuarios/' + chat.friend_id} className="block truncate font-semibold hover:underline">{nameOf(chat)}</Link>
-        {chat.can_send && <PresenceLabel lastActivity={chat.last_activity} showPrivate={Boolean(onBack)} />}
-      </div>
+      <Link href={'/usuarios/' + chat.friend_id} className="flex min-w-0 items-center gap-3 hover:underline">
+        <UserAvatar name={nameOf(chat)} imageUrl={chat.avatar_url ?? undefined} sizeClassName="size-10 shrink-0" />
+        <span className="min-w-0">
+          <span className="block truncate font-semibold">{nameOf(chat)}</span>
+          {chat.can_send && <PresenceLabel lastActivity={chat.last_activity} showPrivate={Boolean(onBack)} />}
+        </span>
+      </Link>
     </header>
-    <div ref={scroll} className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-3 sm:p-5">
+    <div ref={scroll} className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-3 [overflow-anchor:none] sm:p-5">
       {error && <div className="space-y-2"><p role="alert" className="text-sm text-destructive">{error}</p>
         <Button size="sm" variant="outline" onClick={() => setRetry((value) => value + 1)}>Tentar novamente</Button></div>}
       {!loaded && !error && <p role="status">Carregando histórico…</p>}
@@ -276,18 +279,25 @@ export function FriendThread({ chat, profile, userId, onChange, onBack }: {
       {hasOlder && <Button type="button" size="sm" variant="ghost" disabled={olderLoading} onClick={() => void loadOlder()}>
         {olderLoading ? 'Carregando…' : 'Carregar mensagens antigas'}
       </Button>}
-      <ol className="space-y-3" aria-label="Histórico de mensagens">{messages.map((message) => {
+      <ol className="space-y-3" aria-label="Histórico de mensagens">{messages.map((message, index) => {
         const mine = message.sender_id === userId
         const name = mine ? profile?.full_name || 'Você' : nameOf(chat)
-        return <li key={message.id} className={'flex min-w-0 items-start gap-2 ' + (mine ? 'flex-row-reverse' : '')}>
-          <UserAvatar name={name} imageUrl={(mine ? profile?.avatar_url : chat.avatar_url) ?? undefined} sizeClassName="size-8 shrink-0" ring={false} />
-          <div className={'min-w-0 max-w-[85%] rounded-2xl px-3 py-2 ' + (mine ? 'bg-primary/15' : 'bg-muted')}>
-            <div className="flex flex-wrap items-baseline gap-x-2 text-xs text-muted-foreground">
-              <span className="break-words font-semibold text-foreground">{name}</span><time dateTime={message.created_at}>{time(message.created_at)}</time>
+        const profileHref = '/usuarios/' + message.sender_id
+        return <Fragment key={message.id}>
+          <MessageDay value={message.created_at} previous={messages[index - 1]?.created_at} />
+          <li className={'flex min-w-0 items-start gap-2 ' + (mine ? 'flex-row-reverse' : '')}>
+            <Link href={profileHref} aria-label={'Perfil de ' + name} className="shrink-0 rounded-full">
+              <UserAvatar name={name} imageUrl={(mine ? profile?.avatar_url : chat.avatar_url) ?? undefined} sizeClassName="size-8" ring={false} />
+            </Link>
+            <div className={'min-w-0 max-w-[85%] rounded-2xl px-3 py-2 ' + (mine ? 'bg-primary/15' : 'bg-muted')}>
+              <div className="flex flex-wrap items-baseline gap-x-2 text-xs text-muted-foreground">
+                <Link href={profileHref} className="break-words font-semibold text-foreground hover:underline">{name}</Link>
+                <time dateTime={message.created_at}>{formatMessageTime(message.created_at)}</time>
+              </div>
+              <p className="whitespace-pre-wrap text-sm [overflow-wrap:anywhere]">{message.body}</p>
             </div>
-            <p className="whitespace-pre-wrap text-sm [overflow-wrap:anywhere]">{message.body}</p>
-          </div>
-        </li>
+          </li>
+        </Fragment>
       })}</ol>
     </div>
     {chat.can_send ? <form onSubmit={(event) => void send(event)} className="shrink-0 space-y-2 border-t border-border p-3">
