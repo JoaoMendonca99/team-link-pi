@@ -57,6 +57,7 @@ import { PanelGithubSection } from './_components/panel-github-section'
 import { PanelSupportSection } from './_components/panel-support-section'
 import { useProjectLeadership } from '@/hooks/use-project-leadership'
 import { ProjectTools, type WorkspaceModule } from './_components/project-tools'
+import { ActivityOverview, PanelTeam, usePanelSummary } from './_components/panel-overview'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -207,6 +208,7 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
   const canEditProject = isManager
   const canViewSupport = isManager || membership?.supportAccess === true
   const projectId = project?.id
+  const overview = usePanelSummary(projectId, user?.id, hasPanelAccess && membershipLoaded)
   const recruitmentHref = project ? '/projetos/' + project.slug + '/painel/candidaturas' : ''
   const githubOpen = opened === 'github' && modules.includes('github')
   const supportOpen = opened === 'support' && modules.includes('support')
@@ -522,7 +524,9 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
         </Container>
       </div>
 
-      <Container className="space-y-5 py-5 sm:py-6">
+      <Container className="grid items-start gap-5 py-5 sm:py-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]">
+        <div className="min-w-0 space-y-5">
+        <ActivityOverview data={overview.data} error={overview.error} slug={project.slug} />
         <ProjectTools active={modules} manager={isManager} loading={modulesLoading} error={modulesError}
           open={(module) => {
             if (module === 'activities') router.push('/projetos/' + project.slug + '/painel/atividades')
@@ -571,6 +575,8 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
             />
           ) : null}
         </section>}
+        </div>
+        <PanelTeam data={overview.data} error={overview.error} now={overview.now} />
       </Container>
 
       <ConnectGithubDialog

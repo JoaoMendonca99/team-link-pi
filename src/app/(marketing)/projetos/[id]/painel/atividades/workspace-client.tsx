@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -32,6 +33,8 @@ function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
   const [stagesOpen, setStagesOpen] = useState(false)
   const [revision, setRevision] = useState(0)
   const sequence = useRef(0)
+  const navigationApplied = useRef<string | null>(null)
+  const navigationKey = useSearchParams().toString()
   const projectId = data?.project.id
   const load = useCallback(async () => {
     const seq = ++sequence.current
@@ -46,6 +49,19 @@ function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
     }
   }, [slug])
   useEffect(() => { void load(); return () => { sequence.current += 1 } }, [load])
+  useEffect(() => {
+    if (!data || navigationApplied.current === navigationKey) return
+    navigationApplied.current = navigationKey
+    const query = new URLSearchParams(navigationKey)
+    setTask(null);setGoal(null)
+    const kind = query.get('estado')
+    if (kind && Object.hasOwn(kinds,kind)) { setTab('Kanban'); setFilter(kind) }
+    const taskId = query.get('atividade')
+    const goalId = query.get('meta')
+    if (taskId && data.tasks.some(item=>item.id===taskId)) { setTab('Kanban');setTask(taskId) }
+    else if (goalId && data.goals.some(item=>item.id===goalId)) { setTab('Metas');setGoal(goalId) }
+    else if (taskId || goalId) setError('Este item não está mais disponível no projeto.')
+  }, [data,navigationKey])
   useEffect(() => {
     if (!projectId) return
     let scheduled: number | undefined
@@ -94,7 +110,7 @@ function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
     const progress = goalProgress(item, tasks, stages)
     return <button key={item.id} type="button" onClick={() => setGoal(item.id)} className="space-y-2 rounded-2xl border border-card-outline bg-card p-4 text-left hover:border-primary">
       <h3 className="break-words font-semibold">{item.title}</h3><p className="text-xs text-muted-foreground">{activityDate(item.due_at)}</p>
-      <p className="text-sm">{progress.percent === 100 ? 'Concluída' : overdue(item.due_at, false) ? 'Atrasada' : 'Em andamento'} · {progress.percent}%</p>
+      <p className="text-sm">{progress.percent === 100 ? 'Concluída' : overdue(item.due_at, false) ? 'Atrasada' : progress.actual === 0 ? 'Pendente' : 'Em andamento'} · {progress.percent}%</p>
       <progress aria-label={'Progresso de ' + item.title} max={100} value={progress.percent} className="h-2 w-full accent-primary" />
       <p className="text-xs">{progress.actual}/{progress.total} {item.kind === 'numeric' ? item.unit : 'atividades'}</p>
       <p className="text-xs text-muted-foreground">{item.owners.map((id) => members.find((person) => person.id === id)?.name || 'Integrante indisponível').join(', ') || 'Sem responsáveis'}</p>
@@ -141,7 +157,7 @@ function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
         <p className="text-sm text-muted-foreground">{entry.label}</p><p className="text-2xl font-bold">{entry.value}</p></button>)}</div>
       <section className="space-y-2"><h2 className="font-semibold">Progresso geral · {percent}%</h2><progress aria-label="Progresso geral" value={percent} max={100} className="h-3 w-full accent-primary" /></section>
       <section className="space-y-3"><h2 className="font-semibold">Metas</h2>
-        <p className="text-sm text-muted-foreground">{goals.length} total · {goals.filter((g) => goalProgress(g,tasks,stages).percent===100).length} concluídas · {goals.filter((g) => goalProgress(g,tasks,stages).percent<100).length} em andamento · {goals.filter((g) => overdue(g.due_at,goalProgress(g,tasks,stages).percent===100)).length} atrasadas</p>
+        <p className="text-sm text-muted-foreground">{goals.length} total · {goals.filter((g) => goalProgress(g,tasks,stages).percent===100).length} concluídas · {goals.filter((g) => { const p=goalProgress(g,tasks,stages);return p.actual>0&&p.percent<100 }).length} em andamento · {goals.filter((g) => goalProgress(g,tasks,stages).actual===0).length} pendentes · {goals.filter((g) => overdue(g.due_at,goalProgress(g,tasks,stages).percent===100)).length} atrasadas</p>
         {goalCards(goals.slice(0,6))}{!goals.length && <p className="text-sm text-muted-foreground">Nenhuma meta cadastrada.</p>}
       </section>
       <section className="space-y-3"><h2 className="font-semibold">Atenção da equipe</h2><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

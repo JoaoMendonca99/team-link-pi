@@ -45,17 +45,14 @@ export function ProjectTools({ active, manager, loading, error, open, toggle }: 
 
   return <section aria-label="Ferramentas do projeto" className="space-y-4">
     <header className="flex flex-wrap items-center justify-between gap-2">
-      <h2 className="text-xl font-semibold">Ferramentas do projeto</h2>
+      <h2 className="text-lg font-semibold">Funcionalidades opcionais</h2>
       {manager && <Button type="button" size="sm" variant="outline" onClick={showCatalog}><Settings2 aria-hidden /> Gerenciar funcionalidades</Button>}
     </header>
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     {loading ? <p role="status" className="text-sm text-muted-foreground">Carregando ferramentas…</p> :
-      !error && !active.length ? <div className="space-y-3 rounded-2xl border border-dashed border-border p-5">
-        <p className="text-sm text-muted-foreground">Este projeto ainda não possui ferramentas ativadas.</p>
-        {manager && <Button type="button" size="sm" onClick={showCatalog}>Adicionar funcionalidade</Button>}
-      </div> : null}
+      !error && !active.some(module=>module!=='activities') ? <p className="text-sm text-muted-foreground">Nenhuma funcionalidade opcional adicionada.</p> : null}
     <ul className="grid gap-3 sm:grid-cols-2">
-      {catalog.filter((tool) => active.includes(tool.id)).map((tool) => <li key={tool.id} className="space-y-3 rounded-2xl border border-card-outline bg-card p-4">
+      {catalog.filter((tool) => tool.id!=='activities' && active.includes(tool.id)).map((tool) => <li key={tool.id} className="space-y-3 rounded-2xl border border-card-outline bg-card p-4">
         <div className="flex items-start gap-3"><tool.icon aria-hidden className="mt-0.5 size-5 shrink-0 text-primary" />
           <div><h3 className="font-semibold">{tool.name}</h3><p className="text-sm text-muted-foreground">{tool.description}</p></div>
         </div>
@@ -82,7 +79,7 @@ export function ProjectTools({ active, manager, loading, error, open, toggle }: 
         <div className="flex items-start gap-3"><tool.icon className="size-5 shrink-0 text-primary" aria-hidden />
           <div><h3 className="font-semibold">{tool.name}</h3><p className="text-sm text-muted-foreground">{tool.description}</p></div>
         </div>
-        {active.includes(tool.id) ? <div className="flex flex-wrap gap-2">
+        {tool.id==='activities' ? <p className="text-sm font-medium text-primary">Funcionalidade padrão · obrigatória</p> : active.includes(tool.id) ? <div className="flex flex-wrap gap-2">
           <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => { dialog.current?.close(); open(tool.id) }}>Configurar {tool.name}</Button>
           <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => { setFailure(''); setRemoving(tool.id) }}>Remover {tool.name}</Button>
         </div> : <Button type="button" size="sm" disabled={busy} onClick={() => void change(tool.id, true)}>Adicionar {tool.name}</Button>}
