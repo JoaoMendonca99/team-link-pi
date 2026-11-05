@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/components/providers/theme-provider"
 import { SiteFooter } from "@/components/layout/site-footer"
 import { SiteHeader } from "@/components/layout/site-header"
 import { ProjectChatWidget } from "@/components/chat/project-chat-widget"
+import { PushSettings } from '@/components/notifications/push-settings'
 
 function normalizePathname(pathname: string | null): string {
   if (!pathname) return ""
@@ -36,6 +37,7 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
         {hideMarketingFooter ? null : <SiteFooter />}
       </div>
       {isMessagesPage ? null : <ProjectChatWidget />}
+      <PushSettings automatic />
     </ThemeProvider>
   )
 }

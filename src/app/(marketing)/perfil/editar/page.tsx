@@ -124,6 +124,7 @@ export default function EditProfilePage() {
     <Container size="article" className="space-y-5 py-8">
       <Button asChild variant="ghost"><Link href="/perfil"><ArrowLeft aria-hidden /> Perfil</Link></Button>
       <h1 className="text-2xl font-bold">Editar perfil</h1>
+      <Link className="text-sm text-primary underline" href="/perfil/notificacoes">Configurar notificações</Link>
       {loading ? <p role="status">Carregando perfil…</p> : !isAuthenticated ?
         <Button asChild><Link href="/login">Entre na sua conta</Link></Button> : profile ?
           <ProfileForm key={profile.id} profile={profile} /> :

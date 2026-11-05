@@ -16,6 +16,9 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
+  manifest: '/manifest.webmanifest',
+  icons: { apple:'/icons/icon-192.png' },
+  appleWebApp: { capable:true,title:'Team Link',statusBarStyle:'default' },
   metadataBase: new URL("https://team-link.vercel.app"),
   title: {
     default: "Team Link",

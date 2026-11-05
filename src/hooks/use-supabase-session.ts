@@ -6,6 +6,7 @@ import type { Session, User } from "@supabase/supabase-js"
 import { PROFILE_CHANGED, PROFILE_FIELDS } from "@/lib/profile-social"
 import { getSupabaseClient, isSupabaseConfigured } from "@/lib/supabase/client"
 import type { ProfileRow } from "@/types/database"
+import { disablePush } from '@/lib/push'
 
 export interface SupabaseSessionState {
   /** True enquanto a sessão inicial e o profile estão sendo carregados. */
@@ -125,6 +126,9 @@ export function useSupabaseSession(): SupabaseSessionState {
   const signOut = useCallback(async () => {
     if (!isSupabaseConfigured()) return
     const client = getSupabaseClient()
+    await disablePush()
+    const { data } = await client.auth.getUser()
+    if(data.user)sessionStorage.removeItem('push-visit:'+data.user.id)
     await client.auth.signOut()
   }, [])
 
