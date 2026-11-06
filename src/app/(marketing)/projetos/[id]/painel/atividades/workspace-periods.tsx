@@ -5,6 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { taskKind, kinds, type Period, type Workspace } from '@/lib/activities'
+import {PeriodAcademicFields} from '@/components/team-link/academic-fields'
+import {periodDraft,emptyDefaults,type AcademicSpace} from '@/lib/projects/academics'
+import {getSupabaseClient} from '@/lib/supabase/client'
 import { Dialog } from './workspace-editors'
 
 type Mutation = (action: string, input: Record<string, unknown>) => Promise<string>
@@ -12,7 +15,9 @@ const selectClass='block w-full rounded-xl border border-border bg-background p-
 
 export function PeriodManager({data,busy,mutate,close}:{data:Workspace;busy:boolean;mutate:Mutation;close:()=>void}) {
   const [editing,setEditing]=useState<Period|null>()
-  const [draft,setDraft]=useState({name:'',description:'',starts_on:'',ends_on:'',activate:true})
+  const [draft,setDraft]=useState(periodDraft)
+  const [academic,setAcademic]=useState<AcademicSpace|null>(null)
+  useEffect(()=>{let alive=true;void getSupabaseClient().rpc('get_project_academics',{p_project:data.project.id}).then(({data,error})=>{if(alive&&!error)setAcademic(data as AcademicSpace)});return()=>{alive=false}},[data.project.id])
   const [error,setError]=useState('')
   async function perform(action:string,input:Record<string,unknown>){
     setError('')
@@ -20,7 +25,7 @@ export function PeriodManager({data,busy,mutate,close}:{data:Workspace;busy:bool
   }
   function edit(period:Period|null){
     setEditing(period)
-    setDraft({name:period?.name??'',description:period?.description??'',starts_on:period?.starts_on??'',ends_on:period?.ends_on??'',activate:!period})
+    setDraft(periodDraft(period))
   }
   return <Dialog title="Gerenciar períodos" busy={busy} close={close}>
     <p className="text-sm text-muted-foreground">Cada período mantém suas próprias atividades, metas e progresso. Ativar um período não transfere nem copia registros.</p>
@@ -33,11 +38,12 @@ export function PeriodManager({data,busy,mutate,close}:{data:Workspace;busy:bool
         {!p.is_active&&<Button size="sm" variant="outline" disabled={busy} onClick={()=>void perform('activate_period',{id:p.id,version:p.version})}>Definir como ativo</Button>}</div>
     </li>)}</ul>
     <Button disabled={busy} onClick={()=>edit(null)}>Novo período</Button>
-    {editing!==undefined&&<form className="space-y-3 rounded-xl border border-border p-3" onSubmit={e=>{e.preventDefault();void perform('save_period',{...draft,id:editing?.id,version:editing?.version})}}>
+    {editing!==undefined&&<form className="space-y-3 rounded-xl border border-border p-3" onSubmit={e=>{e.preventDefault();void perform('save_period',academic?.context==='academic'?draft:{id:draft.id,version:draft.version,name:draft.name,description:draft.description,starts_on:draft.starts_on,ends_on:draft.ends_on,activate:draft.activate})}}>
       <label className="block space-y-1 text-sm">Nome do período<Input required maxLength={160} value={draft.name} onChange={e=>setDraft({...draft,name:e.target.value})} /></label>
       <label className="block space-y-1 text-sm">Descrição do período<Textarea maxLength={4000} value={draft.description} onChange={e=>setDraft({...draft,description:e.target.value})} /></label>
       <div className="grid gap-3 sm:grid-cols-2"><label className="block text-sm">Data de início<Input type="date" value={draft.starts_on} onChange={e=>setDraft({...draft,starts_on:e.target.value})} /></label>
         <label className="block text-sm">Data de término<Input type="date" min={draft.starts_on||undefined} value={draft.ends_on} onChange={e=>setDraft({...draft,ends_on:e.target.value})} /></label></div>
+      {academic?.context==='academic'&&<PeriodAcademicFields draft={draft} onChange={setDraft} defaults={academic?.defaults??emptyDefaults} previous={!editing?data.periods.find(p=>p.is_active):undefined}/>}
       {!editing?.is_active&&<label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={draft.activate} onChange={e=>setDraft({...draft,activate:e.target.checked})} />Definir como período ativo</label>}
       <div className="flex gap-2"><Button disabled={busy}>Salvar período</Button><Button type="button" variant="ghost" onClick={()=>setEditing(undefined)}>Cancelar</Button></div>
     </form>}

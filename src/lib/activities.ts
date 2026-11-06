@@ -3,7 +3,7 @@ import { getSupabaseClient } from '@/lib/supabase/client'
 export type Kind = 'todo' | 'doing' | 'review' | 'done'
 export type Priority = 'low' | 'medium' | 'high' | 'urgent'
 export type Stage = { id: string; name: string; kind: Kind; position: number; version: number }
-export type Period = { id: string; name: string; description: string; starts_on: string | null; ends_on: string | null; is_active: boolean; version: number; task_count: number; goal_count: number }
+export type Period = import('./projects/academics').AcademicPeriod & { id: string; name: string; description: string; starts_on: string | null; ends_on: string | null; is_active: boolean; version: number; task_count: number; goal_count: number }
 export type Goal = { id: string; period_id: string; title: string; description: string; due_at: string | null; owners: string[]; kind: 'tasks' | 'numeric'; target: number; actual: number; unit: string; version: number }
 export type Task = { id: string; period_id: string; title: string; description: string; stage_id: string; assignees: string[]; due_at: string | null; priority: Priority; goal_id: string | null; reviewer_id: string | null; requires_review: boolean; version: number }
 export type ChecklistItem = { id: string; task_id: string; label: string; done: boolean; version: number }

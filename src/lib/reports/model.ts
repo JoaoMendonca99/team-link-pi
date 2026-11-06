@@ -3,6 +3,7 @@ export type RichNode = { type: string; text?: string; attrs?: Record<string, unk
 export type Reference = { id: string; kind: 'book' | 'chapter' | 'article' | 'web' | 'institution' | 'thesis' | 'event'; author: string; call: string; title: string; year: string; publisher?: string; place?: string; container?: string; volume?: string; issue?: string; pages?: string; doi?: string; url?: string; accessed?: string; details?: string }
 export type Section = { id: string; title: string; level: 1 | 2 | 3; zone: 'pre' | 'text' | 'post'; numbered: boolean; required: boolean; content: RichNode }
 export type Report = {
+  academic?: {periodId:string;confirmedAt:string;periodVersion:number;projectRevision:number;snapshot:Pick<Report['meta'],'institution'|'course'|'city'|'discipline'|'advisor'|'year'|'period'>};
   assistant?: { step:number; furthest?:number; section?:string; selections:import('./assistant').SourceSelection[] };
   schema: 1; kind: 'academic' | 'tap' | 'abstract'; profile: 'abnt' | 'uniso2023' | 'custom';
   meta: { institution: string; course: string; discipline: string; title: string; subtitle: string; authors: string; advisor: string; city: string; year: string; period: string; nature: string; orcid: string; keywords: string };

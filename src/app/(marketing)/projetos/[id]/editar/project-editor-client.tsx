@@ -6,6 +6,7 @@ import { ArrowLeft } from 'lucide-react'
 
 import { Container } from '@/components/layout/container'
 import { PageHeader } from '@/components/team-link/page-header'
+import {ProjectAcademicSetup} from '@/components/team-link/project-academic-setup'
 import { ProjectForm } from '@/components/team-link/project-form'
 import type { Vacancy } from '@/components/team-link/recruitment'
 import { Button } from '@/components/ui/button'
@@ -90,8 +91,8 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
               <Button onClick={() => { setResult({ state: 'loading' }); setRetry((value) => value + 1) }}>Tentar novamente</Button>
             </div>
           )
-          : result.state === 'ready' ? <ProjectForm key={result.data.project.id} project={result.data.project}
-              initialTags={result.data.tags} initialVacancies={result.data.vacancies} /> : null}
+          : result.state === 'ready' ? <div className="space-y-6"><div className="mx-auto max-w-4xl"><ProjectAcademicSetup projectId={result.data.project.id}/></div><ProjectForm key={result.data.project.id} project={result.data.project}
+              initialTags={result.data.tags} initialVacancies={result.data.vacancies} /></div> : null}
       </Container>
     </main>
   )

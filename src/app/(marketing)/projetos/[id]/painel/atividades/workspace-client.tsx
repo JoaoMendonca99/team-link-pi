@@ -96,7 +96,7 @@ function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
     if (!projectId) throw new Error('Projeto indisponível')
     setBusy(true)
     try {
-      const result = await activityRpc<string>('mutate_activity', { p_project: projectId, p_action: action, p_data: {...input,period_id:input.period_id??periodId,historical_edit:historyEditing} })
+      const result = await activityRpc<string>(['save_period','activate_period'].includes(action)?'save_project_period':'mutate_activity', { p_project: projectId, p_action: action, p_data: {...input,period_id:input.period_id??periodId,historical_edit:historyEditing} })
       await load()
       return result
     } catch (err) { await load(); throw err }

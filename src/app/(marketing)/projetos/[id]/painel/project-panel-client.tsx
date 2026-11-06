@@ -57,6 +57,7 @@ import { PanelGithubSection } from './_components/panel-github-section'
 import { PanelSupportSection } from './_components/panel-support-section'
 import { useProjectLeadership } from '@/hooks/use-project-leadership'
 import { ProjectTools, type WorkspaceModule } from './_components/project-tools'
+import {AcademicPeriodSummary} from '@/components/team-link/academic-period-summary'
 import { ActivityOverview, PanelTeam, usePanelSummary } from './_components/panel-overview'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -521,6 +522,7 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
             className="border-0 pb-0"
             actions={<ProjectStatusBadge status={project.status} />}
           />
+          <AcademicPeriodSummary projectId={project.id}/>
         </Container>
       </div>
 

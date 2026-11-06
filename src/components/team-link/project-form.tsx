@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { useState, type FormEvent, type ReactNode } from 'react'
 import { Plus, X } from 'lucide-react'
 
+import { AcademicDefaultsFields, PeriodAcademicFields } from './academic-fields'
+import { emptyDefaults, periodDraft } from '@/lib/projects/academics'
 import { ChipInput } from '@/components/team-link/chip-input'
 import { ProjectCard } from '@/components/team-link/project-card'
 import { FormSection } from '@/components/team-link/form-section'
@@ -61,6 +63,9 @@ export function ProjectForm({ project, initialTags = [], initialVacancies = [], 
   previewOwner?: string
 }) {
   const router = useRouter()
+  const [context,setContext]=useState('')
+  const [academicDefaults,setAcademicDefaults]=useState(emptyDefaults)
+  const [firstPeriod,setFirstPeriod]=useState(periodDraft)
   const [title, setTitle] = useState(project?.title ?? '')
   const [category, setCategory] = useState(project?.category ?? '')
   const [secondary, setSecondary] = useState(project?.secondary_categories ?? [])
@@ -109,7 +114,7 @@ export function ProjectForm({ project, initialTags = [], initialVacancies = [], 
 
     setSaving(true)
     try {
-      const { data, error: saveError } = await getSupabaseClient().rpc('save_project_form', {
+      const { data, error: saveError } = await getSupabaseClient().rpc('save_project_form_with_academics', {p_form: {
         p_project_id: project?.id ?? null,
         p_slug: slug,
         p_title: title,
@@ -125,10 +130,10 @@ export function ProjectForm({ project, initialTags = [], initialVacancies = [], 
           id: vacancy.id, title: vacancy.title, description: vacancy.description,
           skills: vacancy.skills, positions: Number(vacancy.positions), open: vacancy.open,
         })),
-      })
+      },p_academic:!project&&context?{context,defaults:academicDefaults,period:firstPeriod}:null})
       if (saveError) {
         setError(saveError.code === '23505' ? 'Já existe um projeto com esse endereço.'
-          : saveError.code === '23514' ? 'Confira os campos das categorias e das vagas.'
+          : saveError.code === '23514' ? 'Confira os campos do projeto, as datas do período e as vagas.'
           : saveError.message)
         setSaving(false)
         return
@@ -186,6 +191,10 @@ export function ProjectForm({ project, initialTags = [], initialVacancies = [], 
               helperText="Use assuntos e palavras-chave do projeto." maxItems={10} />
           </FormSection>
 
+          {!project&&<FormSection className={cardClass} title="Contexto do projeto" description="Independente das categorias e tags. As informações acadêmicas são opcionais.">
+            <label className="block space-y-2 text-sm">Contexto do projeto<select aria-label="Contexto do projeto" className="block w-full rounded-xl border bg-background p-2" value={context} onChange={e=>setContext(e.target.value)}><option value="">Não configurado</option><option value="academic">Acadêmico</option><option value="general">Geral / Profissional</option></select></label>
+            {context==='academic'&&<><AcademicDefaultsFields value={academicDefaults} onChange={setAcademicDefaults}/><details><summary className="cursor-pointer font-medium">Primeiro período acadêmico</summary><div className="mt-4 space-y-3"><label className="block text-sm">Nome ou identificação do semestre<Input maxLength={160} placeholder="Período inicial" value={firstPeriod.name} onChange={e=>setFirstPeriod({...firstPeriod,name:e.target.value})}/></label><div className="grid gap-3 sm:grid-cols-2">{(['starts_on','ends_on'] as const).map(key=><label key={key} className="block text-sm">{key==='starts_on'?'Data de início':'Data de término'}<Input type="date" value={firstPeriod[key]} onChange={e=>setFirstPeriod({...firstPeriod,[key]:e.target.value})}/></label>)}</div><PeriodAcademicFields draft={firstPeriod} onChange={setFirstPeriod} defaults={academicDefaults}/><p className="text-xs text-muted-foreground">Este será o período ativo inicial, compartilhado com atividades e relatórios. O módulo de atividades não precisa ser ativado.</p></div></details></>}
+          </FormSection>}
           <FormSection className={cardClass} title="Vagas do projeto" description="Defina os perfis e as habilidades de cada vaga.">
             {vacancies.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma vaga cadastrada.</p>}
             {vacancies.map((vacancy, index) => (

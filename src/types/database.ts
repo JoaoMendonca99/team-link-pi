@@ -83,6 +83,11 @@ export interface ProfileUpdate {
 // ============================================================================
 
 export interface ProjectRow {
+  project_context?: 'academic' | 'general' | null
+  academic_institution?: string | null
+  academic_course?: string | null
+  academic_city?: string | null
+  academic_revision?: number
   id: string
   owner_id: string
   title: string
