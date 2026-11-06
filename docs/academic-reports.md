@@ -35,3 +35,12 @@ Escritas são exclusivas de RPC autenticada com revisão esperada, autorização
 - Linhas de tabela maiores que uma página bloqueiam PDF e precisam ser divididas. Cabeçalho repete nas continuações; quadros usam moldura; tabelas numéricas não usam bordas verticais.
 - Não há listas automáticas de figuras/tabelas, notas de rodapé estruturadas ou edição simultânea em tempo real. Apêndices/anexos são seções pós-textuais configuradas manualmente.
 - Validação é estrutural e parcial; revisão normativa, acadêmica e institucional continua humana. Renderização DOCX depende de editor compatível; testes XML não substituem conferência visual.
+
+
+## Assistente guiado
+
+Criação e edição comum usam cinco etapas: Documento, Informações, Dados, Conteúdo e Finalizar. A edição avançada continua disponível sobre o mesmo objeto `schema: 1`. O campo opcional `assistant` guarda etapa, etapa mais avançada visitada, seção e retratos de registros confirmados. Não há migração ou alteração de permissões. Documentos antigos são abertos sem modificação automática; a posição inicial é derivada de seu estado quando não existe metadado do assistente.
+
+A seleção de fontes não insere texto. Somente uma segunda escolha explícita, no modal da seção atual, insere os registros desejados. A lista confirmada é preservada ao salvar o rascunho e não muda se a origem mudar. Campos acadêmicos sugeridos também exigem ação explícita. Tipo de documento exige escolha na criação; título é exigido para avançar da identificação, mas o salvamento de rascunho incompleto continua permitido. Todas as exigências de exportação permanecem no validador existente.
+
+Salvamento manual disponível no cabeçalho e no rodapé; não há autosave. Mudanças de etapa e de seção não apagam texto. O mesmo número de revisão esperado continua sendo enviado à RPC; falhas e conflitos mantêm os dados locais. A finalização continua sujeita às permissões de revisão existentes e não certifica conformidade ABNT.
