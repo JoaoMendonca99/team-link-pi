@@ -329,9 +329,10 @@ export function ApplyButton({ projectId, title, vacancies, userId, canApply, isV
   </>
 }
 
-export function MyApplications({ userId }: { userId: string }) {
+export function MyApplications({ userId, initialRequestId }: { userId: string; initialRequestId?:string|null }) {
   const { items, reload, error, loading, updates, connection } = useApplications(null, true, userId)
-  const [selected, setSelected] = useState<string | null>(null)
+  const [selected, setSelected] = useState<string | null>(initialRequestId??null)
+  useEffect(()=>{setSelected(initialRequestId??null)},[initialRequestId,userId])
   const item = items.find((entry) => entry.id === selected)
   return <section id="minhas-candidaturas" className={card}>
     <h2 className="text-lg font-semibold">Minhas candidaturas</h2>

@@ -212,7 +212,7 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
   const overview = usePanelSummary(projectId, user?.id, hasPanelAccess && membershipLoaded)
   const recruitmentHref = project ? '/projetos/' + project.slug + '/painel/candidaturas' : ''
   const githubOpen = opened === 'github' && modules.includes('github')
-  const supportOpen = opened === 'support' && modules.includes('support')
+  const supportOpen = opened === 'support' && modules.includes('support') && canViewSupport
 
   useEffect(() => {
     if (!hasPanelAccess || !projectId) return
@@ -230,7 +230,8 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
   }, [hasPanelAccess, projectId])
 
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get('ferramenta') === 'github') setOpened('github')
+    const tool=new URLSearchParams(window.location.search).get('ferramenta')
+    if(tool==='github'||tool==='support')setOpened(tool)
   }, [slug])
 
   useEffect(() => {

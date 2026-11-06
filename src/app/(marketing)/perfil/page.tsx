@@ -158,7 +158,7 @@ function ProfileContent() {
           </div>
         )}
         {tab === 'Amigos' && <FriendsPanel key={user.id} initialSection={params.get('secao') === 'recebidas' ? 'received' : 'accepted'} />}
-        {tab === 'Candidaturas' && <MyApplications key={user.id} userId={user.id} />}
+        {tab === 'Candidaturas' && <MyApplications key={user.id} userId={user.id} initialRequestId={params.get('candidatura')} />}
       </Container>
     </main>
   )

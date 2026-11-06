@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import {themeInitScript} from "@/lib/theme";
 
 const TEAM_LINK_DESCRIPTION =
   "Plataforma para publicação, descoberta e formação de equipes em projetos colaborativos";
@@ -64,8 +65,9 @@ export default function RootLayout({
   };
 
   return (
-    <html lang="pt-BR" suppressHydrationWarning>
+    <html lang="pt-BR" className="dark" style={{colorScheme:"dark"}} suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{__html:themeInitScript}} />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

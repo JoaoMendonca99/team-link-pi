@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { ArrowRight } from 'lucide-react'
 
+import {getSafeRedirectPath} from '@/lib/auth/redirect'
 import { AuthCard } from '@/components/team-link/auth-card'
 import { Container } from '@/components/layout/container'
 import { Button } from '@/components/ui/button'
@@ -18,12 +19,6 @@ const LOGIN_ERROR = 'Não foi possível entrar. Confira o e-mail e a senha e ten
 const RECOVERY_ERROR = 'Não foi possível solicitar a recuperação. Tente novamente.'
 const RECOVERY_NOTICE = 'Se houver uma conta para esse endereço, você receberá um link para redefinir a senha.'
 
-function getSafeRedirectPath(path: string | null): string {
-  if (!path || !path.startsWith('/') || path.startsWith('//') || /[\\\s]/.test(path)) {
-    return '/perfil'
-  }
-  return path
-}
 
 export function LoginClient() {
   const router = useRouter()

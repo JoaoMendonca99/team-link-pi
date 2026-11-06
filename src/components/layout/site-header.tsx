@@ -1,9 +1,9 @@
 "use client"
 
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { useCallback, useEffect, useState } from "react"
-import { Briefcase, Compass, Home, Info, Link2, LogOut, Menu, MessageCircle, Moon, Plus, Sun, X, CircleHelp } from "lucide-react"
+import { usePathname, useRouter } from "next/navigation"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { Briefcase, Compass, Home, Info, Link2, LogOut, Menu, MessageCircle, Moon, LayoutDashboard, Sun, X, CircleHelp } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -12,6 +12,9 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu"
 import { Container } from "@/components/layout/container"
 import { NotificationBell } from "@/components/notifications/notification-bell"
@@ -31,11 +34,19 @@ function PendingFriendshipBadge({ count, avatar = false }: { count: number; avat
 
 const primaryLinks = [
   { href: "/", label: "Início", icon: Home },
-  { href: "/explorar", label: "Explorar", icon: Compass },
-  { href: "/nova-ideia", label: "Nova Ideia", icon: Plus },
+  { href: "/explorar", label: "Projetos publicados", icon: Compass },
   { href: "/sobre", label: "Sobre", icon: Info },
   { href: "/ajuda", label: "Ajuda", icon: CircleHelp },
 ]
+
+function AppearanceChoices() {
+  const {darkMode,setTheme}=useThemeMode()
+  return <><DropdownMenuLabel>Aparência</DropdownMenuLabel><DropdownMenuRadioGroup aria-label="Aparência" value={darkMode?'dark':'light'} onValueChange={value=>{if(value==='dark'||value==='light')setTheme(value)}}><DropdownMenuRadioItem value="dark"><Moon aria-hidden className="size-4"/> Escuro</DropdownMenuRadioItem><DropdownMenuRadioItem value="light"><Sun aria-hidden className="size-4"/> Claro</DropdownMenuRadioItem></DropdownMenuRadioGroup></>
+}
+function MobileAppearance() {
+  const {darkMode,setTheme}=useThemeMode()
+  return <fieldset className="space-y-2 rounded-xl border p-3"><legend className="px-1 text-sm font-semibold">Aparência</legend><div className="flex gap-5 text-sm"><label className="flex items-center gap-2"><input type="radio" name="mobile-theme" checked={darkMode} onChange={()=>setTheme('dark')}/>Escuro</label><label className="flex items-center gap-2"><input type="radio" name="mobile-theme" checked={!darkMode} onChange={()=>setTheme('light')}/>Claro</label></div></fieldset>
+}
 
 function HeaderShell({
   fullBleed,
@@ -79,7 +90,8 @@ function PresenceNotice({ userId }: { userId: string }) {
 
 export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
   const router = useRouter()
-  const { darkMode, toggleTheme } = useThemeMode()
+  const pathname=usePathname()
+  const mobilePanel=useRef<HTMLDivElement>(null)
   const { isAuthenticated, profile, user, signOut } = useSupabaseSession()
   useProfilePresence(user?.id)
   const pendingFriendships = usePendingFriendships()
@@ -108,7 +120,11 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
     }
     viewport.style.overflow = "hidden"
 
+    const previousFocus=document.activeElement as HTMLElement|null
+    const focusable=()=>Array.from(mobilePanel.current?.querySelectorAll<HTMLElement>('a[href],button:not([disabled]),input:not([disabled])')??[]).filter(element=>!(element instanceof HTMLInputElement&&element.type==='radio')||element.checked)
+    focusable()[0]?.focus({preventScroll:true})
     function handleKeyDown(event: KeyboardEvent) {
+      if(event.key==='Tab'){const list=focusable(),first=list[0],last=list.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus()}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus()}}
       if (event.key === "Escape") {
         closeMobile()
       }
@@ -124,6 +140,7 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
     window.addEventListener("keydown", handleKeyDown)
     desktopQuery.addEventListener("change", handleBreakpointChange)
     return () => {
+      previousFocus?.focus({preventScroll:true})
       viewport.style.overflow = overflow
       viewport.style.scrollbarGutter = scrollbarGutter
       window.removeEventListener("keydown", handleKeyDown)
@@ -169,22 +186,14 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
           </div>
 
           <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={toggleTheme}
-            className="h-9 w-9 sm:h-10 sm:w-10"
-            aria-label="Alternar tema claro ou escuro"
-          >
-            {darkMode ? <Sun className="h-5 w-5" aria-hidden /> : <Moon className="h-5 w-5" aria-hidden />}
-          </Button>
 
+
+          {isAuthenticated&&<Button asChild size="sm" className="hidden rounded-xl font-semibold lg:inline-flex"><Link href="/meu-espaco" aria-current={pathname==='/meu-espaco'?'page':undefined}><LayoutDashboard className="size-4" aria-hidden/>Meu Espaço</Link></Button>}
           <NotificationBell />
 
           <div className="hidden items-center gap-2 lg:flex">
             {isAuthenticated ? (
-              <DropdownMenu modal={false}>
+              <DropdownMenu key="account" modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button
                     type="button"
@@ -192,7 +201,7 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
                     className="flex items-center gap-2 rounded-full px-2"
                   >
                     <span className="relative shrink-0"><UserAvatar name={displayName} imageUrl={avatarUrl} sizeClassName="h-9 w-9" /><PendingFriendshipBadge count={pendingFriendships} avatar /></span>
-                    <span className="whitespace-nowrap text-sm font-semibold">{displayName}</span>
+                    <span className="max-w-32 truncate text-sm font-semibold xl:max-w-48">{displayName}</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
@@ -216,6 +225,7 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
                   >
                     <Link href="/perfil">Perfil</Link>
                   </DropdownMenuItem>
+                  <DropdownMenuItem asChild className="cursor-pointer rounded-lg px-3 py-2 text-sm font-medium"><Link href="/meu-espaco">Meu Espaço</Link></DropdownMenuItem>
                   <DropdownMenuItem
                     asChild
                     className="cursor-pointer rounded-lg px-3 py-2 text-sm font-medium"
@@ -231,6 +241,7 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
                   <DropdownMenuItem asChild className="cursor-pointer rounded-lg px-3 py-2 text-sm font-medium">
                     <Link href={friendshipRequestsHref} className="flex items-center justify-between gap-2">Solicitações de amizade <PendingFriendshipBadge count={pendingFriendships} /></Link>
                   </DropdownMenuItem>
+                  <AppearanceChoices/>
                   <DropdownMenuSeparator className="my-1.5" />
                   <DropdownMenuItem
                     variant="destructive"
@@ -246,6 +257,7 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
               </DropdownMenu>
             ) : (
               <>
+                <DropdownMenu key="appearance" modal={false}><DropdownMenuTrigger asChild><Button variant="ghost" className="font-semibold">Aparência</Button></DropdownMenuTrigger><DropdownMenuContent align="end"><AppearanceChoices/></DropdownMenuContent></DropdownMenu>
                 <Button variant="ghost" asChild className="font-semibold">
                   <Link href="/login">Entrar</Link>
                 </Button>
@@ -276,6 +288,7 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
 
       {mobileOpen ? (
         <div
+          ref={mobilePanel}
           id="mobile-nav-panel"
           role="dialog"
           aria-modal="true"
@@ -295,16 +308,7 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
                 <span className="truncate text-lg">Team Link</span>
               </Link>
               <div className="flex shrink-0 items-center gap-1">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={toggleTheme}
-                  aria-label="Alternar tema claro ou escuro"
-                  className="h-10 w-10"
-                >
-                  {darkMode ? <Sun className="h-5 w-5" aria-hidden /> : <Moon className="h-5 w-5" aria-hidden />}
-                </Button>
+
                 <Button
                   type="button"
                   variant="ghost"
@@ -321,12 +325,6 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
 
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-background">
             <HeaderShell fullBleed={fullBleed} className="flex flex-col gap-4 py-5">
-              {isAuthenticated && (
-                <Link href="/perfil" onClick={closeMobile} className="flex items-center gap-3 rounded-2xl border border-card-outline bg-card p-3 hover:bg-muted">
-                  <span className="relative shrink-0"><UserAvatar name={displayName} imageUrl={avatarUrl} sizeClassName="h-12 w-12 shrink-0" /><PendingFriendshipBadge count={pendingFriendships} avatar /></span>
-                  <span className="min-w-0 break-words text-sm font-semibold">{displayName}</span>
-                </Link>
-              )}
               <nav aria-label="Navegação principal" className="flex flex-col gap-1 text-base font-semibold">
                 {primaryLinks.map((item) => (
                   <Link
@@ -344,6 +342,13 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
 
               {isAuthenticated ? (
                 <div className="flex flex-col gap-3">
+                  <Button asChild className="w-full font-semibold"><Link href="/meu-espaco" onClick={closeMobile} aria-current={pathname==='/meu-espaco'?'page':undefined}><LayoutDashboard aria-hidden/>Meu Espaço</Link></Button>
+
+                <Link href="/perfil" onClick={closeMobile} className="flex items-center gap-3 rounded-2xl border border-card-outline bg-card p-3 hover:bg-muted">
+                  <span className="relative shrink-0"><UserAvatar name={displayName} imageUrl={avatarUrl} sizeClassName="h-12 w-12 shrink-0" /><PendingFriendshipBadge count={pendingFriendships} avatar /></span>
+                  <span className="min-w-0 break-words text-sm font-semibold">Perfil · {displayName}</span>
+                </Link>
+
                   <Button asChild variant="secondary" className="w-full font-semibold" onClick={closeMobile}>
                     <Link href="/meus-projetos"><Briefcase aria-hidden /> Meus projetos</Link>
                   </Button>
@@ -353,6 +358,8 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
                   <Button asChild variant="secondary" className="w-full font-semibold" onClick={closeMobile}>
                     <Link href={friendshipRequestsHref}>Solicitações de amizade <PendingFriendshipBadge count={pendingFriendships} /></Link>
                   </Button>
+                  <MobileAppearance/>
+                  <div className="h-px bg-border"/>
                   <Button
                     type="button"
                     variant="ghost"
@@ -375,6 +382,7 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
                   </Button>
                 </div>
               )}
+              {!isAuthenticated&&<MobileAppearance/>}
             </HeaderShell>
           </div>
         </div>
