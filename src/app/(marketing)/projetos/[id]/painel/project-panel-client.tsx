@@ -530,6 +530,7 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
         <ProjectTools active={modules} manager={isManager} loading={modulesLoading} error={modulesError}
           open={(module) => {
             if (module === 'activities') router.push('/projetos/' + project.slug + '/painel/atividades')
+            else if (module === 'reports') router.push('/projetos/' + project.slug + '/painel/relatorios')
             else setOpened(module)
           }} toggle={toggleModule} />
 

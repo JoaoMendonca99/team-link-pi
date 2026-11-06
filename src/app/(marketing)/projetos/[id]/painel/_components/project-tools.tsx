@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Github, Headphones, Settings2, SquareKanban, X } from 'lucide-react'
+import { FileText, Github, Headphones, Settings2, SquareKanban, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 const catalog = [
+  { id: 'reports', name: 'Gerador de Relatórios', description: 'Crie relatórios acadêmicos com formatação ABNT, utilize informações do projeto e exporte documentos em PDF ou Word.', icon: FileText },
   { id: 'github', name: 'GitHub', description: 'Repositórios, commits e atividades do projeto.', icon: Github },
   { id: 'support', name: 'Suporte (SAC)', description: 'Atendimento e gerenciamento de chamados.', icon: Headphones },
   { id: 'activities', name: 'Controle de Atividades', description: 'Organize tarefas, distribua responsabilidades, acompanhe metas e visualize o progresso da equipe.', icon: SquareKanban },

@@ -1,0 +1,18 @@
+.report-input { display:block;width:100%;margin-top:.25rem;border:1px solid var(--input);border-radius:.5rem;padding:.5rem;background:var(--background);color:var(--foreground); }
+.report-input:focus { outline:2px solid var(--ring);outline-offset:2px; }
+.report-dialog { position:fixed;inset:0;margin:auto;width:calc(100% - 2rem);max-width:40rem;max-height:90dvh;overflow:auto;border:1px solid var(--border);border-radius:1rem;background:var(--card);color:var(--card-foreground);padding:1.25rem; }
+.report-dialog::backdrop { background:#0009; }
+.academic-content { font-family:'Times New Roman',Times,serif;line-height:1.5;overflow-wrap:anywhere; }
+.academic-content p { margin:.75rem 0; }
+.academic-content h1,.academic-content h2,.academic-content h3 { font-weight:bold;margin:1.25rem 0 .75rem; }
+.academic-content h1 { text-transform:uppercase; }
+.academic-content ul { list-style:disc;padding-left:1.5rem; }
+.academic-content ol { list-style:decimal;padding-left:1.5rem; }
+.academic-content blockquote,.academic-content .academic-citation { margin:1rem 0;padding-left:2rem;border-left:2px solid var(--border);font-size:.875rem; }
+.academic-content table { width:100%;table-layout:fixed;border-collapse:collapse; }
+.academic-content td,.academic-content th { border:1px solid var(--input);padding:.5rem;vertical-align:top; }
+.academic-content img { max-width:100%;max-height:24rem;object-fit:contain;margin:auto; }
+.academic-content figure { margin:1rem 0;text-align:center;font-size:.875rem; }
+.academic-content hr { margin:1.5rem 0;border-top:2px dashed var(--input); }
+.academic-content .selectedCell { background:var(--secondary); }
+.academic-content .ProseMirror-selectednode { outline:2px solid var(--ring); }
