@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { taskKind, kinds, type Period, type Workspace } from '@/lib/activities'
 import {PeriodAcademicFields} from '@/components/team-link/academic-fields'
-import {periodDraft,emptyDefaults,type AcademicSpace} from '@/lib/projects/academics'
+import {periodDraft,periodPayload,previousAcademicPeriod,emptyDefaults,type AcademicSpace} from '@/lib/projects/academics'
 import {getSupabaseClient} from '@/lib/supabase/client'
 import { Dialog } from './workspace-editors'
 
@@ -38,12 +38,12 @@ export function PeriodManager({data,busy,mutate,close}:{data:Workspace;busy:bool
         {!p.is_active&&<Button size="sm" variant="outline" disabled={busy} onClick={()=>void perform('activate_period',{id:p.id,version:p.version})}>Definir como ativo</Button>}</div>
     </li>)}</ul>
     <Button disabled={busy} onClick={()=>edit(null)}>Novo período</Button>
-    {editing!==undefined&&<form className="space-y-3 rounded-xl border border-border p-3" onSubmit={e=>{e.preventDefault();void perform('save_period',academic?.context==='academic'?draft:{id:draft.id,version:draft.version,name:draft.name,description:draft.description,starts_on:draft.starts_on,ends_on:draft.ends_on,activate:draft.activate})}}>
+    {editing!==undefined&&<form className="space-y-3 rounded-xl border border-border p-3" onSubmit={e=>{e.preventDefault();const reference=previousAcademicPeriod(data.periods,draft);const source=draft.reference_id==='project'?undefined:reference.candidates.find(p=>p.id===draft.reference_id)||reference.period;if(academic?.context==='academic'&&!draft.id&&source&&(!draft.reference_choice||draft.reference_id!==source.id)){setError('Escolha manter ou alterar as informações do período sugerido.');return}void perform('save_period',academic?.context==='academic'?periodPayload(draft,academic.defaults):{id:draft.id,version:draft.version,name:draft.name,description:draft.description,starts_on:draft.starts_on,ends_on:draft.ends_on,activate:draft.activate})}}>
       <label className="block space-y-1 text-sm">Nome do período<Input required maxLength={160} value={draft.name} onChange={e=>setDraft({...draft,name:e.target.value})} /></label>
       <label className="block space-y-1 text-sm">Descrição do período<Textarea maxLength={4000} value={draft.description} onChange={e=>setDraft({...draft,description:e.target.value})} /></label>
       <div className="grid gap-3 sm:grid-cols-2"><label className="block text-sm">Data de início<Input type="date" value={draft.starts_on} onChange={e=>setDraft({...draft,starts_on:e.target.value})} /></label>
         <label className="block text-sm">Data de término<Input type="date" min={draft.starts_on||undefined} value={draft.ends_on} onChange={e=>setDraft({...draft,ends_on:e.target.value})} /></label></div>
-      {academic?.context==='academic'&&<PeriodAcademicFields draft={draft} onChange={setDraft} defaults={academic?.defaults??emptyDefaults} previous={!editing?data.periods.find(p=>p.is_active):undefined}/>}
+      {academic?.context==='academic'&&<PeriodAcademicFields draft={draft} onChange={setDraft} defaults={academic?.defaults??emptyDefaults} periods={!editing?data.periods:[]}/>}
       {!editing?.is_active&&<label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={draft.activate} onChange={e=>setDraft({...draft,activate:e.target.checked})} />Definir como período ativo</label>}
       <div className="flex gap-2"><Button disabled={busy}>Salvar período</Button><Button type="button" variant="ghost" onClick={()=>setEditing(undefined)}>Cancelar</Button></div>
     </form>}

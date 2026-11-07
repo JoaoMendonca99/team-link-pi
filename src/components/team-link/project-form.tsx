@@ -6,7 +6,7 @@ import { useState, type FormEvent, type ReactNode } from 'react'
 import { Plus, X } from 'lucide-react'
 
 import { AcademicDefaultsFields, PeriodAcademicFields } from './academic-fields'
-import { emptyDefaults, periodDraft } from '@/lib/projects/academics'
+import { emptyDefaults, periodDraft, periodPayload } from '@/lib/projects/academics'
 import { ChipInput } from '@/components/team-link/chip-input'
 import { ProjectCard } from '@/components/team-link/project-card'
 import { FormSection } from '@/components/team-link/form-section'
@@ -130,7 +130,7 @@ export function ProjectForm({ project, initialTags = [], initialVacancies = [], 
           id: vacancy.id, title: vacancy.title, description: vacancy.description,
           skills: vacancy.skills, positions: Number(vacancy.positions), open: vacancy.open,
         })),
-      },p_academic:!project&&context?{context,defaults:academicDefaults,period:firstPeriod}:null})
+      },p_academic:!project&&context?{context,defaults:academicDefaults,period:periodPayload(firstPeriod,academicDefaults)}:null})
       if (saveError) {
         setError(saveError.code === '23505' ? 'Já existe um projeto com esse endereço.'
           : saveError.code === '23514' ? 'Confira os campos do projeto, as datas do período e as vagas.'
