@@ -46,52 +46,6 @@
 .previewCaption > span:first-child { display: flex; align-items: center; gap: 7px; }
 .productFrame { overflow: hidden; border: 1px solid var(--home-line); border-radius: 15px; background: var(--home-frame); box-shadow: 0 20px 80px -30px #0c285b40, 0 0 0 6px #719bde0b; }
 :global(.dark) .productFrame { box-shadow: 0 25px 90px -25px #0009, 0 0 0 6px #93baff09; }
-.windowBar { display: flex; align-items: center; gap: 24px; min-height: 42px; padding: 8px 18px; border-bottom: 1px solid var(--home-line); color: var(--home-muted); font-size: 10px; }
-.windowBar > span { display: inline-flex; align-items: center; gap: 7px; }
-.windowDots { display: flex; gap: 4px !important; }
-.windowDots i { width: 6px; height: 6px; background: var(--home-line); border-radius: 50%; }
-.workspaceBadge { margin-left: auto; }
-.previewLayout { display: grid; grid-template-columns: 172px minmax(0, 1fr); }
-.previewSidebar { position: relative; padding: 23px 12px; border-right: 1px solid var(--home-line); background: var(--home-soft); }
-.previewSidebar > span { display: flex; align-items: center; gap: 9px; padding: 10px; color: var(--home-muted); font-size: 11px; }
-.previewSidebar > .previewLogo { padding-top: 0; color: var(--foreground); font-size: 14px; font-weight: 650; }
-.previewSidebar > p { margin: 27px 10px 8px; color: var(--home-muted); font-size: 8px; letter-spacing: .12em; }
-.previewSidebar > span[data-active="true"] { border-radius: 7px; background: var(--home-accent); color: var(--home-blue); }
-.sidebarBottom { position: absolute; bottom: 24px; left: 22px; right: 15px; color: var(--home-muted); font-size: 9px; line-height: 1.7; }
-.previewMain { min-width: 0; padding: 24px; }
-.previewHeading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.previewHeading p { font-size: 8px; color: var(--home-muted); letter-spacing: .14em; }
-.previewHeading h2 { margin-top: 4px; font-size: 22px; letter-spacing: -.035em; font-weight: 650; }
-.previewHeading div > span { display: block; margin-top: 4px; font-size: 11px; color: var(--home-muted); }
-.periodBadge { width: fit-content; flex-shrink: 0; padding: 5px 8px; border: 1px solid var(--home-line); border-radius: 6px; font-size: 10px; color: var(--home-muted); }
-.previewStats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin: 24px 0; border-block: 1px solid var(--home-line); padding-block: 17px; gap: 12px; }
-.previewStats > div { display: flex; align-items: center; gap: 10px; }
-.previewStats svg { width: 17px; height: 17px; color: var(--home-blue); flex-shrink: 0; }
-.previewStats span { color: var(--home-muted); font-size: 9px; }
-.previewStats strong { display: block; margin-top: 3px; color: var(--foreground); font-size: 11px; font-weight: 550; }
-.previewSectionTitle { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 12px; margin-bottom: 15px; }
-.previewSectionTitle > span { color: var(--home-muted); font-size: 10px; }
-.board { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 11px; }
-.boardColumn { min-width: 0; padding: 10px; border-radius: 8px; background: var(--home-soft); }
-.stageLabel { display: flex; align-items: center; gap: 6px; font-size: 10px; font-weight: 550; color: var(--home-muted); }
-.stageLabel > span { width: 6px; height: 6px; border-radius: 50%; background: #64748b; flex-shrink: 0; }
-.stageLabel > span[data-color="blue"] { background: #3b82f6; }
-.stageLabel > span[data-color="amber"] { background: #d97706; }
-.stageLabel > span[data-color="teal"] { background: #0d9488; }
-.taskCard { margin-top: 14px; padding: 11px; background: var(--home-frame); border: 1px solid var(--home-line); border-radius: 7px; box-shadow: 0 3px 6px #00000005; }
-.taskTag { color: var(--home-blue); background: var(--home-accent); border-radius: 4px; padding: 3px 4px; font-size: 8px; overflow-wrap: anywhere; }
-.taskCard > p { min-height: 45px; margin-top: 10px; font-size: 12px; line-height: 1.5; font-weight: 550; overflow-wrap: anywhere; }
-.taskCard > div { display: flex; justify-content: space-between; align-items: center; gap: 5px; margin-top: 15px; }
-.taskCard > div > span:last-child { display: flex; align-items: center; gap: 3px; font-size: 8px; color: var(--home-muted); }
-.initial { display: inline-flex; flex-shrink: 0; align-items: center; justify-content: center; width: 23px; height: 23px; border-radius: 50%; border: 2px solid var(--home-frame); background: var(--home-accent); color: var(--home-blue); font-size: 8px; font-weight: 650; }
-.mobileTasks { display: none; }
-.previewBottom { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; margin-top: 24px; gap: 14px; }
-.miniGoal { display: flex; align-items: center; gap: 9px; color: var(--home-blue); }
-.miniGoal strong { display: block; font-size: 10px; color: var(--foreground); font-weight: 550; }
-.miniGoal div > span { display: block; font-size: 9px; color: var(--home-muted); margin-top: 3px; }
-.teamStack { display: flex; align-items: center; }
-.teamStack .initial + .initial { margin-left: -5px; }
-.teamStack > span:last-child { margin-left: 7px; font-size: 9px; color: var(--home-muted); }
 .section { padding: 100px 0; border-bottom: 1px solid var(--home-line); }
 .sectionHeading { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); align-items: end; gap: 60px; margin-bottom: 44px; }
 .home .section h2, .finalCall h2 { font-size: clamp(30px, 3.6vw, 46px); line-height: 1.15; font-weight: 650; letter-spacing: -.045em; text-wrap: balance; }
@@ -128,48 +82,6 @@
 .tourIntro h3 { font-size: 21px; font-weight: 600; letter-spacing: -.025em; }
 .tourIntro p { max-width: 670px; margin-top: 9px; font-size: 13px; color: var(--home-muted); line-height: 1.8; }
 .tourIntro > span { color: var(--home-muted); flex-shrink: 0; font-size: 9px; padding-top: 7px; }
-.tourContent { min-height: 270px; padding: 25px; border: 1px solid var(--home-line); background: var(--home-soft); border-radius: 10px; }
-.tourContent .boardColumn { padding: 0; }
-.tourContent .stageLabel { font-size: 11px; }
-.tourContent .taskTag { font-size: 10px; }
-.tourContent .taskCard > p { font-size: 14px; }
-.tourContent .taskCard > div > span:last-child { font-size: 10px; }
-.demoPeople { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; padding-top: 25px; }
-.demoPeople > div { display: flex; flex-wrap: wrap; align-items: center; gap: 13px; padding: 22px; border: 1px solid var(--home-line); background: var(--home-frame); border-radius: 10px; }
-.demoPeople strong { font-size: 14px; }
-.demoPeople p { margin-top: 5px; font-size: 11px; color: var(--home-muted); }
-.personInitial { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 38px; height: 38px; font-size: 11px; font-weight: 600; background: var(--home-accent); color: var(--home-blue); border-radius: 50%; }
-.demoGoals { max-width: 780px; margin: 0 auto; }
-.demoGoals > div, .demoDocuments > div { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
-.demoGoals > div > svg, .demoDocuments svg { color: var(--home-blue); }
-.demoGoals strong, .demoDocuments strong { font-size: 14px; }
-.demoGoals > p { margin: 8px 0 18px; font-size: 12px; color: var(--home-muted); }
-.demoGoals li { display: flex; align-items: center; gap: 12px; border-top: 1px solid var(--home-line); padding: 13px 0; }
-.demoGoals li > span:first-child { display: inline-flex; justify-content: center; width: 22px; font-size: 11px; color: var(--home-blue); flex-shrink: 0; }
-.demoGoals li > span:last-child { margin-left: auto; color: var(--home-muted); font-size: 11px; }
-.demoGoals li strong { font-size: 12px; font-weight: 500; }
-.demoConversation { max-width: 670px; margin: 0 auto; }
-.demoConversation > p:first-child { font-size: 12px; font-weight: 600; }
-.demoConversation > p:first-child > span { color: var(--home-muted); font-weight: 400; }
-.demoConversation > div { display: flex; align-items: flex-start; gap: 12px; margin: 20px 0; }
-.demoConversation > div > div { padding: 10px 15px; background: var(--home-frame); border: 1px solid var(--home-line); border-radius: 0 10px 10px; font-size: 12px; line-height: 1.7; }
-.demoConversation strong { font-size: 11px; }
-.demoConversation p { margin-top: 4px; color: var(--home-muted); }
-.demoContext { display: flex; align-items: center; gap: 8px; font-size: 10px; }
-.demoDocuments { max-width: 680px; margin: auto; }
-.demoDocuments > div > div > p { font-size: 10px; margin-top: 5px; color: var(--home-muted); }
-.demoDocuments > div > span { margin-left: auto; }
-.demoDocuments ol { margin-top: 25px; }
-.demoDocuments li { display: flex; align-items: center; gap: 13px; font-size: 12px; margin-top: 16px; }
-.demoDocuments li > span:first-child { color: var(--home-muted); font-size: 10px; }
-.documentLine { height: 1px; background: var(--home-line); flex: 1; }
-.demoDocuments > p, .demoIntegrations > p { font-size: 11px; color: var(--home-muted); line-height: 1.8; margin-top: 25px; }
-.demoIntegrations { max-width: 780px; margin: auto; }
-.demoIntegrations > div { display: flex; align-items: center; gap: 18px; padding: 18px; border: 1px solid var(--home-line); background: var(--home-frame); border-radius: 10px; margin-bottom: 12px; }
-.demoIntegrations svg { color: var(--home-blue); flex-shrink: 0; }
-.demoIntegrations strong { font-size: 14px; }
-.demoIntegrations div p { font-size: 12px; color: var(--home-muted); margin-top: 5px; }
-.demoIntegrations .periodBadge { margin-left: auto; }
 .toolsLayout { display: grid; grid-template-columns: 1fr 1fr; gap: 90px; align-items: center; }
 .bodyCopy { margin-top: 24px; }
 .audienceLabel { margin-top: 30px; color: var(--home-muted); font-size: 11px; }
@@ -206,8 +118,6 @@
 .finalCall > p { margin: 22px auto 0; color: var(--home-muted); font-size: 15px; line-height: 1.8; }
 @media (max-width: 1023px) {
   .hero { padding-top: 58px; }
-  .previewLayout { grid-template-columns: minmax(0, 1fr); }
-  .previewSidebar { display: none; }
   .sectionHeading { gap: 32px; }
   .toolsLayout { gap: 40px; }
   .fragments { padding-inline: 0; }
@@ -216,8 +126,6 @@
   .tourTabs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .tourIntro { flex-direction: column; gap: 8px; }
   .tourIntro > span { padding-top: 0; }
-  .demoPeople { gap: 10px; }
-  .demoPeople > div { padding: 16px; }
 }
 @media (max-width: 639px) {
   .hero { padding: 45px 0 25px; }
@@ -229,26 +137,6 @@
   .primaryAction, .secondaryAction { min-height: 48px; }
   .heroFootnote { font-size: 10px; line-height: 1.7; max-width: 270px; margin-inline: auto; }
   .previewCaption { font-size: 9px; }
-  .windowBar { gap: 12px; padding-inline: 12px; font-size: 9px; }
-  .workspaceBadge { display: none !important; }
-  .previewMain { padding: 17px; }
-  .previewHeading { align-items: flex-start; }
-  .previewHeading h2 { font-size: 20px; }
-  .previewHeading div > span { font-size: 10px; line-height: 1.6; max-width: 190px; }
-  .previewHeading > .periodBadge { font-size: 8px; padding: 4px 5px; }
-  .previewStats { grid-template-columns: 1fr; margin: 17px 0; padding-block: 12px; gap: 10px; }
-  .previewStats > div { align-items: center; }
-  .previewStats span { display: flex; flex-wrap: wrap; justify-content: space-between; flex: 1; gap: 6px; }
-  .previewStats strong { margin: 0; font-size: 10px; }
-  .previewSectionTitle { margin-bottom: 12px; }
-  .previewSectionTitle > span { display: none; }
-  .board { display: none; }
-  .mobileTasks { display: grid; gap: 8px; }
-  .mobileTasks li { display: grid; gap: 7px; padding: 10px 12px; background: var(--home-soft); border: 1px solid var(--home-line); border-radius: 7px; }
-  .mobileTasks strong { font-size: 12px; font-weight: 500; }
-  .mobileTasks .stageLabel { font-size: 9px; }
-  .previewBottom { margin-top: 17px; }
-  .teamStack { display: none; }
   .section { padding: 65px 0; }
   .sectionHeading { grid-template-columns: 1fr; gap: 20px; margin-bottom: 30px; }
   .home .section h2, .finalCall h2 { font-size: 32px; }
@@ -270,33 +158,6 @@
   .tourIntro { padding-bottom: 20px; min-height: 170px; }
   .tourIntro h3 { font-size: 19px; line-height: 1.4; }
   .tourIntro p { font-size: 12px; }
-  .tourContent { padding: 15px; min-height: 390px; }
-  .tourContent .mobileTasks li { background: var(--home-frame); }
-  .demoPeople { grid-template-columns: 1fr; padding: 0; gap: 10px; }
-  .demoPeople > div { padding: 14px; gap: 10px; }
-  .demoPeople .periodBadge { margin-left: auto; }
-  .demoPeople strong { font-size: 12px; }
-  .demoPeople p { font-size: 10px; }
-  .personInitial { width: 30px; height: 30px; font-size: 10px; }
-  .demoGoals > div { gap: 9px; }
-  .demoGoals > div > strong { flex: 1; font-size: 12px; }
-  .demoGoals .periodBadge { margin: 6px 0; }
-  .demoGoals > p { margin-top: 15px; font-size: 11px; line-height: 1.8; }
-  .demoGoals li { flex-wrap: wrap; padding: 17px 0; gap: 9px; }
-  .demoGoals li strong { font-size: 11px; }
-  .demoGoals li > span:last-child { font-size: 9px; }
-  .demoConversation > div { gap: 8px; margin: 23px 0; }
-  .demoConversation > div > div { padding: 10px; font-size: 11px; }
-  .demoContext { line-height: 1.7; }
-  .demoDocuments > div { gap: 10px; }
-  .demoDocuments strong { font-size: 12px; }
-  .demoDocuments > div > span { margin: 0; }
-  .demoDocuments li { font-size: 11px; gap: 8px; line-height: 1.7; }
-  .demoDocuments > p { margin-top: 30px; }
-  .demoIntegrations > div { flex-wrap: wrap; gap: 10px; padding: 15px; }
-  .demoIntegrations > div > div { flex: 1; min-width: 140px; }
-  .demoIntegrations div p { font-size: 11px; line-height: 1.8; }
-  .demoIntegrations strong { font-size: 12px; }
   .toolsLayout { grid-template-columns: 1fr; gap: 30px; }
   .toolPanel { padding: 20px; }
   .toolRow { gap: 10px; padding-block: 20px; }
@@ -312,4 +173,49 @@
   .finalCall { padding: 38px 22px; }
   .finalCall h2 { font-size: 30px; }
   .finalCall > p { font-size: 14px; }
+}
+
+/* The frames present actual application captures; their controls live in the product. */
+.previewTabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.previewTabs > button { font-size: 12px; }
+.tourTabs > button:focus-visible { outline-offset: 2px; }
+.tourPanel { padding: 0; }
+.tourPanel:focus-visible { outline-offset: -3px; }
+.tourIntro { min-height: 0; padding: 24px 28px; }
+.previewDescription { padding: 14px 20px; color: var(--home-muted); font-size: 12px; line-height: 1.8; }
+.screenshotFrame { display: grid; place-items: center; min-width: 0; min-height: 320px; padding: 20px; background: #0b1120; border-block: 1px solid var(--home-line); }
+.previewScreenshot { min-height: 0; padding: 0; }
+.screenImage { display: flex; justify-content: center; width: 100%; min-width: 0; }
+.screenImage img { display: block; width: 100%; max-width: var(--capture-desktop-width); height: auto; margin: 0 auto; }
+.captureFooter { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 20px; color: var(--home-muted); font-size: 11px; line-height: 1.7; }
+.captureFooter > p { max-width: 65ch; }
+.captureFooter > button { display: inline-flex; align-items: center; gap: 7px; flex-shrink: 0; min-height: 36px; padding: 6px 10px; border: 1px solid var(--home-line); border-radius: 8px; color: var(--home-blue); background: var(--home-soft); font-size: 12px; font-weight: 550; cursor: pointer; }
+.captureFooter > button:hover { background: var(--home-accent); }
+.captureDialog { position: fixed; inset: 0; margin: auto; width: calc(100% - 32px); max-width: 1400px; max-height: 92dvh; padding: 0; overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--home-line); border-radius: 16px; background: var(--home-frame); color: var(--foreground); box-shadow: 0 25px 90px #0008; }
+.captureDialog::backdrop { background: #030713cc; backdrop-filter: blur(5px); }
+.captureDialogHeader { position: sticky; top: 0; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 20px; background: var(--home-frame); border-bottom: 1px solid var(--home-line); }
+.home .captureDialog h2 { font-size: 18px; line-height: 1.4; letter-spacing: -.02em; font-weight: 650; }
+.captureDialogHeader p, .captureDialogNote { font-size: 11px; color: var(--home-muted); line-height: 1.8; }
+.captureDialogHeader button { display: grid; place-items: center; width: 40px; height: 40px; flex-shrink: 0; border-radius: 8px; border: 1px solid var(--home-line); cursor: pointer; }
+.captureDialogHeader button:hover { background: var(--home-soft); }
+.captureDialogNote { padding: 12px 20px; }
+@media (max-width: 1023px) {
+  .screenImage img { max-width: var(--capture-mobile-width); }
+  .screenshotFrame { min-height: 0; padding: 16px; }
+  .previewScreenshot { padding: 0; }
+  .tourIntro { padding: 22px; }
+}
+@media (max-width: 639px) {
+  .previewCaption { font-size: 10px; }
+  .previewTabs > button { flex-direction: row; min-height: 44px; font-size: 11px; }
+  .tourIntro { padding: 20px 16px; gap: 12px; }
+  .tourIntro > span { font-size: 10px; }
+  .previewDescription { padding: 12px 16px; }
+  .screenshotFrame { padding: 0; }
+  .captureFooter { align-items: flex-start; padding: 12px 16px; gap: 8px; }
+  .captureFooter > p { width: 100%; font-size: 10px; }
+  .captureDialog { width: calc(100% - 24px); }
+  .captureDialogHeader { padding: 12px; }
+  .captureDialog .screenshotFrame { padding: 8px; }
+  .captureDialogNote { padding: 12px; }
 }
