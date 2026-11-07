@@ -67,13 +67,15 @@ export function useFriendChats(userId: string | undefined, requestedChat: string
   return { chats, listError, load }
 }
 
-export function FriendChats({ userId, profile, requestedFriend, requestedChat }: {
+export function FriendChats({ userId, profile, requestedFriend, requestedChat, basePath='/mensagens' }: {
+  basePath?: string
   userId: string
   profile: ProfileRow | null
   requestedFriend: string | null
   requestedChat: string | null
 }) {
   const router = useRouter()
+  const baseUrl = basePath+'?aba=amigos'
   const { chats, listError, load } = useFriendChats(userId, requestedChat)
   const [openError, setOpenError] = useState('')
   const [search, setSearch] = useState('')
@@ -90,13 +92,13 @@ export function FriendChats({ userId, profile, requestedFriend, requestedChat }:
       if (active) setOpenError(error instanceof Error ? error.message : 'Não foi possível abrir a conversa.')
     })
     return () => { active = false }
-  }, [load, requestedFriend, router])
+  }, [load, requestedFriend, router, baseUrl])
 
   const selected = chats?.find((chat) => chat.id === requestedChat)
   const filtered = chats?.filter((chat) => searchable(nameOf(chat)).includes(searchable(search.trim())))
 
-  return <main className="flex h-[calc(100dvh_-_121px)] min-h-0 min-w-0 flex-col overflow-hidden lg:flex-row" aria-label="Mensagens entre amigos">
-    <aside aria-label="Conversas com amigos" className={(selected ? 'hidden lg:flex' : 'flex') + ' min-h-0 min-w-0 flex-1 flex-col border-border lg:max-w-80 lg:border-r'}>
+  return <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden @min-[1000px]/chat:flex-row" aria-label="Mensagens entre amigos">
+    <aside aria-label="Conversas com amigos" className={(selected ? 'hidden @min-[1000px]/chat:flex' : 'flex') + ' min-h-0 min-w-0 flex-1 flex-col border-border @min-[1000px]/chat:max-w-80 @min-[1000px]/chat:border-r'}>
       <header className="space-y-3 border-b border-border p-4">
         <h1 className="font-semibold">Conversas com amigos</h1>
         <Input type="search" aria-label="Buscar conversas por nome" placeholder="Buscar por nome" value={search} onChange={(event) => setSearch(event.target.value)} />
@@ -127,12 +129,12 @@ export function FriendChats({ userId, profile, requestedFriend, requestedChat }:
         ))}
       </div>
     </aside>
-    {selected ? <FriendThread key={selected.id} chat={selected} profile={profile} userId={userId} onChange={load} /> :
-      <div className="hidden flex-1 flex-col items-center justify-center gap-2 p-5 text-muted-foreground lg:flex">
+    {selected ? <FriendThread key={selected.id} chat={selected} profile={profile} userId={userId} onChange={load} backHref={baseUrl} /> :
+      <div className="hidden flex-1 flex-col items-center justify-center gap-2 p-5 text-muted-foreground @min-[1000px]/chat:flex">
         <MessageCircle aria-hidden className="size-8 text-primary" />
         <p>Selecione uma conversa para abrir as mensagens.</p>
       </div>}
-  </main>
+  </div>
 }
 
 function mergeMessages(current: FriendMessage[], incoming: FriendMessage[]) {
@@ -141,7 +143,8 @@ function mergeMessages(current: FriendMessage[], incoming: FriendMessage[]) {
   return [...unique.values()].sort((a, b) => a.id - b.id)
 }
 
-export function FriendThread({ chat, profile, userId, onChange, onBack }: {
+export function FriendThread({ chat, profile, userId, onChange, onBack, backHref=baseUrl }: {
+  backHref?: string
   chat: FriendChat; profile: ProfileRow | null; userId: string; onChange: () => void; onBack?: () => void
 }) {
   const { id, last_message_id: latestId } = chat
@@ -262,7 +265,7 @@ export function FriendThread({ chat, profile, userId, onChange, onBack }: {
   return <section aria-label="Conversa privada" className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
     <header className="flex min-w-0 shrink-0 items-center gap-3 border-b border-border p-3">
       {onBack ? <Button variant="ghost" size="icon" onClick={onBack} aria-label="Voltar às conversas"><ArrowLeft aria-hidden /></Button> :
-        <Button asChild variant="ghost" size="icon" className="lg:hidden"><Link href={baseUrl} aria-label="Voltar às conversas"><ArrowLeft aria-hidden /></Link></Button>}
+        <Button asChild variant="ghost" size="icon" className="@min-[1000px]/chat:hidden"><Link href={backHref} aria-label="Voltar às conversas"><ArrowLeft aria-hidden /></Link></Button>}
       <Link href={'/usuarios/' + chat.friend_id} className="flex min-w-0 items-center gap-3 hover:underline">
         <UserAvatar name={nameOf(chat)} imageUrl={chat.avatar_url ?? undefined} sizeClassName="size-10 shrink-0" />
         <span className="min-w-0">

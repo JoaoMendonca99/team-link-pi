@@ -11,11 +11,12 @@ import type { ProfileRow } from '@/types/database'
 import type { ProjectDisplay } from '@/lib/projects/display'
 import type { SocialSummary } from '@/lib/profile-social'
 
-export function ProfileHeading({ profile, projects, projectCount, social, own, children }: {
+export function ProfileHeading({ profile, projects, projectCount, social, own, children, editHref = '/perfil/editar' }: {
   profile: ProfileRow
   projects: ProjectDisplay[]
   projectCount?: number
   social?: SocialSummary
+  editHref?: string
   own?: boolean
   children?: ReactNode
 }) {
@@ -69,7 +70,7 @@ export function ProfileHeading({ profile, projects, projectCount, social, own, c
           <PresenceLabel lastActivity={social?.last_activity} />
         </div>
         <div className="flex flex-wrap items-start gap-2 pt-2">
-          {own && <Button asChild><Link href="/perfil/editar"><Pencil aria-hidden /> Editar perfil</Link></Button>}
+          {own && <Button asChild><Link href={editHref}><Pencil aria-hidden /> Editar perfil</Link></Button>}
           <Button type="button" variant="outline" onClick={() => void share()}><Share2 aria-hidden /> Compartilhar perfil</Button>
           {own && <Button type="button" variant="outline" disabled={preparing} onClick={() => void prepareCard()}><Download aria-hidden /> Baixar card</Button>}
           {children}

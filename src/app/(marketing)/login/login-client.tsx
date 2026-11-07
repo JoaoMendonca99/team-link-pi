@@ -27,7 +27,7 @@ export function LoginClient() {
   const { isAuthenticated, loading } = useSupabaseSession()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [recovering, setRecovering] = useState(false)
+  const [recovering, setRecovering] = useState(searchParams.get('recuperar') === '1')
   const [recoveryRequested, setRecoveryRequested] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -38,10 +38,10 @@ export function LoginClient() {
   }, [])
 
   useEffect(() => {
-    if (!loading && isAuthenticated) {
+    if (!loading && isAuthenticated && !recovering) {
       router.replace(redirectTo)
     }
-  }, [isAuthenticated, loading, redirectTo, router])
+  }, [isAuthenticated, loading, recovering, redirectTo, router])
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()

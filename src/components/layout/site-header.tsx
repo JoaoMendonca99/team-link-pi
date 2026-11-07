@@ -25,7 +25,7 @@ import { useSupabaseSession } from "@/hooks/use-supabase-session"
 import { cn } from "@/lib/utils"
 import { usePendingFriendships } from '@/components/profile/friendships-provider'
 
-const friendshipRequestsHref = '/perfil?aba=amigos&secao=recebidas'
+const friendshipRequestsHref = '/meu-espaco/amigos?secao=recebidas'
 
 function PendingFriendshipBadge({ count, avatar = false }: { count: number; avatar?: boolean }) {
   if (!count) return null
@@ -79,7 +79,7 @@ function PresenceNotice({ userId }: { userId: string }) {
   if (!visible) return null
   return <aside aria-label="Aviso de privacidade" className="border-b border-border bg-muted/60">
     <Container className="flex items-center gap-2 py-2 text-xs text-muted-foreground">
-      <p className="min-w-0 flex-1">O status online passou a vir ativado por padrão, inclusive nas contas existentes. Só amigos aceitos podem ver sua presença. <Link href="/perfil/editar#profile-presence" className="font-semibold text-primary underline">Alterar em Privacidade</Link></p>
+      <p className="min-w-0 flex-1">O status online passou a vir ativado por padrão, inclusive nas contas existentes. Só amigos aceitos podem ver sua presença. <Link href="/meu-espaco/configuracoes#privacidade" className="font-semibold text-primary underline">Alterar em Privacidade</Link></p>
       <Button type="button" variant="ghost" size="icon" className="size-8 shrink-0" aria-label="Dispensar aviso de privacidade" onClick={() => {
         try { localStorage.setItem(key, 'read') } catch { /* The dismissal still applies for this session. */ }
         setVisible(false)
@@ -148,6 +148,8 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
     }
   }, [closeMobile, mobileOpen])
 
+  useEffect(() => { const otherMenu=(event:Event)=>{if((event as CustomEvent).detail!=='header')closeMobile()};window.addEventListener('team-link:navigation-open',otherMenu);return()=>window.removeEventListener('team-link:navigation-open',otherMenu) },[closeMobile])
+
   async function handleSignOut() {
     closeMobile()
     await signOut()
@@ -188,7 +190,7 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
           <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
 
 
-          {isAuthenticated&&<Button asChild size="sm" className="hidden rounded-xl font-semibold lg:inline-flex"><Link href="/meu-espaco" aria-current={pathname==='/meu-espaco'?'page':undefined}><LayoutDashboard className="size-4" aria-hidden/>Meu Espaço</Link></Button>}
+          {isAuthenticated&&<Button asChild size="sm" className="hidden rounded-xl font-semibold lg:inline-flex"><Link href="/meu-espaco" aria-current={pathname.startsWith('/meu-espaco')?'page':undefined}><LayoutDashboard className="size-4" aria-hidden/>Meu Espaço</Link></Button>}
           <NotificationBell />
 
           <div className="hidden items-center gap-2 lg:flex">
@@ -223,25 +225,25 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
                     asChild
                     className="cursor-pointer rounded-lg px-3 py-2 text-sm font-medium"
                   >
-                    <Link href="/perfil">Perfil</Link>
+                    <Link href="/meu-espaco/perfil">Perfil</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild className="cursor-pointer rounded-lg px-3 py-2 text-sm font-medium"><Link href="/meu-espaco">Meu Espaço</Link></DropdownMenuItem>
                   <DropdownMenuItem
                     asChild
                     className="cursor-pointer rounded-lg px-3 py-2 text-sm font-medium"
                   >
-                    <Link href="/meus-projetos">Meus projetos</Link>
+                    <Link href="/meu-espaco/projetos">Meus projetos</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem
                     asChild
                     className="cursor-pointer rounded-lg px-3 py-2 text-sm font-medium"
                   >
-                    <Link href="/mensagens">Mensagens</Link>
+                    <Link href="/meu-espaco/mensagens">Mensagens</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild className="cursor-pointer rounded-lg px-3 py-2 text-sm font-medium">
                     <Link href={friendshipRequestsHref} className="flex items-center justify-between gap-2">Solicitações de amizade <PendingFriendshipBadge count={pendingFriendships} /></Link>
                   </DropdownMenuItem>
-                  <AppearanceChoices/>
+                  <DropdownMenuItem asChild><Link href="/meu-espaco/configuracoes">Configurações</Link></DropdownMenuItem>
                   <DropdownMenuSeparator className="my-1.5" />
                   <DropdownMenuItem
                     variant="destructive"
@@ -273,7 +275,7 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
             variant="outline"
             size="icon"
             className="relative lg:hidden"
-            onClick={() => setMobileOpen(true)}
+            onClick={() => { window.dispatchEvent(new CustomEvent('team-link:navigation-open', {detail:'header'})); setMobileOpen(true) }}
             aria-label="Abrir menu de navegação"
             aria-expanded={mobileOpen}
             aria-controls="mobile-nav-panel"
@@ -342,23 +344,23 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
 
               {isAuthenticated ? (
                 <div className="flex flex-col gap-3">
-                  <Button asChild className="w-full font-semibold"><Link href="/meu-espaco" onClick={closeMobile} aria-current={pathname==='/meu-espaco'?'page':undefined}><LayoutDashboard aria-hidden/>Meu Espaço</Link></Button>
+                  <Button asChild className="w-full font-semibold"><Link href="/meu-espaco" onClick={closeMobile} aria-current={pathname.startsWith('/meu-espaco')?'page':undefined}><LayoutDashboard aria-hidden/>Meu Espaço</Link></Button>
 
-                <Link href="/perfil" onClick={closeMobile} className="flex items-center gap-3 rounded-2xl border border-card-outline bg-card p-3 hover:bg-muted">
+                <Link href="/meu-espaco/perfil" onClick={closeMobile} className="flex items-center gap-3 rounded-2xl border border-card-outline bg-card p-3 hover:bg-muted">
                   <span className="relative shrink-0"><UserAvatar name={displayName} imageUrl={avatarUrl} sizeClassName="h-12 w-12 shrink-0" /><PendingFriendshipBadge count={pendingFriendships} avatar /></span>
                   <span className="min-w-0 break-words text-sm font-semibold">Perfil · {displayName}</span>
                 </Link>
 
                   <Button asChild variant="secondary" className="w-full font-semibold" onClick={closeMobile}>
-                    <Link href="/meus-projetos"><Briefcase aria-hidden /> Meus projetos</Link>
+                    <Link href="/meu-espaco/projetos"><Briefcase aria-hidden /> Meus projetos</Link>
                   </Button>
                   <Button asChild variant="secondary" className="w-full font-semibold" onClick={closeMobile}>
-                    <Link href="/mensagens"><MessageCircle aria-hidden /> Mensagens</Link>
+                    <Link href="/meu-espaco/mensagens"><MessageCircle aria-hidden /> Mensagens</Link>
                   </Button>
                   <Button asChild variant="secondary" className="w-full font-semibold" onClick={closeMobile}>
                     <Link href={friendshipRequestsHref}>Solicitações de amizade <PendingFriendshipBadge count={pendingFriendships} /></Link>
                   </Button>
-                  <MobileAppearance/>
+                  <Button asChild variant="secondary"><Link href="/meu-espaco/configuracoes" onClick={closeMobile}>Configurações</Link></Button>
                   <div className="h-px bg-border"/>
                   <Button
                     type="button"

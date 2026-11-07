@@ -523,18 +523,18 @@ export function MessagesClient({ active = true, requestedProject, requestedConve
 
   if (sessionLoading) {
     return (
-      <main className="flex min-h-0 flex-1 flex-col bg-background">
-        <div className="flex w-full flex-1 items-center justify-center px-4 py-24 sm:px-6 lg:px-8">
+      <div className="flex min-h-0 flex-1 flex-col bg-background">
+        <div className="flex w-full flex-1 items-center justify-center px-4 py-24 sm:px-6 @min-[1000px]/chat:px-8">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" aria-hidden />
         </div>
-      </main>
+      </div>
     )
   }
 
   if (!isAuthenticated) {
     return (
-      <main className="flex min-h-0 flex-1 flex-col bg-background">
-        <div className="w-full px-4 py-20 sm:px-6 lg:px-8">
+      <div className="flex min-h-0 flex-1 flex-col bg-background">
+        <div className="w-full px-4 py-20 sm:px-6 @min-[1000px]/chat:px-8">
           <PageHeader
             eyebrow="Central de mensagens"
             title="Entre para acessar suas conversas"
@@ -549,14 +549,14 @@ export function MessagesClient({ active = true, requestedProject, requestedConve
             </Button>
           </div>
         </div>
-      </main>
+      </div>
     )
   }
 
   if (!supabaseReady) {
     return (
-      <main className="flex min-h-0 flex-1 flex-col bg-background">
-        <div className="w-full px-4 py-20 sm:px-6 lg:px-8">
+      <div className="flex min-h-0 flex-1 flex-col bg-background">
+        <div className="w-full px-4 py-20 sm:px-6 @min-[1000px]/chat:px-8">
           <PageHeader
             title="Não foi possível abrir suas conversas"
             description="Tente novamente em instantes. Se o problema continuar, volte para os seus projetos."
@@ -567,7 +567,7 @@ export function MessagesClient({ active = true, requestedProject, requestedConve
             </Button>
           </div>
         </div>
-      </main>
+      </div>
     )
   }
 
@@ -586,8 +586,8 @@ export function MessagesClient({ active = true, requestedProject, requestedConve
     : 'Conversa'
 
   return (
-    <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background text-foreground">
-      <div className="flex min-h-0 flex-1 flex-col overflow-hidden lg:flex-row">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background text-foreground">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden @min-[1000px]/chat:flex-row">
         <ProjectsRail
           projects={projects}
           selectedProjectId={selectedProjectId}
@@ -597,7 +597,7 @@ export function MessagesClient({ active = true, requestedProject, requestedConve
           onRetry={() => void reloadProjects()}
           className={cn(
             showProjectsOnMobile ? 'flex min-h-0 flex-1' : 'hidden',
-            'lg:flex lg:h-auto lg:max-h-none lg:flex-none',
+            '@min-[1000px]/chat:flex @min-[1000px]/chat:h-auto @min-[1000px]/chat:max-h-none @min-[1000px]/chat:flex-none',
           )}
         />
 
@@ -623,7 +623,7 @@ export function MessagesClient({ active = true, requestedProject, requestedConve
           onDismissProject={handleCloseProjectSelection}
           className={cn(
             showConversationsOnMobile ? 'flex min-h-0 flex-1' : 'hidden',
-            selectedProjectId ? 'lg:flex lg:h-auto lg:flex-none' : 'lg:hidden',
+            selectedProjectId ? '@min-[1000px]/chat:flex @min-[1000px]/chat:h-auto @min-[1000px]/chat:flex-none' : '@min-[1000px]/chat:hidden',
           )}
         />
 
@@ -653,7 +653,7 @@ export function MessagesClient({ active = true, requestedProject, requestedConve
           currentUserAvatar={profile?.avatar_url ?? undefined}
           className={cn(
             showThreadOnMobile ? 'flex min-h-0 min-w-0 flex-1' : 'hidden',
-            'lg:flex lg:min-w-0 lg:flex-1',
+            '@min-[1000px]/chat:flex @min-[1000px]/chat:min-w-0 @min-[1000px]/chat:flex-1',
           )}
         />
       </div>
@@ -694,6 +694,6 @@ export function MessagesClient({ active = true, requestedProject, requestedConve
         onCancel={handleCancelDelete}
         onConfirm={() => void handleConfirmDelete()}
       />
-    </main>
+    </div>
   )
 }

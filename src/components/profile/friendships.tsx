@@ -124,7 +124,7 @@ const sections = [
   ['sent', 'Solicitações enviadas', 'Nenhuma solicitação enviada.'],
 ] as const
 
-export function FriendsPanel({ initialSection = 'accepted' }: { initialSection?: 'accepted' | 'received' | 'sent' }) {
+export function FriendsPanel({ initialSection = 'accepted', messagesPath='/mensagens', onSectionChange }: { initialSection?: 'accepted' | 'received' | 'sent'; messagesPath?:string; onSectionChange?:(section:'accepted'|'received'|'sent')=>void }) {
   const { rows, error, reload: load } = useFriendships()
   const [section, setSection] = useState(initialSection)
   const [search, setSearch] = useState('')
@@ -135,7 +135,7 @@ export function FriendsPanel({ initialSection = 'accepted' }: { initialSection?:
   if (!rows) return <p role="status">Carregando amizades…</p>
   return <div className="space-y-4">
     <div role="group" aria-label="Tipos de amizade" className="flex flex-wrap gap-1">
-      {sections.map(([state, title]) => <Button key={state} type="button" size="sm" variant={section === state ? 'default' : 'ghost'} aria-pressed={section === state} onClick={() => setSection(state)}>{title} ({rows.filter(row => row.relationship === state).length})</Button>)}
+      {sections.map(([state, title]) => <Button key={state} type="button" size="sm" variant={section === state ? 'default' : 'ghost'} aria-pressed={section === state} onClick={() => { setSection(state); onSectionChange?.(state) }}>{title} ({rows.filter(row => row.relationship === state).length})</Button>)}
     </div>
     <Input type="search" aria-label="Buscar amigos por nome" placeholder="Buscar amigos por nome" value={search} onChange={(event) => setSearch(event.target.value)} />
     {sections.filter(([state]) => state === section).map(([state, title, empty]) => {
@@ -152,7 +152,7 @@ export function FriendsPanel({ initialSection = 'accepted' }: { initialSection?:
               <PresenceLabel lastActivity={row.last_activity} />
             </div>
             {row.relationship === 'accepted' && <Button asChild size="sm" variant="outline">
-              <Link href={'/mensagens?aba=amigos&amigo=' + row.user_id}>Enviar mensagem</Link>
+              <Link href={messagesPath+'?aba=amigos&amigo=' + row.user_id}>Enviar mensagem</Link>
             </Button>}
             <FriendshipControls userId={row.user_id} relationship={row.relationship} onChanged={load} />
           </li>)}</ul>}

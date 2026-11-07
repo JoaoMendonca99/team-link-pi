@@ -19,19 +19,18 @@ function normalizePathname(pathname: string | null): string {
 
 export function MarketingShell({ children }: { children: React.ReactNode }) {
   const pathname = normalizePathname(usePathname())
-  const isMessagesPage = pathname === "/mensagens"
-  const hideMarketingFooter = isMessagesPage
+  const isMessagesPage = pathname === "/mensagens" || pathname === "/meu-espaco/mensagens"
+  const isWorkspace = pathname === "/meu-espaco" || pathname.startsWith("/meu-espaco/")
+  const hideMarketingFooter = isMessagesPage || isWorkspace
 
   return (
     <ThemeProvider>
       <FriendshipsProvider>
       <div className="flex min-h-dvh flex-col overflow-x-clip bg-background text-foreground">
-        <SiteHeader fullBleed={isMessagesPage} />
+        <SiteHeader fullBleed={isMessagesPage || isWorkspace} />
         <div
           className={
-            hideMarketingFooter
-              ? "flex min-h-0 min-h-[calc(100dvh-72px)] flex-1 flex-col"
-              : "min-w-0 flex-1"
+            isMessagesPage && !isWorkspace ? "flex h-[calc(100dvh-72px)] min-h-0 flex-col" : "min-w-0 flex-1"
           }
         >
           {children}
@@ -39,7 +38,7 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
         {hideMarketingFooter ? null : <SiteFooter />}
       </div>
       {isMessagesPage ? null : <ProjectChatWidget />}
-      <PushSettings automatic />
+      {pathname === '/meu-espaco/configuracoes' || pathname === '/perfil/notificacoes' ? null : <PushSettings automatic />}
       </FriendshipsProvider>
     </ThemeProvider>
   )

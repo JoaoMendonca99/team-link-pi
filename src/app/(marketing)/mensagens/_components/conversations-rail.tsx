@@ -67,13 +67,13 @@ export function ConversationsRail({
   return (
     <aside
       className={cn(
-        'flex min-h-0 w-full flex-col bg-card text-card-foreground lg:w-80 lg:shrink-0 lg:border-r lg:border-card-outline',
+        'flex min-h-0 w-full flex-col bg-card text-card-foreground @min-[1000px]/chat:w-80 @min-[1000px]/chat:shrink-0 @min-[1000px]/chat:border-r @min-[1000px]/chat:border-card-outline',
         className,
       )}
       aria-label="Conversas do projeto"
     >
       <header className="border-b border-border bg-background/60 px-4 py-3">
-        <div className="mb-2 flex lg:mb-0 lg:hidden">
+        <div className="mb-2 flex @min-[1000px]/chat:mb-0 @min-[1000px]/chat:hidden">
           <Button
             type="button"
             variant="ghost"
@@ -86,7 +86,7 @@ export function ConversationsRail({
           </Button>
         </div>
 
-        <div className="flex items-center justify-between gap-3 lg:mt-0">
+        <div className="flex items-center justify-between gap-3 @min-[1000px]/chat:mt-0">
           <p className="text-[11px] font-semibold uppercase tracking-[0.26em] text-primary">
             CONVERSAS
           </p>
@@ -94,7 +94,7 @@ export function ConversationsRail({
             type="button"
             variant="ghost"
             size="icon"
-            className="hidden h-8 w-8 shrink-0 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground lg:inline-flex"
+            className="hidden h-8 w-8 shrink-0 rounded-xl text-muted-foreground hover:bg-muted hover:text-foreground @min-[1000px]/chat:inline-flex"
             onClick={onDismissProject}
             aria-label="Fechar projeto"
             title="Fechar projeto"

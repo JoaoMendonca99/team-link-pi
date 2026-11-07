@@ -124,7 +124,7 @@ export function ThreadPanel({
             type="button"
             variant="ghost"
             size="sm"
-            className="h-8 shrink-0 gap-1.5 rounded-xl px-2 text-xs font-semibold lg:hidden"
+            className="h-8 shrink-0 gap-1.5 rounded-xl px-2 text-xs font-semibold @min-[1000px]/chat:hidden"
             onClick={onBack}
           >
             <ArrowLeft className="h-4 w-4" aria-hidden />

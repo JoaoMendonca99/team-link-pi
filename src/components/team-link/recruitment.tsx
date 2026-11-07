@@ -11,7 +11,7 @@ import { UserAvatar } from '@/components/team-link/user-avatar'
 import { getSupabaseClient } from '@/lib/supabase/client'
 
 export type Vacancy = { id: string; title: string; description: string; skills: string[]; positions: number; available: number; open: boolean; legacy: boolean }
-type Application = { id: string; project_title: string; slug: string; user_id: string; name: string | null; avatar: string | null; created_at: string; decided_at: string | null; status: 'pending' | 'review' | 'approved' | 'rejected' | 'canceled'; decision_reason?: 'vacancy_filled' | null; vacancies: { id: string; title: string; approved: boolean; rejected?: boolean }[]; message: string | null; unread: number }
+type Application = { id: string; project_id: string; project_title: string; slug: string; user_id: string; name: string | null; avatar: string | null; created_at: string; decided_at: string | null; status: 'pending' | 'review' | 'approved' | 'rejected' | 'canceled'; decision_reason?: 'vacancy_filled' | null; vacancies: { id: string; title: string; approved: boolean; rejected?: boolean }[]; message: string | null; unread: number }
 type Message = { id: number; sender_id: string | null; name: string | null; avatar: string | null; content: string; created_at: string }
 
 const statuses = { pending: 'Pendente', review: 'Em análise', approved: 'Aprovada', rejected: 'Recusada', canceled: 'Cancelada' }
@@ -329,19 +329,51 @@ export function ApplyButton({ projectId, title, vacancies, userId, canApply, isV
   </>
 }
 
-export function MyApplications({ userId, initialRequestId }: { userId: string; initialRequestId?:string|null }) {
+export function MyApplications({ userId, initialRequestId, workspace=false, initialStatus, onSelect }: { userId: string; initialRequestId?:string|null; workspace?:boolean; initialStatus?:string|null; onSelect?:(id:string|null)=>void }) {
   const { items, reload, error, loading, updates, connection } = useApplications(null, true, userId)
   const [selected, setSelected] = useState<string | null>(initialRequestId??null)
   useEffect(()=>{setSelected(initialRequestId??null)},[initialRequestId,userId])
+  const requestedFilter=initialStatus==='active'||(initialStatus&&Object.hasOwn(statuses,initialStatus))?initialStatus:'all'
+  const [filter,setFilter]=useState(requestedFilter)
+  const [page,setPage]=useState(0)
+  useEffect(()=>{setFilter(requestedFilter);setPage(0)},[requestedFilter])
+  const visible=items.filter(entry=>filter==='all'||(filter==='active'&&active(entry))||entry.status===filter)
+  useEffect(()=>{setPage(value=>Math.min(value,Math.max(0,Math.ceil(visible.length/10)-1)))},[visible.length])
+  const shown=workspace?visible.slice(page*10,page*10+10):items
+  const accessKey=userId+':'+shown.map(entry=>entry.project_id).filter(Boolean).sort().join(',')
+  const [projectLinks,setProjectLinks]=useState<{key:string;visible:string[];panels:string[]}>()
+  useEffect(()=>{
+    if(!workspace)return
+    const ids=accessKey.split(':')[1].split(',').filter(Boolean)
+    if(!ids.length)return
+    let alive=true
+    const client=getSupabaseClient()
+    void Promise.all([
+      client.from('project_public_cards').select('id,owner_id').in('id',ids),
+      client.from('project_members').select('project_id').eq('user_id',userId).eq('status','active').in('project_id',ids),
+    ]).then(([projects,members])=>{
+      if(!alive||projects.error||members.error)return
+      const rows=(projects.data??[]) as {id:string;owner_id:string}[]
+      const linked=new Set((members.data??[]).map(row=>row.project_id as string))
+      setProjectLinks({key:accessKey,visible:rows.map(row=>row.id),panels:rows.filter(row=>row.owner_id===userId||linked.has(row.id)).map(row=>row.id)})
+    }).catch(()=>{ /* Optional shortcuts do not prevent access to the application details. */ })
+    return()=>{alive=false}
+  },[workspace,userId,accessKey])
+  const links=projectLinks?.key===accessKey?projectLinks:undefined
+  const select=(id:string|null)=>{setSelected(id);onSelect?.(id)}
   const item = items.find((entry) => entry.id === selected)
   return <section id="minhas-candidaturas" className={card}>
-    <h2 className="text-lg font-semibold">Minhas candidaturas</h2>
+    {!workspace&&<h2 className="text-lg font-semibold">Minhas candidaturas</h2>}
+    {workspace&&<label className="flex flex-wrap items-center gap-3 text-sm">Status<select aria-label="Filtrar minhas candidaturas" value={filter} onChange={event=>{setFilter(event.target.value);setPage(0)}} className="rounded-xl border border-border bg-background p-2"><option value="all">Todas</option><option value="active">Pendentes / Em análise</option>{Object.entries(statuses).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>}
     <Failure message={error} />
+    {workspace&&error&&<Button variant="outline" size="sm" onClick={()=>void reload()}>Tentar novamente</Button>}
     {!error && !items.length ? <p className="text-sm text-muted-foreground">{loading ? 'Carregando…' : 'Nenhuma candidatura enviada.'}</p> : null}
-    {items.map((entry) => <Button key={entry.id} variant="outline" className="mr-2 h-auto whitespace-normal text-left" onClick={() => setSelected(entry.id)}>
+    {!workspace&&shown.map((entry) => <Button key={entry.id} variant="outline" className="mr-2 h-auto whitespace-normal text-left" onClick={() => select(entry.id)}>
       {entry.project_title} · {applicationStatus(entry)}{entry.unread ? ' · ' + entry.unread + ' nova(s)' : ''}
     </Button>)}
-    {item ? <Modal title="Acompanhar candidatura" close={() => setSelected(null)}>
+    {workspace&&<><ul className="space-y-3">{shown.map(entry=><li key={entry.id} className="min-w-0 space-y-2 rounded-xl border border-border p-3"><div className="flex flex-wrap items-center justify-between gap-2"><h2 className="break-words font-semibold">{entry.project_title}</h2><span className="text-xs text-muted-foreground">{applicationStatus(entry)}</span></div><p className="break-words text-sm text-muted-foreground">{entry.vacancies.map(vacancyDecision).join(' · ')||'Solicitação de participação'}</p><p className="text-xs text-muted-foreground">Enviada em {date(entry.created_at)}{entry.unread?' · '+entry.unread+' nova(s)':''}</p><div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={()=>select(entry.id)}>Detalhes e conversa</Button>{links?.visible.includes(entry.project_id)&&<Button asChild size="sm" variant="ghost"><Link href={'/projetos/'+entry.slug}>Ver projeto</Link></Button>}{links?.panels.includes(entry.project_id)&&<Button asChild size="sm" variant="outline"><Link href={'/projetos/'+entry.slug+'/painel'}>Abrir painel</Link></Button>}</div></li>)}</ul>{!loading&&!error&&!visible.length&&<p className="text-sm text-muted-foreground">Nenhuma candidatura neste filtro.</p>}{visible.length>10&&<nav aria-label="Paginação de candidaturas" className="flex flex-wrap items-center justify-between gap-3 text-sm"><span>{Math.min(page*10+1,visible.length)}–{Math.min((page+1)*10,visible.length)} de {visible.length}</span><div className="flex gap-2"><Button size="sm" variant="outline" disabled={page===0} onClick={()=>setPage(value=>value-1)}>Anterior</Button><Button size="sm" variant="outline" disabled={(page+1)*10>=visible.length} onClick={()=>setPage(value=>value+1)}>Próxima</Button></div></nav>}</>}
+    {initialRequestId&&!loading&&!error&&!item&&<p role="alert" className="text-sm text-muted-foreground">Candidatura indisponível para esta conta.</p>}
+    {item ? <Modal title="Acompanhar candidatura" close={() => select(null)}>
       <ApplicationDetails key={item.id} item={item} reload={reload} version={connection + (updates[item.id] ?? 0)} />
     </Modal> : null}
   </section>
