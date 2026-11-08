@@ -1,9 +1,10 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname, useRouter } from "next/navigation"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Briefcase, Compass, Home, Info, Link2, LogOut, Menu, MessageCircle, Moon, LayoutDashboard, Sun, X, CircleHelp } from "lucide-react"
+import { Briefcase, Compass, Home, Info, LogOut, Menu, MessageCircle, Moon, LayoutDashboard, Sun, X, CircleHelp } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -165,9 +166,7 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
               href="/"
               className="flex min-w-0 shrink items-center gap-2 font-bold tracking-tight text-foreground"
             >
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary sm:h-10 sm:w-10">
-                <Link2 className="h-5 w-5" aria-hidden />
-              </span>
+              <Image src="/icons/icon-192.png" alt="" width={36} height={36} className="shrink-0" />
               <span className="truncate text-base sm:text-lg">Team Link</span>
             </Link>
 
@@ -304,9 +303,7 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
                 onClick={closeMobile}
                 className="flex min-w-0 shrink items-center gap-2 font-bold tracking-tight text-foreground"
               >
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary">
-                  <Link2 className="h-5 w-5" aria-hidden />
-                </span>
+                <Image src="/icons/icon-192.png" alt="" width={36} height={36} className="shrink-0" />
                 <span className="truncate text-lg">Team Link</span>
               </Link>
               <div className="flex shrink-0 items-center gap-1">

@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Link2 } from "lucide-react"
+import Image from "next/image"
 
 import { Container } from "@/components/layout/container"
 import { useNavigationSession } from "@/components/profile/friendships-provider"
@@ -31,7 +31,7 @@ export function SiteFooter() {
         <div className={styles.grid}>
           <div className={styles.brand}>
             <Link href="/" className={styles.logo}>
-              <span className={styles.logoMark}><Link2 className="h-5 w-5" aria-hidden /></span>
+              <Image src="/icons/icon-192.png" alt="" width={36} height={36} className={styles.logoMark} />
               Team Link
             </Link>
             <p className={styles.tagline}>Seu projeto inteiro. Um só lugar.</p>

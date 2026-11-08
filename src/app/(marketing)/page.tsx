@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import Image from 'next/image'
 import { ArrowDown, ArrowRight, Check, CheckSquare, FileText, GitBranch, Link2, MessageSquare, Puzzle, Target, Users } from 'lucide-react'
 
 import { Container } from '@/components/layout/container'
@@ -11,7 +12,7 @@ import { ProductTour } from '@/components/home/product-tour'
 import styles from '@/components/home/home.module.css'
 
 export const metadata: Metadata = {
-  title: { absolute: 'Team Link — Seu projeto inteiro. Um só lugar.' },
+  title: { absolute: 'Team Link' },
   description: 'Da ideia à entrega, reúna sua equipe, atividades, metas, conversas e documentação em uma única plataforma.',
 }
 
@@ -101,7 +102,7 @@ export default function HomePage() {
       <section aria-labelledby="start-title" className={styles.finalSection}>
         <Container>
           <div className={styles.finalCall}>
-            <span className={styles.finalMark}><Link2 aria-hidden className="size-7" /></span>
+            <span className={styles.finalMark}><Image src="/icons/icon-192.png" alt="" width={40} height={40} /></span>
             <h2 id="start-title">Pronto para <span className={styles.accentText}>reunir seu projeto</span> em um só lugar?</h2>
             <p>Comece com a sua ideia ou encontre uma equipe para construir junto.</p>
             <div className={styles.actions}><ProjectStart>Criar meu projeto<ArrowRight aria-hidden className="size-4" /></ProjectStart><Button asChild variant="outline" size="lg" className={styles.secondaryAction}><Link href="/explorar">Explorar projetos</Link></Button></div>

@@ -13,7 +13,7 @@
 }
 .brand { grid-column: 1 / -1; }
 .logo { display: inline-flex; align-items: center; gap: 8px; font-size: 18px; font-weight: 700; letter-spacing: -.025em; }
-.logoMark { display: grid; place-items: center; width: 40px; height: 40px; flex-shrink: 0; border-radius: 16px; background: color-mix(in srgb, var(--primary) 15%, transparent); color: var(--primary); }
+.logoMark { width: 36px; height: 36px; flex-shrink: 0; }
 .tagline { max-width: 28ch; margin-top: 14px; padding-left: 12px; border-left: 2px solid var(--footer-accent); color: var(--muted-foreground); font-size: 14px; line-height: 1.7; }
 .heading { margin-bottom: 8px; font-size: 12px; font-weight: 650; letter-spacing: .08em; text-transform: uppercase; line-height: 1.7; }
 .links a { display: flex; align-items: center; width: fit-content; max-width: 100%; min-height: 44px; padding-block: 8px; color: var(--muted-foreground); font-size: 14px; line-height: 1.5; text-underline-offset: 4px; }

@@ -18,12 +18,12 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   manifest: '/manifest.webmanifest',
-  icons: { apple:'/icons/icon-192.png' },
+  icons: { icon: [{ url:'/favicon.ico?v=team-link-20261108',type:'image/x-icon',sizes:'16x16 32x32 48x48 64x64' }], apple:'/icons/icon-192.png' },
   appleWebApp: { capable:true,title:'Team Link',statusBarStyle:'default' },
   metadataBase: new URL("https://team-link.vercel.app"),
   title: {
     default: "Team Link",
-    template: "%s | Team Link",
+    template: "Team Link",
   },
   description: TEAM_LINK_DESCRIPTION,
   keywords:

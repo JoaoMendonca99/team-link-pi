@@ -84,10 +84,12 @@
 .solution { background: color-mix(in srgb, var(--home-soft) 45%, var(--background)); scroll-margin-top: 100px; }
 .tour { border: 1px solid var(--home-line); border-radius: 16px; background: var(--home-frame); overflow: hidden; box-shadow: 0 12px 50px -30px #0004; }
 .tourTabs { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); padding: 12px; gap: 10px; border-bottom: 1px solid var(--home-line); background: var(--home-soft); }
-.tourTabs > button { position: relative; display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 0; min-height: 50px; padding: 12px; border: 1px solid var(--home-tab-border); border-radius: 10px; background: var(--home-tab-surface); color: var(--foreground); font-size: 13px; line-height: 1.4; font-weight: 600; cursor: pointer; transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease; }
+.tourTabs > button { position: relative; display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 0; min-height: 50px; padding: 12px; border: 2px solid var(--home-tab-border); border-radius: 10px; background: var(--home-tab-surface); color: var(--foreground); font-size: 13px; line-height: 1.4; font-weight: 600; box-shadow: 0 2px 3px #00000012; cursor: pointer; transition: background-color .15s ease, border-color .15s ease, box-shadow .15s ease; }
 .tourTabs > button:hover { background: var(--home-accent); border-color: var(--home-blue); }
 .tourTabs > button[aria-selected="true"] { color: #fff; background: var(--home-action-blue); border-color: var(--home-action-blue); box-shadow: 0 2px 7px color-mix(in srgb, var(--home-action-blue) 24%, transparent); }
 .tourTabs > button[aria-selected="true"]:hover { background: var(--home-action-blue-hover); border-color: var(--home-action-blue-hover); }
+.tourTabs > button:active { box-shadow: inset 0 2px 5px #0003; background: var(--home-accent); }
+.tourTabs > button[aria-selected="true"]:active { background: var(--home-action-blue-hover); }
 .tabLabel { min-width: 0; }
 .tabSelection { display: inline-flex; width: 14px; height: 14px; flex-shrink: 0; opacity: 0; }
 .tourTabs > button[aria-selected="true"] .tabSelection { opacity: 1; }
@@ -210,14 +212,34 @@
 .captureFooter > p { max-width: 65ch; }
 .captureFooter > button { display: inline-flex; align-items: center; gap: 7px; flex-shrink: 0; min-height: 36px; padding: 6px 10px; border: 1px solid var(--home-line); border-radius: 8px; color: var(--home-blue); background: var(--home-soft); font-size: 12px; font-weight: 550; cursor: pointer; }
 .captureFooter > button:hover { background: var(--home-accent); }
-.captureDialog { position: fixed; inset: 0; margin: auto; width: calc(100% - 32px); max-width: 1400px; max-height: 92dvh; padding: 0; overflow-y: auto; overscroll-behavior: contain; border: 1px solid var(--home-line); border-radius: 16px; background: var(--home-frame); color: var(--foreground); box-shadow: 0 25px 90px #0008; }
+.captureDialog { position: fixed; inset: 0; margin: auto; width: calc(100% - 32px); max-width: 1600px; height: 92dvh; max-height: 1100px; padding: 0; overflow: hidden; overscroll-behavior: contain; border: 1px solid var(--home-line); border-radius: 16px; background: var(--home-frame); color: var(--foreground); box-shadow: 0 25px 90px #0008; }
+.captureDialog[open] { display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto; }
 .captureDialog::backdrop { background: #030713cc; backdrop-filter: blur(5px); }
 .captureDialogHeader { position: sticky; top: 0; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 20px; background: var(--home-frame); border-bottom: 1px solid var(--home-line); }
 .home .captureDialog h2 { font-size: 18px; line-height: 1.4; letter-spacing: -.02em; font-weight: 650; }
 .captureDialogHeader p, .captureDialogNote { font-size: 11px; color: var(--home-muted); line-height: 1.8; }
-.captureDialogHeader button { display: grid; place-items: center; width: 40px; height: 40px; flex-shrink: 0; border-radius: 8px; border: 1px solid var(--home-line); cursor: pointer; }
+.captureDialogHeader button { display: grid; place-items: center; width: 44px; height: 44px; flex-shrink: 0; border-radius: 8px; border: 1px solid var(--home-line); cursor: pointer; }
 .captureDialogHeader button:hover { background: var(--home-soft); }
 .captureDialogNote { padding: 12px 20px; }
+.captureTrigger { width: 100%; cursor: zoom-in; }
+.captureTrigger:hover { outline: 2px solid var(--home-blue); outline-offset: -2px; }
+.home .captureTrigger:focus-visible { outline-offset: -4px; }
+.captureStage { min-height: 0; min-width: 0; overflow: auto; background: #0b1120; overscroll-behavior: contain; touch-action: pan-y pinch-zoom; cursor: grab; user-select: none; }
+.captureStage:active { cursor: grabbing; }
+.home .captureStage:focus-visible { outline-offset: -4px; }
+.captureStage .screenImage { height: 100%; }
+.captureStage .screenImage img { width: 100%; height: 100%; max-width: none; object-fit: contain; }
+.captureStage[data-zoomed="true"] { touch-action: auto; cursor: auto; }
+.captureStage[data-zoomed="true"] .screenImage { display: block; width: max-content; height: auto; }
+.captureStage[data-zoomed="true"] img { display: block; width: var(--capture-desktop-width); height: auto; max-width: none; }
+.galleryToolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 20px; border-top: 1px solid var(--home-line); }
+.galleryViewControls { display: flex; gap: 8px; margin-left: auto; }
+.galleryNavigation { display: flex; align-items: center; gap: 10px; }
+.galleryNavigation p { min-width: 46px; text-align: center; font-size: 13px; font-variant-numeric: tabular-nums; }
+.galleryToolbar button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 44px; min-height: 44px; padding: 8px 12px; border: 1px solid var(--home-tab-border); border-radius: 8px; background: var(--home-tab-surface); color: var(--foreground); font-size: 12px; font-weight: 600; cursor: pointer; }
+.galleryToolbar button:hover, .galleryToolbar button:active { background: var(--home-accent); border-color: var(--home-blue); }
+.galleryToolbar button[aria-pressed="true"] { background: var(--home-action-blue); color: #fff; border-color: var(--home-action-blue); }
+.galleryToolbar .galleryFormat { display: none; }
 @media (max-width: 1023px) {
   .screenImage img { max-width: var(--capture-mobile-width); }
   .screenshotFrame { min-height: 0; padding: 16px; }
@@ -237,10 +259,18 @@
   .captureDialogHeader { padding: 12px; }
   .captureDialog .screenshotFrame { padding: 8px; }
   .captureDialogNote { padding: 12px; }
+  .galleryToolbar { padding: 8px 12px; gap: 8px; }
+  .galleryNavigation { gap: 6px; }
 }
 @media (max-width: 359px) {
   .tourTabs { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (prefers-reduced-motion: reduce) {
   .tourTabs > button { transition: none; }
+}
+@media (max-width: 1023px) {
+  .galleryToolbar .galleryFormat { display: inline-flex; }
+  .captureStage:not([data-desktop="true"]) .screenImage { height: auto; }
+  .captureStage:not([data-desktop="true"]) img { height: auto; max-width: var(--capture-mobile-width); }
+  .captureStage[data-zoomed="true"]:not([data-desktop="true"]) img { width: var(--capture-mobile-width); }
 }
