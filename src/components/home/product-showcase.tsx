@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { CheckSquare, FileText, GitBranch, LayoutDashboard, MessageSquare, PanelsTopLeft, Target, Users, X, ZoomIn, type LucideIcon } from 'lucide-react'
+import { Check, CheckSquare, FileText, GitBranch, LayoutDashboard, MessageSquare, PanelsTopLeft, Target, Users, X, ZoomIn, type LucideIcon } from 'lucide-react'
 import { productScreens, type ProductScreen } from './product-screens'
 import { nextShowcaseTab } from './showcase-navigation'
 import styles from './home.module.css'
@@ -51,7 +51,7 @@ export function ProductShowcase({ items, id, label, preview = false }: { items: 
       const destination = nextShowcaseTab(event.key, selected, items.length)
       if (destination !== null) { event.preventDefault(); setSelected(destination); tabs.current[destination]?.focus() }
     }}>
-      {items.map(({ id: screen, label: text }, index) => {const Icon=screenIcons[screen];return <button key={screen} ref={element => { tabs.current[index] = element }} type="button" role="tab" id={`${id}-tab-${screen}`} aria-controls={`${id}-panel-${screen}`} aria-selected={index === selected} tabIndex={index === selected ? 0 : -1} onClick={() => setSelected(index)}><Icon aria-hidden className="size-4" />{text}</button>})}
+      {items.map(({ id: screen, label: text }, index) => {const Icon=screenIcons[screen];return <button key={screen} ref={element => { tabs.current[index] = element }} type="button" role="tab" id={`${id}-tab-${screen}`} aria-controls={`${id}-panel-${screen}`} aria-selected={index === selected} tabIndex={index === selected ? 0 : -1} onClick={() => setSelected(index)}><Icon aria-hidden className="size-4 shrink-0" /><span className={styles.tabLabel}>{text}</span><span aria-hidden="true" className={styles.tabSelection}><Check className="size-3.5" /></span></button>})}
     </div>
     {items.map((item, index) => <div key={item.id} role="tabpanel" id={`${id}-panel-${item.id}`} aria-labelledby={`${id}-tab-${item.id}`} hidden={selected !== index} tabIndex={0} className={styles.tourPanel}>
       {selected === index && <>
