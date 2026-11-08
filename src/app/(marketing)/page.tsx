@@ -46,7 +46,7 @@ export default function HomePage() {
       <section aria-labelledby="fragmentation-title" className={styles.section}>
         <Container>
           <div className={styles.sectionHeading}>
-            <div><p className={styles.eyebrow}>Menos dispersão. Mais contexto.</p><h2 id="fragmentation-title">Seu projeto não deveria estar espalhado por vários lugares.</h2></div>
+            <div><p className={styles.eyebrow}>Menos dispersão. Mais contexto.</p><h2 id="fragmentation-title">Seu projeto não deveria estar <span className={styles.accentText}>espalhado por vários lugares.</span></h2></div>
             <p>Uma conversa aqui, um prazo ali, um documento difícil de encontrar. Quando as informações ficam separadas, acompanhar o trabalho exige mais esforço.</p>
           </div>
           <div className={styles.comparison}>
@@ -67,7 +67,7 @@ export default function HomePage() {
       <section id="como-funciona" aria-labelledby="solution-title" className={`${styles.section} ${styles.solution}`}>
         <Container>
           <div className={styles.sectionHeading}>
-            <div><p className={styles.eyebrow}>Da organização à entrega</p><h2 id="solution-title">Tudo conectado<br className="hidden sm:block" /> ao mesmo projeto.</h2></div>
+            <div><p className={styles.eyebrow}>Da organização à entrega</p><h2 id="solution-title">Tudo <span className={styles.accentText}>conectado</span><br className="hidden sm:block" /> ao mesmo projeto.</h2></div>
             <p>Monte a equipe, distribua responsabilidades e acompanhe a evolução. Cada conversa, entrega e documento encontra seu contexto.</p>
           </div>
           <ProductTour />
@@ -78,7 +78,7 @@ export default function HomePage() {
         <Container className={styles.toolsLayout}>
           <div>
             <p className={styles.eyebrow}>Configurável por projeto</p>
-            <h2 id="tools-title">Seu projeto,<br />suas ferramentas.</h2>
+            <h2 id="tools-title">Seu projeto,<br /><span className={styles.accentText}>suas ferramentas.</span></h2>
             <p className={styles.bodyCopy}>O Controle de Atividades faz parte de todo projeto. Ative as outras ferramentas conforme o trabalho pedir, mantendo o painel focado no que a equipe precisa.</p>
             <p className={styles.audienceLabel}>Para equipes de diferentes áreas</p>
             <ul className={styles.audiences}>{['Acadêmicos', 'Engenharia', 'Educação', 'Robótica', 'Tecnologia', 'Sustentabilidade', 'Profissionais'].map(area => <li key={area}>{area}</li>)}</ul>
@@ -102,7 +102,7 @@ export default function HomePage() {
         <Container>
           <div className={styles.finalCall}>
             <span className={styles.finalMark}><Link2 aria-hidden className="size-7" /></span>
-            <h2 id="start-title">Pronto para reunir seu projeto em um só lugar?</h2>
+            <h2 id="start-title">Pronto para <span className={styles.accentText}>reunir seu projeto</span> em um só lugar?</h2>
             <p>Comece com a sua ideia ou encontre uma equipe para construir junto.</p>
             <div className={styles.actions}><ProjectStart>Criar meu projeto<ArrowRight aria-hidden className="size-4" /></ProjectStart><Button asChild variant="outline" size="lg" className={styles.secondaryAction}><Link href="/explorar">Explorar projetos</Link></Button></div>
           </div>

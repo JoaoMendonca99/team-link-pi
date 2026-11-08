@@ -4,11 +4,11 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { useSupabaseSession } from '@/hooks/use-supabase-session'
 import { FRIENDSHIPS_CHANGED, profileRpc, type Friend } from '@/lib/profile-social'
 
-type FriendshipsState = { rows?: Friend[]; error: boolean; reload: () => void }
+type FriendshipsState = { rows?: Friend[]; error: boolean; reload: () => void; auth: { loading: boolean; isAuthenticated: boolean } }
 const FriendshipsContext = createContext<FriendshipsState | null>(null)
 
 export function FriendshipsProvider({ children }: { children: ReactNode }) {
-  const { user } = useSupabaseSession()
+  const { user, loading, isAuthenticated } = useSupabaseSession()
   const userId = user?.id
   const [result, setResult] = useState<{ userId: string; rows?: Friend[]; error: boolean }>()
   const request = useRef(0)
@@ -38,7 +38,7 @@ export function FriendshipsProvider({ children }: { children: ReactNode }) {
     }
   }, [reload, userId])
   const current = result?.userId === userId ? result : undefined
-  return <FriendshipsContext.Provider value={{ rows: current?.rows, error: current?.error ?? false, reload }}>{children}</FriendshipsContext.Provider>
+  return <FriendshipsContext.Provider value={{ rows: current?.rows, error: current?.error ?? false, reload, auth: { loading, isAuthenticated } }}>{children}</FriendshipsContext.Provider>
 }
 
 export function useFriendships() {
@@ -49,4 +49,9 @@ export function useFriendships() {
 
 export function usePendingFriendships() {
   return useFriendships().rows?.filter(row => row.relationship === 'received').length ?? 0
+}
+
+/** Reuse this provider's session for navigation without another Auth/profile request. */
+export function useNavigationSession() {
+  return useFriendships().auth
 }
