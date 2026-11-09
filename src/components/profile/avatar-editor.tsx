@@ -79,7 +79,7 @@ export function AvatarEditor({ name, avatarUrl, draft, onChange, disabled }: {
       {draft ? <canvas ref={canvas} aria-label="Prévia quadrada da fotografia" className="size-32 rounded-2xl border border-border" /> :
         <UserAvatar name={name} imageUrl={draft === null ? undefined : avatarUrl ?? undefined} sizeClassName="size-24" />}
       <div className="min-w-0 flex-1 basis-48 space-y-2">
-        <Input id="profile-photo" type="file" accept="image/jpeg,image/png,image/webp" disabled={disabled || loading}
+        <Input id="profile-photo" className="scroll-mt-36" type="file" accept="image/jpeg,image/png,image/webp" disabled={disabled || loading}
           onChange={(event) => { void choose(event.target.files?.[0]); event.target.value = '' }} />
         <p className="flex items-center gap-1 text-xs text-muted-foreground"><Camera className="size-4" aria-hidden /> JPEG, PNG ou WebP.</p>
         <div className="flex flex-wrap gap-2">

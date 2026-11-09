@@ -178,6 +178,8 @@ export function ExploreCatalog() {
             }
           />
 
+          {searchParams.get('conectar') === '1' && <section id="encontrar-pessoas" aria-labelledby="connect-title" className="scroll-mt-24 space-y-2 rounded-2xl border border-border bg-card p-4"><h2 id="connect-title" className="font-semibold">Encontre pessoas pela equipe dos projetos</h2><p className="text-sm text-muted-foreground">Abra um projeto abaixo, vá até Equipe e selecione o nome de um integrante. No perfil, use Adicionar amigo para enviar sua solicitação.</p><Link href="/meu-espaco/amigos" className="inline-flex min-h-11 items-center text-sm font-medium text-primary hover:underline">Ver minhas amizades e solicitações</Link></section>}
+
           <SearchAndFilters
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}

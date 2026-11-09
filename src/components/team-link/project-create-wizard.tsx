@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
-import { Briefcase, Check, CheckCircle2, GraduationCap, Plus, X } from 'lucide-react'
+import { Briefcase, CheckCircle2, GraduationCap, Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -171,9 +171,9 @@ export function ProjectCreateWizard({ userId, profile }: { userId: string; profi
 
   return <form noValidate onSubmit={submit} className="mx-auto max-w-4xl space-y-5" aria-label="Assistente de criação de projeto">
     <div ref={progress} className="scroll-mt-24 space-y-3 rounded-2xl border bg-card/60 p-4 sm:p-5">
-      <p role="status" aria-live="polite" className="text-sm font-semibold">Etapa {index + 1}{values.context ? ' de ' + steps.length : ''} · {projectStepLabels[step]}</p>
+      <p className="font-semibold">{values.context === 'academic' ? 'Criar projeto acadêmico' : values.context === 'general' ? 'Criar projeto geral ou profissional' : 'Criar projeto'}</p>
+      <p role="status" aria-live="polite" className="text-sm text-muted-foreground">Etapa {index + 1}{values.context ? ' de ' + steps.length : ''} · {projectStepLabels[step]}</p>
       <div role="progressbar" aria-label="Progresso da criação do projeto" aria-valuemin={0} aria-valuemax={steps.length} aria-valuenow={index + 1} aria-valuetext={`Etapa ${index + 1} de ${steps.length}`} className="h-2 w-full overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${((index + 1) / steps.length) * 100}%` }} /></div>
-      <nav aria-label="Etapas da criação"><ol className="hidden gap-2 sm:grid sm:grid-cols-3 lg:grid-cols-4">{steps.map((id, at) => <li key={id}><button type="button" disabled={Boolean(pending) || at > index} aria-current={id === step ? 'step' : undefined} onClick={() => go(id)} className={'flex min-h-11 w-full items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ' + (id === step ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background disabled:opacity-60')}><span className="flex size-5 shrink-0 items-center justify-center" aria-hidden>{at < index ? <Check className="size-4" /> : at + 1}</span>{projectStepLabels[id]}</button></li>)}</ol></nav>
     </div>
     {(restored || dirty) && <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground"><p>{storageError ? 'O navegador não conseguiu guardar o rascunho. Mantenha esta aba aberta.' : restored ? 'Rascunho recuperado. Os dados ficam salvos nesta aba para sua conta.' : 'Rascunho salvo nesta aba para sua conta.'}</p><Button type="button" variant="ghost" size="sm" disabled={Boolean(pending)} onClick={resetDraft}>Recomeçar</Button></div>}
     <fieldset disabled={Boolean(pending)} className="min-w-0 space-y-5">

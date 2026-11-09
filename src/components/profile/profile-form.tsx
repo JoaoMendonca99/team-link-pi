@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 
 import { AvatarEditor, exportAvatar, type AvatarCrop } from '@/components/profile/avatar-editor'
 import { ChipInput, normalizeStringArray } from '@/components/team-link/chip-input'
@@ -28,6 +28,17 @@ export function ProfileForm({ profile, backHref='/perfil' }: { profile: ProfileR
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [status, setStatus] = useState('')
+
+  useEffect(() => {
+    const field = window.location.hash.slice(1)
+    if (!['profile-bio', 'profile-skills', 'profile-interests', 'profile-photo'].includes(field)) return
+    const frame = requestAnimationFrame(() => {
+      const element = document.getElementById(field)
+      element?.scrollIntoView({ block: 'center' })
+      element?.focus({ preventScroll: true })
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [])
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -76,12 +87,12 @@ export function ProfileForm({ profile, backHref='/perfil' }: { profile: ProfileR
           <Input id="profile-university" maxLength={120} value={university} onChange={(event) => setUniversity(event.target.value)} /></div>
       </div>
       <div className="space-y-2"><Label htmlFor="profile-bio">Biografia</Label>
-        <Textarea id="profile-bio" rows={4} value={bio} onChange={(event) => setBio(event.target.value)} /></div>
+        <Textarea id="profile-bio" className="scroll-mt-36" rows={4} value={bio} onChange={(event) => setBio(event.target.value)} /></div>
     </FormSection>
     <FormSection title="Habilidades e interesses">
-      <ChipInput label="Habilidades" value={skills} onChange={(items) => setSkills(normalizeProfileTags(items))}
+      <ChipInput inputId="profile-skills" label="Habilidades" value={skills} onChange={(items) => setSkills(normalizeProfileTags(items))}
         placeholder="Ex.: Python, React, UI/UX" helperText="Pressione Enter para adicionar cada habilidade." />
-      <ChipInput label="Interesses" value={interests} onChange={(items) => setInterests(normalizeProfileTags(items))}
+      <ChipInput inputId="profile-interests" label="Interesses" value={interests} onChange={(items) => setInterests(normalizeProfileTags(items))}
         placeholder="Ex.: Robótica, IoT, jogos" helperText="Pressione Enter para adicionar cada interesse." />
     </FormSection>
     <FormSection title="Privacidade">
