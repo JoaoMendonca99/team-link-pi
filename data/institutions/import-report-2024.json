@@ -1,0 +1,43 @@
+{
+  "source_file": "MICRODADOS_ED_SUP_IES_2024.CSV",
+  "source_url": "https://www.gov.br/inep/pt-br/acesso-a-informacao/dados-abertos/microdados/censo-da-educacao-superior",
+  "source_sha256": "aaa37fb9433d005686616bb9e48c5d7083526fdcc171973e787eed35a2ee349d",
+  "encoding": "windows-1252",
+  "delimiter": ";",
+  "columns": {
+    "CO_IES": "codigo_inep",
+    "NO_IES": "nome",
+    "SG_IES": "sigla",
+    "NO_MUNICIPIO_IES": "municipio",
+    "CO_MUNICIPIO_IES": "codigo_municipio",
+    "SG_UF_IES": "uf",
+    "TP_ORGANIZACAO_ACADEMICA": "tipo_organizacao",
+    "TP_CATEGORIA_ADMINISTRATIVA": "categoria_administrativa",
+    "TP_REDE": "rede",
+    "NU_ANO_CENSO": "ano_referencia"
+  },
+  "total_read": 2561,
+  "distinct_institutions": 2561,
+  "valid_records": 2561,
+  "duplicates": [],
+  "conflicts": [],
+  "rejected": [],
+  "without_acronym": 459,
+  "prepared": 2561,
+  "dictionary": {
+    "source": "Inep - Censo da Educação Superior 2024, Anexo I",
+    "url": "https://download.inep.gov.br/microdados/microdados_censo_da_educacao_superior_2024.zip",
+    "variables_checked": [
+      "CO_IES",
+      "NO_IES",
+      "SG_IES",
+      "NO_MUNICIPIO_IES",
+      "CO_MUNICIPIO_IES",
+      "SG_UF_IES",
+      "TP_ORGANIZACAO_ACADEMICA",
+      "TP_CATEGORIA_ADMINISTRATIVA",
+      "TP_REDE",
+      "NU_ANO_CENSO"
+    ]
+  }
+}

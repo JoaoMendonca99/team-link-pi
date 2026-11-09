@@ -1,6 +1,6 @@
 import { getSupabaseClient } from '@/lib/supabase/client'
 
-export const PROFILE_FIELDS = 'id, full_name, course, university, bio, avatar_url, skills, interests, created_at, updated_at'
+export const PROFILE_FIELDS = 'id, full_name, course, university, institution_id, bio, avatar_url, skills, interests, created_at, updated_at'
 export const PROFILE_CHANGED = 'team-link-profile-changed'
 export const FRIENDSHIPS_CHANGED = 'team-link-friendships-changed'
 export const ONLINE_WINDOW = 5 * 60 * 1000

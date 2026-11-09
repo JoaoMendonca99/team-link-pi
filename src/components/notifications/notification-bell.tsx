@@ -383,12 +383,16 @@ function NotificationRow({ item, onSelect }: NotificationRowProps) {
           {body ? (
             <p
               className={cn(
-                "mt-0.5 line-clamp-2 text-xs leading-relaxed",
+                "mt-0.5 text-xs leading-relaxed",
+                item.notification_type !== "profile_academic_reset" && "line-clamp-2",
                 item.is_read ? "text-muted-foreground" : "text-foreground/80",
               )}
             >
               {body}
             </p>
+          ) : null}
+          {item.notification_type === "profile_academic_reset" && item.href ? (
+            <span className="mt-2 inline-block text-xs font-semibold text-primary">Atualizar meu perfil</span>
           ) : null}
           {actorName || projectTitle ? (
             <p className="mt-1 truncate text-[11px] text-muted-foreground">

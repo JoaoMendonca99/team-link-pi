@@ -1,7 +1,7 @@
 import type { Period } from '@/lib/activities'
 import type { Report } from '@/lib/reports/model'
 
-export type AcademicDefaults = { institution:string; course:string; city:string }
+export type AcademicDefaults = { institution:string; course:string; city:string; institution_id?:string|null }
 export type AcademicPeriod = { academic_year?:number|null; academic_semester?:number|null; discipline?:string|null; advisor?:string|null; institution?:string|null; course?:string|null; city?:string|null; academic_configured?:boolean }
 export type AcademicSpace = {context:'academic'|'general'|null;revision:number;defaults:AcademicDefaults;periods:Period[]}
 export type PeriodDraft = ReturnType<typeof periodDraft>
@@ -18,14 +18,14 @@ export function reportAcademicValues(report:Report):AcademicValues {
  return Object.fromEntries(Object.keys(academicLabels).map(key=>[key,report.meta[key as keyof AcademicValues]||''])) as AcademicValues
 }
 export function periodDefaultValues(draft:PeriodDraft,defaults:AcademicDefaults):AcademicDefaults {
- if(draft.custom_academics===false)return {...defaults}
+ if(draft.custom_academics===false)return {institution:defaults.institution,course:defaults.course,city:defaults.city}
  if(draft.id&&draft.academic_configured||draft.custom_academics===true)return {institution:draft.institution,course:draft.course,city:draft.city}
  return {institution:draft.institution||defaults.institution,course:draft.course||defaults.course,city:draft.city||defaults.city}
 }
 export function hasPeriodExceptions(draft:PeriodDraft,defaults:AcademicDefaults) {
  if(draft.custom_academics!==undefined)return draft.custom_academics
  const values=periodDefaultValues(draft,defaults)
- return (Object.keys(defaults) as (keyof AcademicDefaults)[]).some(key=>values[key]!==defaults[key])
+ return (['institution','course','city'] as const).some(key=>values[key]!==defaults[key])
 }
 export function togglePeriodExceptions(draft:PeriodDraft,defaults:AcademicDefaults,enabled:boolean):PeriodDraft {
  if(!enabled)return {...draft,custom_academics:false}

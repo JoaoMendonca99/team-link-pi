@@ -13,12 +13,13 @@ import { Textarea } from '@/components/ui/textarea'
 import { getSupabaseClient } from '@/lib/supabase/client'
 import { normalizeProfileTags, PROFILE_CHANGED } from '@/lib/profile-social'
 import { PresenceControl, usePresencePreference } from './presence-preference'
+import { InstitutionPicker } from '@/components/team-link/institution-picker'
 import type { ProfileRow } from '@/types/database'
 
 export function ProfileForm({ profile, backHref='/perfil' }: { profile: ProfileRow; backHref?:string }) {
   const [name, setName] = useState(profile.full_name ?? '')
   const [course, setCourse] = useState(profile.course ?? '')
-  const [university, setUniversity] = useState(profile.university ?? '')
+  const [institution, setInstitution] = useState({ id: profile.institution_id ?? null, name: profile.university ?? '' })
   const [bio, setBio] = useState(profile.bio ?? '')
   const [skills, setSkills] = useState(() => normalizeProfileTags(normalizeStringArray(profile.skills)))
   const [interests, setInterests] = useState(() => normalizeProfileTags(normalizeStringArray(profile.interests)))
@@ -31,7 +32,7 @@ export function ProfileForm({ profile, backHref='/perfil' }: { profile: ProfileR
 
   useEffect(() => {
     const field = window.location.hash.slice(1)
-    if (!['profile-bio', 'profile-skills', 'profile-interests', 'profile-photo'].includes(field)) return
+    if (!['profile-academics', 'profile-bio', 'profile-skills', 'profile-interests', 'profile-photo'].includes(field)) return
     const frame = requestAnimationFrame(() => {
       const element = document.getElementById(field)
       element?.scrollIntoView({ block: 'center' })
@@ -51,7 +52,7 @@ export function ProfileForm({ profile, backHref='/perfil' }: { profile: ProfileR
       const client = getSupabaseClient()
       const photo = draft ? await exportAvatar(draft) : undefined
       const { error } = await client.from('profiles').update({
-        full_name: name.trim(), course: course.trim() || null, university: university.trim() || null,
+        full_name: name.trim(), course: course.trim() || null, university: institution.name.trim() || null, institution_id: institution.id,
         bio: bio.trim() || null, skills: normalizeProfileTags(skills), interests: normalizeProfileTags(interests),
       }).eq('id', profile.id).select('id').single()
       if (error) throw new Error('Não foi possível salvar os dados do perfil.')
@@ -80,11 +81,10 @@ export function ProfileForm({ profile, backHref='/perfil' }: { profile: ProfileR
       <AvatarEditor name={name || 'Estudante'} avatarUrl={avatarUrl} draft={draft} onChange={setDraft} disabled={saving} />
       <div className="space-y-2"><Label htmlFor="profile-name">Nome completo</Label>
         <Input id="profile-name" required value={name} onChange={(event) => setName(event.target.value)} /></div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="space-y-2"><Label htmlFor="profile-course">Curso</Label>
+      <div id="profile-academics" tabIndex={-1} className="grid scroll-mt-36 gap-3 sm:grid-cols-2">
+        <div className="space-y-2"><Label htmlFor="profile-course">Curso (opcional)</Label>
           <Input id="profile-course" value={course} onChange={(event) => setCourse(event.target.value)} /></div>
-        <div className="space-y-2"><Label htmlFor="profile-university">Faculdade ou universidade</Label>
-          <Input id="profile-university" maxLength={120} value={university} onChange={(event) => setUniversity(event.target.value)} /></div>
+        <InstitutionPicker id="profile-university" value={institution} onChange={setInstitution} />
       </div>
       <div className="space-y-2"><Label htmlFor="profile-bio">Biografia</Label>
         <Textarea id="profile-bio" className="scroll-mt-36" rows={4} value={bio} onChange={(event) => setBio(event.target.value)} /></div>

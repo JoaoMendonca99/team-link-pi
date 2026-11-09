@@ -52,3 +52,13 @@ test('local draft restores only allowed fields, rejects corruption and cannot re
  assert.equal(restored.title,v.title);assert.equal(restored.defaults.institution,'Instituição');assert.equal(restored.vacancies[0].id,null);assert.equal(restored.vacancies[0].occupied,0)
  assert.equal(restored.owner_id,undefined);assert.equal(restored.role,undefined);assert.equal(F.restoreProjectWizard('{broken'),null);assert.equal(F.restoreProjectWizard('{"version":2,"values":{}}'),null)
 })
+
+test('institution references survive academic drafts without leaking into professional projects or period snapshots',()=>{
+ const id='1abcde12-1234-4321-8abc-123456789012',v={...example(),context:'academic',defaults:{institution:'Universidade',institution_id:id,course:'',city:''}}
+ const restored=F.restoreProjectWizard(JSON.stringify({version:1,values:v}))
+ assert.equal(restored.defaults.institution_id,id)
+ const academic=F.projectWizardPayload(restored).p_academic
+ assert.equal(academic.defaults.institution_id,id);assert.equal(academic.period.institution_id,undefined)
+ assert.equal(F.projectWizardPayload({...restored,context:'general'}).p_academic.defaults.institution_id,undefined)
+ assert.equal(F.restoreProjectWizard(JSON.stringify({version:1,values:{...v,defaults:{...v.defaults,institution_id:'not-a-valid-id'}}})).defaults.institution_id,undefined)
+})

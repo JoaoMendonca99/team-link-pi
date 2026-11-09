@@ -39,7 +39,7 @@ function ReviewValue({ label, children }: { label: string; children?: ReactNode 
   return <div className="min-w-0 space-y-1"><dt className="text-xs text-muted-foreground">{label}</dt><dd className="whitespace-pre-wrap break-words text-sm">{children || 'Não informado'}</dd></div>
 }
 
-export function ProjectCreateWizard({ userId, profile }: { userId: string; profile: Pick<ProfileRow, 'full_name' | 'university' | 'course'> | null }) {
+export function ProjectCreateWizard({ userId, profile }: { userId: string; profile: Pick<ProfileRow, 'full_name' | 'university' | 'course' | 'institution_id'> | null }) {
   const router = useRouter()
   const [values, setValues] = useState(emptyProjectWizard)
   const [step, setStep] = useState<ProjectStep>('type')
@@ -205,7 +205,7 @@ export function ProjectCreateWizard({ userId, profile }: { userId: string; profi
           {step === 'academics' && <>
             <p className="text-sm text-muted-foreground">Todos os campos são opcionais. Você poderá completá-los depois.</p>
             <AcademicDefaultsFields value={values.defaults} onChange={defaults => update({ defaults })} />
-            {(profile?.university || profile?.course) && <div className="space-y-2 rounded-xl border p-4"><p className="break-words text-sm">No seu perfil: {[profile.university, profile.course].filter(Boolean).join(' · ')}</p><Button type="button" variant="outline" className="min-h-11 whitespace-normal" onClick={() => update({ defaults: { ...values.defaults, institution: profile.university || values.defaults.institution, course: profile.course || values.defaults.course } })}>Usar instituição e curso do meu perfil</Button><p className="text-xs text-muted-foreground">Use apenas se estes dados também se aplicarem ao novo projeto. Seu perfil não será alterado.</p></div>}
+            {(profile?.university || profile?.course) && <div className="space-y-2 rounded-xl border p-4"><p className="break-words text-sm">No seu perfil: {[profile.university, profile.course].filter(Boolean).join(' · ')}</p><Button type="button" variant="outline" className="min-h-11 whitespace-normal" onClick={() => update({ defaults: { ...values.defaults, institution_id: profile.university ? profile.institution_id ?? null : values.defaults.institution_id, institution: profile.university || values.defaults.institution, course: profile.course || values.defaults.course } })}>Usar instituição e curso do meu perfil</Button><p className="text-xs text-muted-foreground">Use apenas se estes dados também se aplicarem ao novo projeto. Seu perfil não será alterado.</p></div>}
           </>}
 
           {step === 'period' && <>

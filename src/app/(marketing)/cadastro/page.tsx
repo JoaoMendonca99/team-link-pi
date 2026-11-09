@@ -221,22 +221,7 @@ export default function CadastroPage() {
     return Object.keys(errors).length === 0
   }
 
-  function validateStep2(): boolean {
-    if (course.trim().length > 0) {
-      setFieldErrors((prev) => {
-        const next = { ...prev }
-        delete next.course
-        return next
-      })
-      return true
-    }
-
-    setFieldErrors((prev) => ({
-      ...prev,
-      course: 'Informe seu curso ou área principal.',
-    }))
-    return false
-  }
+  function validateStep2(): boolean { return true }
 
   const handleContinue = () => {
     setErrorMessage(null)
@@ -279,7 +264,7 @@ export default function CadastroPage() {
     const normalizedEmail = trimmedEmail.toLowerCase()
     const profilePayload = {
       full_name: name.trim(),
-      course: course.trim(),
+      course: course.trim() || null,
       skills,
       interests,
     }
@@ -501,7 +486,7 @@ export default function CadastroPage() {
           ) : (
             <form className="space-y-4 text-left" onSubmit={handleSubmit} noValidate>
               <div className="space-y-2">
-                <Label htmlFor="curso">Curso ou área principal</Label>
+                <Label htmlFor="curso">Curso ou área principal (opcional)</Label>
                 <Input
                   id="curso"
                   value={course}
