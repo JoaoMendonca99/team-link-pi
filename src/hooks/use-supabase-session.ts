@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import type { Session, User } from "@supabase/supabase-js"
 
-import { PROFILE_CHANGED, PROFILE_FIELDS } from "@/lib/profile-social"
+import { canonicalProfileCourse, PROFILE_CHANGED, PROFILE_FIELDS } from "@/lib/profile-social"
 import { getSupabaseClient, isSupabaseConfigured } from "@/lib/supabase/client"
 import type { ProfileRow } from "@/types/database"
 import { disablePush } from '@/lib/push'
@@ -69,7 +69,7 @@ export function useSupabaseSession(): SupabaseSessionState {
         return
       }
 
-      setProfile((data as ProfileRow | null) ?? null)
+      setProfile(canonicalProfileCourse((data as ProfileRow | null) ?? null))
     } catch {
       if (requestId === profileRequestRef.current) {
         setProfile(null)

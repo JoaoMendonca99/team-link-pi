@@ -1,0 +1,89 @@
+{
+  "source_file": "MICRODADOS_CADASTRO_CURSOS_2024.CSV",
+  "source_url": "https://www.gov.br/inep/pt-br/acesso-a-informacao/dados-abertos/microdados/censo-da-educacao-superior",
+  "dictionary_url": "https://download.inep.gov.br/microdados/microdados_censo_da_educacao_superior_2024.zip",
+  "source_sha256": "e5033b7713560f199648ab18fd62b7afbf4a68d90bd70d79cc946906f0c0d228",
+  "encoding": "cp1252",
+  "delimiter": ";",
+  "columns": [
+    "CO_CURSO",
+    "NO_CURSO",
+    "CO_IES",
+    "CO_CINE_ROTULO",
+    "NO_CINE_ROTULO",
+    "CO_CINE_AREA_GERAL",
+    "NO_CINE_AREA_GERAL",
+    "CO_CINE_AREA_ESPECIFICA",
+    "NO_CINE_AREA_ESPECIFICA",
+    "CO_CINE_AREA_DETALHADA",
+    "NO_CINE_AREA_DETALHADA",
+    "TP_GRAU_ACADEMICO",
+    "TP_NIVEL_ACADEMICO",
+    "TP_MODALIDADE_ENSINO",
+    "NU_ANO_CENSO",
+    "TP_DIMENSAO"
+  ],
+  "total_rows": 720349,
+  "distinct_course_codes": 46150,
+  "distinct_names": 1497,
+  "names_after_whitespace_cleanup": 1496,
+  "distinct_cine_codes": 353,
+  "institutions": 2561,
+  "course_institution_pairs": 46150,
+  "repeated_rows": 674199,
+  "course_code_conflicts": 0,
+  "conflicts": {},
+  "rejected": [],
+  "courses_without_cine": 0,
+  "rows_without_cine": 0,
+  "dimension_row_counts": {
+    "2": 673756,
+    "3": 11319,
+    "4": 450,
+    "1": 34824
+  },
+  "offer_dimension_groups": {
+    "1": 34824,
+    "2,3": 10798,
+    "2,3,4": 450,
+    "3": 71,
+    "2": 7
+  },
+  "cine_area_counts": {
+    "general": 11,
+    "specific": 39,
+    "detailed": 89
+  },
+  "canonical_courses": 1743,
+  "cine_classifications": 353,
+  "institutional_offers": 46150,
+  "aliases": 1745,
+  "missing_institutions": [],
+  "homonyms_kept_separate": 193,
+  "cine_labels_with_distinct_courses": 255,
+  "identity_rule": "Exact normalized official name + Cine label + degree + level; no fuzzy merging. Explicit reviewed equivalence: Engenharia da Computação -> Engenharia de Computação only for 0714E04/1/1. Modality/institution/dimension are offer properties.",
+  "offer_key": "CO_CURSO; 2024 inspection found one institution and one consistent set of course attributes per code. Geographic dimensions are consolidated, retained as an array, not separate offerings.",
+  "dictionary_codes": {
+    "grau": {
+      "1": "Bacharelado",
+      "2": "Licenciatura",
+      "3": "Tecnológico",
+      "4": "Bacharelado e Licenciatura",
+      "null": "Não aplicável (ABI/sequencial)"
+    },
+    "nivel": {
+      "1": "Graduação",
+      "2": "Sequencial de Formação Específica"
+    },
+    "modalidade": {
+      "1": "Presencial",
+      "2": "A distância"
+    },
+    "dimensao": {
+      "1": "Presencial no Brasil",
+      "2": "A distância no Brasil",
+      "3": "A distância, agregado Brasil",
+      "4": "A distância no exterior"
+    }
+  }
+}

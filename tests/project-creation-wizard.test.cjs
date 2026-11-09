@@ -62,3 +62,12 @@ test('institution references survive academic drafts without leaking into profes
  assert.equal(F.projectWizardPayload({...restored,context:'general'}).p_academic.defaults.institution_id,undefined)
  assert.equal(F.restoreProjectWizard(JSON.stringify({version:1,values:{...v,defaults:{...v.defaults,institution_id:'not-a-valid-id'}}})).defaults.institution_id,undefined)
 })
+
+test('course references survive drafts independently of institutions and never rewrite semester payloads',()=>{
+ const id='2abcde12-1234-4321-8abc-123456789012',v={...example(),context:'academic',defaults:{institution:'',course:'Engenharia De Computação',course_id:id,city:''}}
+ const restored=F.restoreProjectWizard(JSON.stringify({version:1,values:v})),academic=F.projectWizardPayload(restored).p_academic
+ assert.equal(restored.defaults.course_id,id);assert.equal(academic.defaults.course_id,id)
+ assert.equal(academic.defaults.institution_id,undefined);assert.equal(academic.period.course_id,undefined)
+ assert.equal(F.projectWizardPayload({...restored,context:'general'}).p_academic.defaults.course_id,undefined)
+ assert.equal(F.restoreProjectWizard(JSON.stringify({version:1,values:{...v,defaults:{...v.defaults,course_id:'invalid'}}})).defaults.course_id,undefined)
+})

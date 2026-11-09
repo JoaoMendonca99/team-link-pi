@@ -3,11 +3,12 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { InstitutionPicker } from './institution-picker'
+import { CoursePicker } from './course-picker'
 import {academicSnapshot,hasPeriodExceptions,keepPeriodInformation,periodDefaultValues,periodPayload,previousAcademicPeriod,togglePeriodExceptions,type AcademicDefaults,type AcademicSpace,type PeriodDraft} from '@/lib/projects/academics'
 import type {Period} from '@/lib/activities'
 
 export function AcademicDefaultsFields({value,onChange}:{value:AcademicDefaults;onChange:(value:AcademicDefaults)=>void}) {
- return <div className="grid gap-3 sm:grid-cols-2"><InstitutionPicker label="Instituição principal (opcional)" value={{id:value.institution_id??null,name:value.institution}} onChange={selection=>onChange({...value,institution_id:selection.id,institution:selection.name})}/><div className="grid gap-3 sm:grid-cols-2">{(['course','city'] as const).map(key=><label key={key} className="block space-y-1 text-sm">{key==='course'?'Curso principal (opcional)':'Cidade (opcional)'}<Input maxLength={key==='city'?200:500} value={value[key]} onChange={e=>onChange({...value,[key]:e.target.value})}/></label>)}</div></div>
+ return <div className="grid gap-3 sm:grid-cols-2"><InstitutionPicker label="Instituição principal (opcional)" value={{id:value.institution_id??null,name:value.institution}} onChange={selection=>onChange({...value,institution_id:selection.id,institution:selection.name})}/><CoursePicker label="Curso principal (opcional)" value={{id:value.course_id??null,name:value.course}} onChange={selection=>onChange({...value,course_id:selection.id,course:selection.name})}/><label className="block space-y-1 text-sm">Cidade (opcional)<Input maxLength={200} value={value.city} onChange={e=>onChange({...value,city:e.target.value})}/></label></div>
 }
 export function PeriodAcademicFields({draft,onChange,defaults,periods=[]}:{draft:PeriodDraft;onChange:(draft:PeriodDraft)=>void;defaults:AcademicDefaults;periods?:Period[]}) {
  const reference=previousAcademicPeriod(periods,draft)

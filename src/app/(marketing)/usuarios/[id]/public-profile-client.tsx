@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { AcademicTags, ProfileHeading } from '@/components/profile/profile-heading'
 import { FriendshipControls, useProfileSocial } from '@/components/profile/friendships'
 import { getSupabaseClient } from '@/lib/supabase/client'
-import { PROFILE_FIELDS } from '@/lib/profile-social'
+import { canonicalProfileCourse, PROFILE_FIELDS } from '@/lib/profile-social'
 import { loadProfileProjects, type ProfileProjects as ProfileProjectsData } from '@/lib/profile-projects'
 import { useSupabaseSession } from '@/hooks/use-supabase-session'
 import type { ProfileRow } from '@/types/database'
@@ -35,7 +35,7 @@ export function PublicProfileClient({ userId }: { userId: string }) {
           loadProfileProjects(userId),
         ])
         if (profile.error) throw new Error('Falha na consulta.')
-        if (active) setResult({ key, data: profile.data ? { profile: profile.data as ProfileRow,
+        if (active) setResult({ key, data: profile.data ? { profile: canonicalProfileCourse(profile.data as ProfileRow)!,
           projects } : null })
       } catch {
         if (active) setError(true)

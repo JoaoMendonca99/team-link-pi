@@ -14,11 +14,12 @@ import { getSupabaseClient } from '@/lib/supabase/client'
 import { normalizeProfileTags, PROFILE_CHANGED } from '@/lib/profile-social'
 import { PresenceControl, usePresencePreference } from './presence-preference'
 import { InstitutionPicker } from '@/components/team-link/institution-picker'
+import { CoursePicker } from '@/components/team-link/course-picker'
 import type { ProfileRow } from '@/types/database'
 
 export function ProfileForm({ profile, backHref='/perfil' }: { profile: ProfileRow; backHref?:string }) {
   const [name, setName] = useState(profile.full_name ?? '')
-  const [course, setCourse] = useState(profile.course ?? '')
+  const [course, setCourse] = useState({ id: profile.course_id ?? null, name: profile.course ?? '' })
   const [institution, setInstitution] = useState({ id: profile.institution_id ?? null, name: profile.university ?? '' })
   const [bio, setBio] = useState(profile.bio ?? '')
   const [skills, setSkills] = useState(() => normalizeProfileTags(normalizeStringArray(profile.skills)))
@@ -52,7 +53,7 @@ export function ProfileForm({ profile, backHref='/perfil' }: { profile: ProfileR
       const client = getSupabaseClient()
       const photo = draft ? await exportAvatar(draft) : undefined
       const { error } = await client.from('profiles').update({
-        full_name: name.trim(), course: course.trim() || null, university: institution.name.trim() || null, institution_id: institution.id,
+        full_name: name.trim(), course: course.name.trim() || null, course_id: course.id, university: institution.name.trim() || null, institution_id: institution.id,
         bio: bio.trim() || null, skills: normalizeProfileTags(skills), interests: normalizeProfileTags(interests),
       }).eq('id', profile.id).select('id').single()
       if (error) throw new Error('Não foi possível salvar os dados do perfil.')
@@ -82,8 +83,7 @@ export function ProfileForm({ profile, backHref='/perfil' }: { profile: ProfileR
       <div className="space-y-2"><Label htmlFor="profile-name">Nome completo</Label>
         <Input id="profile-name" required value={name} onChange={(event) => setName(event.target.value)} /></div>
       <div id="profile-academics" tabIndex={-1} className="grid scroll-mt-36 gap-3 sm:grid-cols-2">
-        <div className="space-y-2"><Label htmlFor="profile-course">Curso (opcional)</Label>
-          <Input id="profile-course" value={course} onChange={(event) => setCourse(event.target.value)} /></div>
+        <CoursePicker id="profile-course" value={course} onChange={setCourse} />
         <InstitutionPicker id="profile-university" value={institution} onChange={setInstitution} />
       </div>
       <div className="space-y-2"><Label htmlFor="profile-bio">Biografia</Label>

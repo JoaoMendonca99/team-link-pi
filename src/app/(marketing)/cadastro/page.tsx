@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 
+import { CoursePicker } from '@/components/team-link/course-picker'
 import { AuthCard } from '@/components/team-link/auth-card'
 import { ChipInput } from '@/components/team-link/chip-input'
 import { PasswordStrengthMeter } from '@/components/team-link/password-strength-meter'
@@ -132,7 +133,7 @@ function SignupOrientationPanel({ step }: { step: SignupStep }) {
             Complete seu perfil acadêmico
           </h1>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            Agora informe seu curso e, se quiser, adicione habilidades e áreas de interesse.
+            Se desejar, informe seu curso e adicione habilidades e áreas de interesse.
           </p>
         </div>
 
@@ -168,7 +169,7 @@ export default function CadastroPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [course, setCourse] = useState('')
+  const [course, setCourse] = useState({ id: null as string | null, name: '' })
   const [skills, setSkills] = useState<string[]>([])
   const [interests, setInterests] = useState<string[]>([])
 
@@ -264,7 +265,8 @@ export default function CadastroPage() {
     const normalizedEmail = trimmedEmail.toLowerCase()
     const profilePayload = {
       full_name: name.trim(),
-      course: course.trim() || null,
+      course: course.name.trim() || null,
+      course_id: course.id,
       skills,
       interests,
     }
@@ -485,29 +487,7 @@ export default function CadastroPage() {
             </form>
           ) : (
             <form className="space-y-4 text-left" onSubmit={handleSubmit} noValidate>
-              <div className="space-y-2">
-                <Label htmlFor="curso">Curso ou área principal (opcional)</Label>
-                <Input
-                  id="curso"
-                  value={course}
-                  onChange={(event) => {
-                    setCourse(event.target.value)
-                    if (fieldErrors.course) {
-                      setFieldErrors((prev) => {
-                        const next = { ...prev }
-                        delete next.course
-                        return next
-                      })
-                    }
-                  }}
-                  placeholder="Ex.: Engenharia, Design, Administração..."
-                  aria-invalid={Boolean(fieldErrors.course)}
-                  className={cn('rounded-2xl', fieldErrors.course && 'border-destructive')}
-                />
-                {fieldErrors.course ? (
-                  <p className="text-xs text-destructive">{fieldErrors.course}</p>
-                ) : null}
-              </div>
+              <CoursePicker id="curso" value={course} onChange={setCourse} />
 
               <ChipInput
                 label="Habilidades"

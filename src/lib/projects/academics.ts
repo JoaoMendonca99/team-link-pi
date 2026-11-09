@@ -1,7 +1,7 @@
 import type { Period } from '@/lib/activities'
 import type { Report } from '@/lib/reports/model'
 
-export type AcademicDefaults = { institution:string; course:string; city:string; institution_id?:string|null }
+export type AcademicDefaults = { institution:string; course:string; city:string; institution_id?:string|null; course_id?:string|null }
 export type AcademicPeriod = { academic_year?:number|null; academic_semester?:number|null; discipline?:string|null; advisor?:string|null; institution?:string|null; course?:string|null; city?:string|null; academic_configured?:boolean }
 export type AcademicSpace = {context:'academic'|'general'|null;revision:number;defaults:AcademicDefaults;periods:Period[]}
 export type PeriodDraft = ReturnType<typeof periodDraft>

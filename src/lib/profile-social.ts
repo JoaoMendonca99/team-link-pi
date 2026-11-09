@@ -1,6 +1,12 @@
 import { getSupabaseClient } from '@/lib/supabase/client'
+import type { ProfileRow } from '@/types/database'
 
-export const PROFILE_FIELDS = 'id, full_name, course, university, institution_id, bio, avatar_url, skills, interests, created_at, updated_at'
+export const PROFILE_FIELDS = 'id, full_name, course, course_id, course_catalog:cursos!profiles_course_id_fkey(nome), university, institution_id, bio, avatar_url, skills, interests, created_at, updated_at'
+export function canonicalProfileCourse(profile: ProfileRow | null): ProfileRow | null {
+  if (!profile) return null
+  const course = Array.isArray(profile.course_catalog) ? profile.course_catalog[0] : profile.course_catalog
+  return { ...profile, course: course?.nome ?? profile.course }
+}
 export const PROFILE_CHANGED = 'team-link-profile-changed'
 export const FRIENDSHIPS_CHANGED = 'team-link-friendships-changed'
 export const ONLINE_WINDOW = 5 * 60 * 1000

@@ -42,6 +42,8 @@ export type JoinRequestStatus = "pending" | "approved" | "rejected" | "canceled"
 // ============================================================================
 
 export interface ProfileRow {
+  course_id?: string | null
+  course_catalog?: { nome: string } | { nome: string }[] | null
   institution_id?: string | null
   id: string
   full_name: string | null
@@ -84,6 +86,7 @@ export interface ProfileUpdate {
 // ============================================================================
 
 export interface ProjectRow {
+  academic_course_id?: string | null
   academic_institution_id?: string | null
   project_context?: 'academic' | 'general' | null
   academic_institution?: string | null
