@@ -20,35 +20,29 @@ import { projectCategories } from '@/data/mock-projects'
 import {
   PROJECT_STATUS_LABEL, PROJECT_STATUS_OPTIONS, PROJECT_VISIBILITY_LABEL, PROJECT_VISIBILITY_OPTIONS,
 } from '@/lib/projects/display'
-import { parseOptionalProjectUrl } from '@/lib/projects/project-url'
+import { projectFormErrors, projectFormPayload, type VacancyDraft } from '@/lib/projects/form'
+import { saveProjectForm } from '@/lib/projects/save-form'
 import { slugify } from '@/lib/projects/slug'
-import { getSupabaseClient } from '@/lib/supabase/client'
 import type { ProjectRow, ProjectStatusValue, ProjectVisibility } from '@/types/database'
-
-type VacancyDraft = Pick<Vacancy, 'title' | 'description' | 'skills' | 'open'> & {
-  key: string
-  id: string | null
-  positions: string
-  occupied: number
-  changed: boolean
-}
 
 const cardClass = 'min-w-0 p-5 sm:p-7'
 
-function Field({ id, label, children }: { id: string; label: string; children: ReactNode }) {
+export function Field({ id, label, children }: { id: string; label: string; children: ReactNode }) {
   return <div className="min-w-0 space-y-2"><Label htmlFor={id}>{label}</Label>{children}</div>
 }
 
-function Choice({ id, value, options, onChange, placeholder }: {
+export function Choice({ id, value, options, onChange, placeholder, invalid, describedBy }: {
   id: string
   value: string
   options: readonly { value: string; label: string }[]
   onChange: (value: string) => void
   placeholder?: string
+  invalid?: boolean
+  describedBy?: string
 }) {
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger id={id} className="w-full"><SelectValue placeholder={placeholder} /></SelectTrigger>
+      <SelectTrigger id={id} className="w-full" aria-invalid={invalid} aria-describedby={describedBy}><SelectValue placeholder={placeholder} /></SelectTrigger>
       <SelectContent>
         {options.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}
       </SelectContent>
@@ -96,41 +90,13 @@ export function ProjectForm({ project, initialTags = [], initialVacancies = [], 
     event.preventDefault()
     if (saving) return
     setError('')
-    const parsedUrl = parseOptionalProjectUrl(url)
-    if (!slug) return setError('Informe um título que gere um endereço válido.')
-    if (!category) return setError('Selecione a categoria principal.')
-    if (!parsedUrl.ok) return setError('Informe um link externo válido.')
-    if (!summary.trim()) return setError('Preencha a descrição curta.')
-    if (!description.trim()) return setError('Preencha a descrição completa.')
-    if (!tags.length) return setError('Adicione pelo menos uma tag geral.')
-
-    for (const [index, vacancy] of vacancies.entries()) {
-      if (!vacancy.title.trim()) return setError('Informe o perfil procurado na vaga ' + (index + 1) + '.')
-      const positions = Number(vacancy.positions)
-      if (!Number.isInteger(positions) || positions < Math.max(vacancy.occupied, 1) || positions > 1000000) {
-        return setError('Confira a quantidade de posições na vaga ' + (index + 1) + '.')
-      }
-    }
+    const values = { title, slug, category, secondary, url, summary, description, tags, status, visibility, vacancies }
+    const validation = projectFormErrors(values)
+    if (Object.keys(validation).length) return setError(Object.values(validation)[0])
 
     setSaving(true)
     try {
-      const { data, error: saveError } = await getSupabaseClient().rpc('save_project_form_with_academics', {p_form: {
-        p_project_id: project?.id ?? null,
-        p_slug: slug,
-        p_title: title,
-        p_category: category,
-        p_secondary_categories: secondary,
-        p_project_url: parsedUrl.value,
-        p_short_description: summary,
-        p_description: description,
-        p_status: status,
-        p_visibility: visibility,
-        p_tags: tags,
-        p_vacancies: vacancies.filter((vacancy) => vacancy.changed).map((vacancy) => ({
-          id: vacancy.id, title: vacancy.title, description: vacancy.description,
-          skills: vacancy.skills, positions: Number(vacancy.positions), open: vacancy.open,
-        })),
-      },p_academic:!project&&context?{context,defaults:academicDefaults,period:periodPayload(firstPeriod,academicDefaults)}:null})
+      const { data, error: saveError } = await saveProjectForm(projectFormPayload(values, project?.id ?? null), !project&&context?{context,defaults:academicDefaults,period:periodPayload(firstPeriod,academicDefaults)}:null)
       if (saveError) {
         setError(saveError.code === '23505' ? 'Já existe um projeto com esse endereço.'
           : saveError.code === '23514' ? 'Confira os campos do projeto, as datas do período e as vagas.'

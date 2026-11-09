@@ -5,13 +5,13 @@ import { ArrowLeft } from 'lucide-react'
 
 import { Container } from '@/components/layout/container'
 import { PageHeader } from '@/components/team-link/page-header'
-import { ProjectForm } from '@/components/team-link/project-form'
+import { ProjectCreateWizard } from '@/components/team-link/project-create-wizard'
 import { Button } from '@/components/ui/button'
 import { useSupabaseSession } from '@/hooks/use-supabase-session'
 import { isSupabaseConfigured } from '@/lib/supabase/client'
 
 export default function NovaIdeiaPage() {
-  const { loading, isAuthenticated, profile } = useSupabaseSession()
+  const { loading, isAuthenticated, profile, user } = useSupabaseSession()
 
   return (
     <main className="bg-background pb-20">
@@ -20,18 +20,18 @@ export default function NovaIdeiaPage() {
           <Button asChild variant="ghost" className="gap-2">
             <Link href="/explorar"><ArrowLeft aria-hidden className="size-4" /> Explorar</Link>
           </Button>
-          <PageHeader title="Criar projeto" description="Apresente sua ideia e publique as vagas da sua equipe." />
+          <PageHeader title="Criar projeto" description="Da ideia ao seu novo projeto, um passo de cada vez." />
         </Container>
       </div>
       <Container className="py-8 sm:py-12">
         {loading ? <p role="status">Carregando…</p>
           : !isSupabaseConfigured() ? <p role="alert">Não foi possível conectar ao serviço de dados.</p>
-          : isAuthenticated ? <ProjectForm previewOwner={profile?.full_name ?? undefined} />
+          : isAuthenticated && user ? <ProjectCreateWizard key={user.id} userId={user.id} profile={profile} />
           : (
             <div className="space-y-4">
               <p>Entre na sua conta para criar um projeto.</p>
               <div className="flex flex-wrap gap-3">
-                <Button asChild><Link href="/login">Entrar</Link></Button>
+                <Button asChild><Link href="/login?next=%2Fnova-ideia">Entrar</Link></Button>
                 <Button asChild variant="outline"><Link href="/cadastro">Criar conta</Link></Button>
               </div>
             </div>
