@@ -1,0 +1,74 @@
+-- Synthetic database only. No production activity or person is modified.
+begin;
+create function pg_temp.require(ok boolean,label text) returns void language plpgsql as $$begin if ok is distinct from true then raise exception 'Activity collaboration test failed: %',label;end if;end$$;
+create function pg_temp.act(p uuid,t uuid,action text,input jsonb default '{}') returns uuid language plpgsql security definer set search_path='' as $$
+declare v integer;begin select version into v from public.activity_tasks where id=t;return public.mutate_activity(p,action,jsonb_build_object('id',t,'version',v)||input);end$$;
+do $$
+declare leader uuid:=gen_random_uuid(); member uuid:=gen_random_uuid(); reviewer uuid:=gen_random_uuid(); stranger uuid:=gen_random_uuid();project uuid:=gen_random_uuid();other uuid:=gen_random_uuid();period uuid:=gen_random_uuid();todo uuid;doing uuid;review uuid;done uuid;task uuid;item uuid;message uuid:=gen_random_uuid();ctx jsonb;center jsonb;failed boolean;v integer;n integer;before_rows jsonb;
+begin
+ insert into public.profiles(id,full_name) values(leader,'Synthetic Leader'),(member,'Synthetic Assignee'),(reviewer,'Synthetic Reviewer'),(stranger,'Synthetic Outsider');
+ insert into public.projects(id,owner_id,title,slug) values(project,leader,'Synthetic collaboration','p36-'||project),(other,stranger,'Private unrelated','p36-'||other);
+ insert into public.project_members(project_id,user_id,role,status) values(project,leader,'owner','active'),(project,member,'member','active'),(project,reviewer,'member','active') on conflict(project_id,user_id) do update set status='active';
+ insert into public.project_recruitment_roles(project_id,user_id,level) values(project,leader,'owner'),(project,member,'member'),(project,reviewer,'reviewer') on conflict(project_id,user_id) do update set level=excluded.level;
+ insert into public.project_workspace_modules(project_id,module) values(project,'activities') on conflict do nothing;
+ update public.activity_periods set is_active=false where project_id=project;
+ insert into public.activity_periods(id,project_id,name,is_active,created_by) values(period,project,'Synthetic period',true,leader);
+ select id into todo from public.activity_stages where project_id=project and kind='todo' order by position limit 1;
+ select id into doing from public.activity_stages where project_id=project and kind='doing' order by position limit 1;
+ select id into review from public.activity_stages where project_id=project and kind='review' order by position limit 1;
+ select id into done from public.activity_stages where project_id=project and kind='done' order by position limit 1;
+ execute 'set local role authenticated';perform set_config('request.jwt.claim.sub',leader::text,true);
+ task:=public.mutate_activity(project,'save_task',jsonb_build_object('title','Preserve activity','description',E'Full description\nSecond paragraph','stage_id',todo,'assignees',jsonb_build_array(member,leader),'reviewer_id',reviewer,'requires_review',true,'priority','high','period_id',period));
+ perform pg_temp.act(project,task,'checklist','{"label":"Planned item"}');
+ ctx:=public.get_activity_dialog(task,project,null);
+ perform pg_temp.require(ctx->'assigned_by'->>'id'=leader::text and jsonb_array_length(ctx->'tasks')=1,'only selected task with trustworthy assignment audit');
+ item:=(ctx->'checklist'->0->>'id')::uuid;
+ perform set_config('request.jwt.claim.sub',member::text,true);
+ ctx:=public.get_activity_dialog(task,project,null);perform pg_temp.require((ctx->'permissions'->>'check')::boolean and not(ctx->>'manager')::boolean,'assignee context permissions');
+ foreach n in array array[1,2,3] loop
+  failed:=false;begin
+   perform pg_temp.act(project,task,case when n=2 then 'delete_checklist' else 'checklist' end,case n when 1 then '{"label":"Forbidden creation"}'::jsonb when 2 then jsonb_build_object('item_id',item,'item_version',1) else jsonb_build_object('item_id',item,'item_version',1,'label','Forbidden edit') end);
+  exception when raise_exception then failed:=true;end;
+  perform pg_temp.require(failed,'assignee cannot create/delete/edit checklist');
+ end loop;
+ perform pg_temp.act(project,task,'checklist',jsonb_build_object('item_id',item,'item_version',1,'done',true));
+ ctx:=public.get_activity_dialog(task,project,null);perform pg_temp.require((ctx->'checklist'->0->>'done')::boolean,'assignee execution persists');
+ failed:=false;begin perform pg_temp.act(project,task,'checklist',jsonb_build_object('item_id',item,'item_version',1,'done',false));exception when raise_exception then failed:=true;end;perform pg_temp.require(failed,'stale item version rejects repeated operation');
+ perform pg_temp.act(project,task,'comment',jsonb_build_object('body','Shared discussion','comment_id',message));
+ perform pg_temp.act(project,task,'comment',jsonb_build_object('body','Shared discussion','comment_id',message));
+ ctx:=public.get_activity_dialog(task,project,null);perform pg_temp.require(jsonb_array_length(ctx->'details'->'comments')=1,'retry does not duplicate message');
+ perform pg_temp.act(project,task,'move',jsonb_build_object('stage_id',doing));
+ failed:=false;begin perform pg_temp.act(project,task,'move',jsonb_build_object('stage_id',done));exception when raise_exception then failed:=true;end;perform pg_temp.require(failed,'cannot bypass mandatory review');
+ perform pg_temp.act(project,task,'move',jsonb_build_object('stage_id',review));
+ failed:=false;begin perform pg_temp.act(project,task,'approve');exception when raise_exception then failed:=true;end;perform pg_temp.require(failed,'assignee cannot approve');
+ perform set_config('request.jwt.claim.sub',leader::text,true);
+ center:=public.get_my_activity_center('{"status":"mine_review"}');perform pg_temp.require((center->>'total')::int=1 and jsonb_array_length(center->'items')=1 and (center->'counts'->>'pending')::int=1,'assigned plus reviewer identities deduplicate');
+ perform pg_temp.act(project,task,'checklist',jsonb_build_object('item_id',item,'item_version',2,'label','Edited by manager'));
+ perform set_config('request.jwt.claim.sub',reviewer::text,true);
+ ctx:=public.get_activity_dialog(task,project,null);perform pg_temp.require((ctx->'permissions'->>'review')::boolean and not(ctx->'permissions'->>'check')::boolean,'reviewer does not gain checklist administration');
+ perform pg_temp.act(project,task,'return','{"reason":"Include evidence"}');
+ ctx:=public.get_activity_dialog(task,project,null);perform pg_temp.require(ctx->'details'->'history' @> '[{"action":"return","details":{"reason":"Include evidence"}}]','return justification retained');
+ perform set_config('request.jwt.claim.sub',member::text,true);perform pg_temp.act(project,task,'move',jsonb_build_object('stage_id',review));
+ perform set_config('request.jwt.claim.sub',reviewer::text,true);perform pg_temp.act(project,task,'approve');
+ perform set_config('request.jwt.claim.sub',member::text,true);center:=public.get_my_activity_center('{"status":"done"}');perform pg_temp.require((center->>'total')::int=1,'completed activities available');
+ failed:=false;begin perform public.get_activity_dialog(task,other,null);exception when raise_exception then failed:=true;end;perform pg_temp.require(failed,'task and project mismatch rejected');
+ perform set_config('request.jwt.claim.sub',stranger::text,true);
+ failed:=false;begin perform public.get_activity_dialog(task,project,null);exception when raise_exception then failed:=true;end;perform pg_temp.require(failed,'outsider cannot read discussion');
+ failed:=false;begin perform pg_temp.act(project,task,'comment','{"body":"Forbidden"}');exception when raise_exception then failed:=true;end;perform pg_temp.require(failed,'outsider cannot send discussion');
+ center:=public.get_my_activity_center('{"status":"all"}');perform pg_temp.require((center->>'total')::int=0,'outsider cannot list other tasks');
+ execute 'reset role';
+ perform pg_temp.require((select count(*)=2 and count(*) filter(where recipient_id=member)=0 from public.notifications where project_id=project and title='Discussão da atividade'),'one relevant notification per recipient and no author notification');
+ select jsonb_agg(c order by id) into before_rows from public.activity_comments c where task_id=task;
+ insert into public.activity_tasks(project_id,period_id,title,stage_id,assignees) select project,period,'Pagination task '||g,todo,array[member] from generate_series(1,27)g;
+ execute 'set local role authenticated';perform set_config('request.jwt.claim.sub',member::text,true);
+ center:=public.get_my_activity_center('{"status":"all"}');perform pg_temp.require((center->>'total')::int=28 and jsonb_array_length(center->'items')=25,'bounded server pagination');
+ center:=public.get_my_activity_center('{"status":"all","offset":25}');perform pg_temp.require(jsonb_array_length(center->'items')=3,'remaining page available');
+ execute 'reset role';
+ perform pg_temp.require((select jsonb_agg(c order by id)=before_rows from public.activity_comments c where task_id=task),'comments preserved during other operations');
+ update public.project_members set status='removed' where project_id=project and user_id=member;
+ execute 'set local role authenticated';perform set_config('request.jwt.claim.sub',member::text,true);
+ failed:=false;begin perform public.get_activity_dialog(task,project,null);exception when raise_exception then failed:=true;end;perform pg_temp.require(failed,'revoked member cannot reopen activity');
+ execute 'reset role';execute 'set local role anon';perform set_config('request.jwt.claim.sub','',true);
+ failed:=false;begin perform public.get_my_activity_center('{}');exception when insufficient_privilege then failed:=true;end;perform pg_temp.require(failed,'anonymous center denied');
+end $$;
+rollback;

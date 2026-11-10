@@ -6,7 +6,7 @@ export type SpaceApplication={id:string;project_id:string;project_title:string;s
 export type MySpace={as_of:string;counts:{projects:number;tasks:number;applications:number;reviews:number};project_total:number;projects:SpaceProject[];task_total:number;tasks:SpaceTask[];review_total:number;reviews:SpaceTask[];application_total:number;applications:SpaceApplication[];attention:SpaceTask[]}
 export type SpaceFilters={search:string;projects:'all'|'created'|'participating';project_status:'all'|'active'|'closed';tasks:'all'|'doing'|'review'|'late';applications:'all'|'pending'|'approved'|'rejected'|'canceled';project_offset:number;task_offset:number;application_offset:number;review_offset:number}
 export const initialSpaceFilters:SpaceFilters={search:'',projects:'all',project_status:'all',tasks:'all',applications:'all',project_offset:0,task_offset:0,application_offset:0,review_offset:0}
-export const taskHref=(task:SpaceTask)=>'/projetos/'+encodeURIComponent(task.slug)+'/painel/atividades?atividade='+encodeURIComponent(task.id)+(task.period_id?'&periodo='+encodeURIComponent(task.period_id):'')
+export const taskHref=(task:SpaceTask)=>'/meu-espaco/atividades?projeto='+encodeURIComponent(task.project_id)+'&atividade='+encodeURIComponent(task.id)
 export const applicationHref=(id:string)=>'/perfil?aba=candidaturas&candidatura='+encodeURIComponent(id)
 export function toolHref(slug:string,tool:string) {
  const base='/projetos/'+encodeURIComponent(slug)+'/painel'

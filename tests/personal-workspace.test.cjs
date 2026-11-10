@@ -14,7 +14,7 @@ test('login default, specific destinations, and external/control/recursive redir
  for(const value of ['/meu-espaco','/projetos/teste/painel/atividades?atividade=1','/mensagens?projeto=1','/perfil?aba=candidaturas','/explorar?q=Team%20Link'])assert.equal(A.getSafeRedirectPath(value),value)
 })
 test('hub uses existing deep links, including multi-vacancy application details and project tools',()=>{
- assert.equal(S.taskHref({id:'task1',slug:'team-link',period_id:'period1'}),'/projetos/team-link/painel/atividades?atividade=task1&periodo=period1')
+ assert.equal(S.taskHref({id:'task1',project_id:'project1',slug:'team-link',period_id:'period1'}),'/meu-espaco/atividades?projeto=project1&atividade=task1')
  assert.equal(S.applicationHref('request1'),'/perfil?aba=candidaturas&candidatura=request1')
  assert.equal(S.toolHref('team-link','support'),'/projetos/team-link/painel?ferramenta=support')
  assert.equal(S.toolHref('team-link','reports'),'/projetos/team-link/painel/relatorios')

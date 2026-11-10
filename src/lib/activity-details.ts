@@ -1,0 +1,7 @@
+import type {Details,Kind,Task,Workspace} from './activities'
+export type ActivityContext=Workspace&{details:Details;assigned_by:{id:string;name:string|null;avatar:string|null}|null;permissions:{move:boolean;review:boolean;comment:boolean;check:boolean}}
+export const activityUuid=(value:string|null)=>Boolean(value&&/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value))
+export function activitySelection(params:URLSearchParams){const task=params.get('atividade'),project=params.get('projeto');return task?{task,project:activityUuid(project)?project??undefined:undefined,slug:project&&!activityUuid(project)?project:undefined}:null}
+export function contextualStage(task:Task,kind:Kind|undefined){return kind==='todo'?{kind:'doing' as const,label:'Iniciar atividade'}:kind==='doing'?{kind:task.requires_review?'review' as const:'done' as const,label:task.requires_review?'Enviar para revisão':'Concluir atividade'}:null}
+export type ActivityCenterTask={id:string;project_id:string;slug:string;project_title:string;title:string;priority:Task['priority'];due_at:string|null;period_id:string;period_name:string;kind:Kind;stage_name:string;assigned:boolean;reviewable:boolean;checklist_total:number;checklist_done:number}
+export type ActivityCenter={as_of:string;total:number;counts:{pending:number;doing:number;late:number;reviews:number};projects:{id:string;title:string}[];groups:{id:string;title:string;total:number;pending:number;late:number}[];items:ActivityCenterTask[]}

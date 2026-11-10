@@ -3,6 +3,8 @@
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import {ActivityDetailsDialog} from '@/components/activities/activity-details-dialog'
+import {useActivityLink} from '@/components/activities/activity-link'
 import { Download } from 'lucide-react'
 import { ActivityExport } from './workspace-export'
 import { Button } from '@/components/ui/button'
@@ -22,6 +24,7 @@ export function ActivitiesClient({ slug }: { slug: string }) {
 }
 
 function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
+  const activityLink=useActivityLink()
   const [exportOpen,setExportOpen]=useState(false)
   const [periodId,setPeriodId]=useState('')
   const [historyEditing,setHistoryEditing]=useState(false)
@@ -64,7 +67,7 @@ function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
     if (!data || navigationApplied.current === navigationKey) return
     navigationApplied.current = navigationKey
     const query = new URLSearchParams(navigationKey)
-    setTask(null);setGoal(null);setHistoryEditing(false)
+    setTask(null);setGoal(null)
     const requested = query.get('periodo')
     const linkedTask=data.tasks.find(item=>item.id===query.get('atividade'))
     const linkedGoal=data.goals.find(item=>item.id===query.get('meta'))
@@ -120,6 +123,8 @@ function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
   const done = (item: Task) => taskKind(item, stages) === 'done'
   const percent = tasks.length ? Math.round(tasks.filter(done).length / tasks.length * 100) : 0
   const selected = tasks.find((item) => item.id === task)
+  function openTask(id:string){activityLink.open(data!.project.id,id)}
+  function closeTask(){if(task==='new')setTask(null);else activityLink.close()}
   const selectedGoal = goals.find((item) => item.id === goal)
   const filters={assignee,stageFilter,lateOnly,filter,priority,deadline,search}
   const filtered=filterTasks(tasks,stages,filters)
@@ -145,7 +150,7 @@ function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
     const mine = item.assignees.includes(userId)
     return <article key={item.id} draggable={!readOnly&&(manager || mine)} onDragStart={(event) => event.dataTransfer.setData('text/plain', item.id)}
       className={'space-y-2 rounded-xl border bg-card p-3 ' + (overdue(item.due_at, done(item)) ? 'border-destructive/60' : 'border-card-outline')}>
-      <button type="button" onClick={() => setTask(item.id)} className="block w-full break-words text-left text-sm font-semibold hover:text-primary">{item.title}</button>
+      <button type="button" onClick={() => openTask(item.id)} className="block w-full break-words text-left text-sm font-semibold hover:text-primary">{item.title}</button>
       <p className={'text-xs ' + (item.priority === 'urgent' ? 'font-semibold text-destructive' : 'text-muted-foreground')}>{priorities[item.priority]} · {activityDate(item.due_at)}</p>
       {overdue(item.due_at, done(item)) && <p className="text-xs text-destructive">Atrasada</p>}
       {dueSoon(item.due_at, done(item)) && <p className="text-xs font-medium text-primary">Vence em até 3 dias</p>}
@@ -217,8 +222,9 @@ function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
     </div>
     {exportOpen&&<ActivityExport data={scoped} filters={filters} close={()=>setExportOpen(false)} />}
     {allGoalsOpen&&<Dialog title="Todas as metas" busy={busy} close={()=>setAllGoalsOpen(false)}>{manager&&!readOnly&&<Button onClick={()=>setGoal('new')}>Nova meta</Button>}{goalCards([...goals].sort(goalsByDeadline))}{!goals.length&&<p className="text-sm text-muted-foreground">Nenhuma meta cadastrada.</p>}</Dialog>}
-    {task && (task === 'new' || selected) && <ActivityEditor key={task} data={scoped} requestTransfer={()=>setTransfer({task:selected?.id})} task={selected} userId={userId} revision={revision} busy={busy} mutate={mutate} close={() => setTask(null)} />}
-    {goal && (goal === 'new' || selectedGoal) && <GoalEditor key={goal} data={scoped} requestTransfer={()=>setTransfer({goal:selectedGoal?.id})} goal={selectedGoal} revision={revision} busy={busy} mutate={mutate} close={() => setGoal(null)} openTask={(id) => {setGoal(null);setTask(id)}} />}
+    {task==='new'&&<ActivityEditor data={scoped} busy={busy} mutate={mutate} close={closeTask}/>}
+    {task&&task!=='new'&&<ActivityDetailsDialog key={task} taskId={task} projectId={data.project.id} slug={slug} userId={userId} historicalEdit={historyEditing} close={closeTask} onChanged={()=>void load()} requestTransfer={()=>{const url=new URL(window.location.href);url.searchParams.delete('atividade');url.searchParams.delete('projeto');window.history.replaceState(null,'',url);setTask(null);setTransfer({task:selected?.id})}}/>}
+    {goal && (goal === 'new' || selectedGoal) && <GoalEditor key={goal} data={scoped} requestTransfer={()=>setTransfer({goal:selectedGoal?.id})} goal={selectedGoal} revision={revision} busy={busy} mutate={mutate} close={() => setGoal(null)} openTask={(id) => {setGoal(null);openTask(id)}} />}
     {periodsOpen&&<PeriodManager data={data} busy={busy} mutate={mutate} close={()=>setPeriodsOpen(false)} />}
     {transfer&&<PeriodTransfer data={data} source={period?.id??''} initial={transfer} busy={busy} mutate={mutate} close={()=>setTransfer(null)} completed={()=>{setTransfer(null);setTask(null);setGoal(null)}} />}
     {stagesOpen && <StageEditor data={data} busy={busy} mutate={mutate} close={() => setStagesOpen(false)} />}

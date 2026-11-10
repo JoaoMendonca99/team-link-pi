@@ -1,2 +1,2 @@
-import { MySpaceClient } from '../my-space-client'
-export default function Page() { return <MySpaceClient section="activities" /> }
+import { PersonalActivities } from '@/components/activities/personal-activities'
+export default function Page() { return <PersonalActivities /> }
