@@ -89,7 +89,7 @@ function PresenceNotice({ userId }: { userId: string }) {
   </aside>
 }
 
-export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
+export function SiteHeader({ fullBleed = false, workspace = false }: { fullBleed?: boolean; workspace?: boolean }) {
   const router = useRouter()
   const pathname=usePathname()
   const mobilePanel=useRef<HTMLDivElement>(null)
@@ -109,6 +109,7 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
   const closeMobile = useCallback(() => {
     setMobileOpen(false)
   }, [])
+  useEffect(() => { if(workspace)closeMobile() },[workspace,closeMobile])
 
   useEffect(() => {
     if (!mobileOpen) return
@@ -159,9 +160,10 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
 
   return (
     <>
-      <header className="dark team-link-header text-foreground sticky top-0 z-[60] w-full border-b border-border/70 bg-background/85 backdrop-blur-xl supports-[backdrop-filter]:bg-background/75">
-        <HeaderShell fullBleed={fullBleed} className="flex h-[72px] min-w-0 items-center justify-between gap-2 sm:gap-3">
+      <header className={cn(!workspace && 'dark team-link-header', workspace && 'h-16', 'text-foreground sticky top-0 z-[60] w-full border-b border-border/70 bg-background/85 backdrop-blur-xl supports-[backdrop-filter]:bg-background/75')}>
+        <HeaderShell fullBleed={fullBleed} className={cn('flex min-w-0 items-center justify-between gap-2 sm:gap-3', workspace ? 'h-full' : 'h-[72px]')}>
           <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4 lg:gap-6">
+            {workspace && <Button type="button" variant="ghost" size="icon" className="shrink-0 lg:hidden" aria-label="Menu do Meu Espaço" aria-haspopup="dialog" aria-controls="workspace-navigation" onClick={() => window.dispatchEvent(new Event('team-link:workspace-toggle'))}><Menu className="size-5" aria-hidden /></Button>}
             <Link
               href="/"
               className="flex min-w-0 shrink items-center gap-2 font-bold tracking-tight text-foreground"
@@ -170,7 +172,7 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
               <span className="truncate text-base sm:text-lg">Team Link</span>
             </Link>
 
-            <nav
+            {!workspace && <nav
               aria-label="Principal"
               className="hidden items-center gap-4 text-sm font-semibold text-foreground/90 lg:flex xl:gap-5"
             >
@@ -183,26 +185,28 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
                   {item.label}
                 </Link>
               ))}
-            </nav>
+            </nav>}
+            {workspace && <span className="hidden border-l border-border pl-4 text-xs font-medium text-muted-foreground sm:inline">Meu Espaço</span>}
           </div>
 
           <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
 
 
-          {isAuthenticated&&<Button asChild size="sm" className="hidden rounded-xl font-semibold lg:inline-flex"><Link href="/meu-espaco" aria-current={pathname.startsWith('/meu-espaco')?'page':undefined}><LayoutDashboard className="size-4" aria-hidden/>Meu Espaço</Link></Button>}
+          {isAuthenticated&&!workspace&&<Button asChild size="sm" className="hidden rounded-xl font-semibold lg:inline-flex"><Link href="/meu-espaco" aria-current={pathname.startsWith('/meu-espaco')?'page':undefined}><LayoutDashboard className="size-4" aria-hidden/>Meu Espaço</Link></Button>}
           <NotificationBell />
 
-          <div className="hidden items-center gap-2 lg:flex">
+          <div className={cn('items-center gap-2', workspace ? 'flex' : 'hidden lg:flex')}>
             {isAuthenticated ? (
               <DropdownMenu key="account" modal={false}>
                 <DropdownMenuTrigger asChild>
                   <Button
                     type="button"
                     variant="ghost"
+                    aria-label={workspace ? 'Menu da conta' : undefined}
                     className="flex items-center gap-2 rounded-full px-2"
                   >
                     <span className="relative shrink-0"><UserAvatar name={displayName} imageUrl={avatarUrl} sizeClassName="h-9 w-9" /><PendingFriendshipBadge count={pendingFriendships} avatar /></span>
-                    <span className="max-w-32 truncate text-sm font-semibold xl:max-w-48">{displayName}</span>
+                    <span className={cn('max-w-32 truncate text-sm font-semibold xl:max-w-48', workspace && 'hidden sm:inline')}>{displayName}</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
@@ -226,7 +230,7 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
                   >
                     <Link href="/meu-espaco/perfil">Perfil</Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild className="cursor-pointer rounded-lg px-3 py-2 text-sm font-medium"><Link href="/meu-espaco">Meu Espaço</Link></DropdownMenuItem>
+                  {!workspace && <><DropdownMenuItem asChild className="cursor-pointer rounded-lg px-3 py-2 text-sm font-medium"><Link href="/meu-espaco">Meu Espaço</Link></DropdownMenuItem>
                   <DropdownMenuItem
                     asChild
                     className="cursor-pointer rounded-lg px-3 py-2 text-sm font-medium"
@@ -241,8 +245,9 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild className="cursor-pointer rounded-lg px-3 py-2 text-sm font-medium">
                     <Link href={friendshipRequestsHref} className="flex items-center justify-between gap-2">Solicitações de amizade <PendingFriendshipBadge count={pendingFriendships} /></Link>
-                  </DropdownMenuItem>
+                  </DropdownMenuItem></>}
                   <DropdownMenuItem asChild><Link href="/meu-espaco/configuracoes">Configurações</Link></DropdownMenuItem>
+                  {workspace && <><DropdownMenuSeparator /><AppearanceChoices /></>}
                   <DropdownMenuSeparator className="my-1.5" />
                   <DropdownMenuItem
                     variant="destructive"
@@ -269,7 +274,7 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
             )}
           </div>
 
-          <Button
+          {!workspace && <Button
             type="button"
             variant="outline"
             size="icon"
@@ -281,13 +286,13 @@ export function SiteHeader({ fullBleed = false }: { fullBleed?: boolean }) {
           >
             <Menu className="h-5 w-5" aria-hidden />
             <PendingFriendshipBadge count={pendingFriendships} avatar />
-          </Button>
+          </Button>}
           </div>
         </HeaderShell>
       </header>
       {user && !fullBleed && <PresenceNotice key={user.id} userId={user.id} />}
 
-      {mobileOpen ? (
+      {mobileOpen && !workspace ? (
         <div
           ref={mobilePanel}
           id="mobile-nav-panel"

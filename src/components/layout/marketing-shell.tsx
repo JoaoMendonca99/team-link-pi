@@ -26,8 +26,8 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
   return (
     <ThemeProvider>
       <FriendshipsProvider>
-      <div className="flex min-h-dvh flex-col overflow-x-clip bg-background text-foreground">
-        <SiteHeader fullBleed={isMessagesPage || isWorkspace} />
+      <div style={{ '--site-header-height': isWorkspace ? '64px' : '72px' } as React.CSSProperties} className="flex min-h-dvh flex-col overflow-x-clip bg-background text-foreground">
+        <SiteHeader workspace={isWorkspace} fullBleed={isMessagesPage || isWorkspace} />
         <div
           className={
             isMessagesPage && !isWorkspace ? "flex h-[calc(100dvh-72px)] min-h-0 flex-col" : "min-w-0 flex-1"

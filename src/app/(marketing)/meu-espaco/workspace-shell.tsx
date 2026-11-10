@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
-import { Briefcase, CheckSquare, FileUser, LayoutDashboard, LogOut, Menu, MessageCircle, Settings, UserRound, Users, X } from 'lucide-react'
+import { Briefcase, CheckSquare, FileUser, LayoutDashboard, LogOut, Search, MessageCircle, Settings, UserRound, Users, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { usePendingFriendships } from '@/components/profile/friendships-provider'
 import { useSupabaseSession } from '@/hooks/use-supabase-session'
@@ -17,6 +17,7 @@ const groups = [
   { title: 'Principal', items: [
     { href: '/meu-espaco', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/meu-espaco/projetos', label: 'Meus projetos', icon: Briefcase },
+    { href: '/meu-espaco/vagas', label: 'Explorar vagas', icon: Search },
     { href: '/meu-espaco/atividades', label: 'Minhas atividades', icon: CheckSquare },
     { href: '/meu-espaco/candidaturas', label: 'Minhas candidaturas', icon: FileUser },
   ] },
@@ -71,12 +72,14 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
   useEffect(() => { setOpen(false) }, [pathname, params])
   useEffect(() => {
     const close = () => setOpen(false)
+    const toggle = () => setOpen(value => !value)
     const otherMenu = (event: Event) => { if ((event as CustomEvent).detail !== 'workspace') close() }
     const desktop = matchMedia('(min-width: 1024px)')
     const resized = () => { if (desktop.matches) close() }
     window.addEventListener(navigationEvent, otherMenu)
+    window.addEventListener('team-link:workspace-toggle', toggle)
     desktop.addEventListener('change', resized)
-    return () => { window.removeEventListener(navigationEvent, otherMenu); desktop.removeEventListener('change', resized) }
+    return () => { window.removeEventListener(navigationEvent, otherMenu); window.removeEventListener('team-link:workspace-toggle', toggle); desktop.removeEventListener('change', resized) }
   }, [])
   useEffect(() => {
     if (!open) return
@@ -90,13 +93,11 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
   }, [open])
   if (loading) return <p role="status" className="p-8">Carregando Meu Espaço…</p>
   if (!user) return <div className="space-y-4 p-8"><h1 className="text-2xl font-bold">Entre para acessar Meu Espaço</h1><Button asChild><Link href={'/login?next=' + encodeURIComponent(pathname)}>Entrar</Link></Button></div>
-  const label = groups.flatMap(group => group.items).find(item => item.href === pathname || (item.href !== '/meu-espaco' && pathname.startsWith(item.href)))?.label || 'Meu Espaço'
   const messages = pathname === '/meu-espaco/mensagens'
   return <Cache.Provider value={cache.current}><div className="mx-auto grid w-full min-w-0 max-w-[1600px] lg:grid-cols-[240px_minmax(0,1fr)]">
-    <aside className="sticky top-[72px] hidden h-[calc(100dvh-72px)] min-w-0 self-start overflow-y-auto overscroll-contain border-r border-border bg-card/40 p-4 lg:flex lg:flex-col"><p className="mb-6 px-3 text-lg font-bold">Meu Espaço</p><WorkspaceNavigation /></aside>
+    <aside className="sticky top-[var(--site-header-height)] hidden h-[calc(100dvh-var(--site-header-height))] min-w-0 self-start overflow-y-auto overscroll-contain border-r border-border bg-card/40 p-4 lg:flex lg:flex-col"><p className="mb-6 px-3 text-lg font-bold">Meu Espaço</p><WorkspaceNavigation /></aside>
     <div className="min-w-0">
-      <div className="sticky top-[72px] z-30 flex h-14 items-center justify-between gap-3 border-b border-border bg-background px-4 lg:hidden"><span className="text-sm font-semibold">{label}</span><Button size="sm" variant="outline" aria-haspopup="dialog" aria-expanded={open} aria-controls="workspace-navigation" onClick={() => setOpen(true)}><Menu aria-hidden className="size-4" />Menu do Meu Espaço</Button></div>
-      <main id="workspace-content" className={messages ? 'workspace-messages flex h-[calc(100dvh-128px)] min-h-0 min-w-0 flex-col lg:h-[calc(100dvh-72px)]' : 'min-w-0 space-y-6 p-4 pb-24 sm:p-6 sm:pb-24 xl:p-8 xl:pb-24'}>{children}</main>
+      <main id="workspace-content" className={messages ? 'workspace-messages flex h-[calc(100dvh-var(--site-header-height))] min-h-0 min-w-0 flex-col' : 'min-w-0 space-y-6 p-4 pb-24 sm:p-6 sm:pb-24 xl:p-8 xl:pb-24'}>{children}</main>
     </div>
     <dialog ref={dialog} id="workspace-navigation" aria-label="Navegação do Meu Espaço" onCancel={event => { event.preventDefault(); setOpen(false) }} onClick={event => {
       if (event.target === event.currentTarget) { const bounds = event.currentTarget.getBoundingClientRect(); if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) setOpen(false) }

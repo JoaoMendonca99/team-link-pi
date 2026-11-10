@@ -116,9 +116,9 @@ export function VacancySummary({ vacancies, error, onApply }: { vacancies: Vacan
   </section>
 }
 
-function VacancySkills({ skills, remaining = 0 }: { skills: string[]; remaining?: number }) {
+export function VacancySkills({ skills, remaining = 0, label='Habilidades desejadas' }: { skills: string[]; remaining?: number; label?:string }) {
   if (!skills.length) return null
-  return <ul aria-label="Habilidades desejadas" className="flex flex-wrap gap-1">
+  return <ul aria-label={label} className="flex flex-wrap gap-1">
     {skills.map((skill, index) => <li key={index} className="max-w-full break-words rounded-full border border-primary/25 px-2 py-0.5 text-xs text-primary">{skill}</li>)}
     {remaining > 0 ? <li aria-label={`Mais ${remaining} habilidades`} className="rounded-full border border-border px-2 py-0.5 text-xs text-muted-foreground">+{remaining}</li> : null}
   </ul>
@@ -289,9 +289,10 @@ export function useProjectApplications(projectId: string | undefined, userId: st
   return { ...applications, current, previous: current ?? own[0] }
 }
 
-export function ApplyButton({ projectId, title, vacancies, userId, canApply, isVisitor, applications, target, setTarget }: {
+export function ApplyButton({ projectId, title, vacancies, userId, canApply, isVisitor, applications, target, setTarget, embedded=false, label='Participar', initialVacancy, onRefresh }: {
   projectId: string; title: string; vacancies: Vacancy[]; userId?: string; canApply: boolean; isVisitor: boolean
   applications: ReturnType<typeof useProjectApplications>; target: string | null; setTarget: (target: string | null) => void
+  embedded?:boolean;label?:string;initialVacancy?:string;onRefresh?:()=>Promise<void>
 }) {
   const { reload, error, loading, current, previous } = applications
   const [selection, setSelected] = useState<string[] | null>(null)
@@ -307,16 +308,14 @@ export function ApplyButton({ projectId, title, vacancies, userId, canApply, isV
     setTarget(null)
   }
   if (isVisitor) return options.length ? <Button asChild><Link href="/login">Participar</Link></Button> : null
-  if (!userId || loading || error || (!available && !previous)) return <Failure message={error} />
-  return <>
-    <Button onClick={() => setTarget('')}>{current || !available ? 'Acompanhar candidatura' : 'Participar'}</Button>
-    {target !== null ? <Modal title={title} close={close}>
+  if (!userId || loading || error || (!available && !previous)) return <Failure message={error||feedback} />
+  const content=<>
       {current || !available ? (previous ? <ApplicationDetails key={previous.id} item={previous} reload={reload}
         version={applications.connection + (applications.updates[previous.id] ?? 0)} /> : null) : (
         <form className="space-y-3" onSubmit={async (e) => {
           e.preventDefault(); setBusy(true); setFeedback(null)
-          try { await recruitmentRpc('recruitment_send_application', { p_project: projectId, p_vacancies: selected, p_message: message }); setSelected([]); setMessage(''); await reload() }
-          catch (err) { setFeedback(errorText(err)) }
+          try { await recruitmentRpc('recruitment_send_application', { p_project: projectId, p_vacancies: selected, p_message: message }); setSelected([]); setMessage(''); await reload(); await onRefresh?.() }
+          catch (err) { setFeedback(errorText(err)); await onRefresh?.() }
           finally { setBusy(false) }
         }}>
           <p className="text-sm text-muted-foreground">Solicite participação e selecione uma ou mais vagas.</p>
@@ -326,8 +325,11 @@ export function ApplyButton({ projectId, title, vacancies, userId, canApply, isV
           <div className="flex flex-wrap gap-2"><Button type="button" variant="outline" onClick={close}>Cancelar</Button>
             <Button disabled={busy || !selected.length}>Enviar solicitação</Button></div>
         </form>
-      )}
-    </Modal> : null}
+      )}</>
+  return <>
+    <Button onClick={() => setTarget(initialVacancy??'')}>{current || !available ? 'Acompanhar candidatura' : label}</Button>
+    {embedded&&!available&&<Failure message={feedback}/>}
+    {target !== null ? embedded?<section aria-label="Candidatura" className="mt-4 space-y-3 rounded-xl border p-3">{content}</section>:<Modal title={title} close={close}>{content}</Modal> : null}
   </>
 }
 

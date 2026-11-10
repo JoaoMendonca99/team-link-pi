@@ -7,10 +7,10 @@ import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import { searchConcepts, type ConceptChoice, type ConceptHit } from '@/lib/concepts'
 
-type Props = { label: string; value: ConceptChoice[]; onChange: (next: ConceptChoice[]) => void; inputId?: string; optional?: boolean; maxItems?: number; maxLength?: number; disabled?: boolean; placeholder?: string; helperText?: string; className?: string }
+type Props = { label: string; value: ConceptChoice[]; onChange: (next: ConceptChoice[]) => void; inputId?: string; optional?: boolean; maxItems?: number; maxLength?: number; disabled?: boolean; placeholder?: string; helperText?: string; className?: string; allowProposals?:boolean }
 
 /** Explicit selection/proposal: blur never silently creates a concept or resolves an ambiguous legacy chip. */
-export function ConceptChipInput({ label, value, onChange, inputId, optional, maxItems=16, maxLength=40, disabled=false, placeholder='Pesquise um conceito', helperText, className }: Props) {
+export function ConceptChipInput({ label, value, onChange, inputId, optional, maxItems=16, maxLength=40, disabled=false, placeholder='Pesquise um conceito', helperText, className, allowProposals=true }: Props) {
   const generated=useId(), id=inputId || 'concept-'+generated, listId=id+'-results'
   const root=useRef<HTMLDivElement>(null), input=useRef<HTMLInputElement>(null), popup=useRef<HTMLDivElement>(null)
   const cache=useRef(new Map<string,ConceptHit[]>())
@@ -95,7 +95,7 @@ export function ConceptChipInput({ label, value, onChange, inputId, optional, ma
             <span className="mt-1 block text-xs text-muted-foreground">{row.dominio}{row.alias!==row.nome?' · Alias: '+row.alias:''}{row.confirmacao?' · Confirme o contexto':''}{row.descricao?' · '+row.descricao:''}</span>
           </li>)}
         </ul>
-        {canPropose&&<button type="button" className="mt-1 min-h-11 w-full rounded-lg border-t p-3 text-left text-xs text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        {allowProposals&&canPropose&&<button type="button" className="mt-1 min-h-11 w-full rounded-lg border-t p-3 text-left text-xs text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           onMouseDown={e=>e.preventDefault()} onClick={()=>select({id:null,label:query,status:'provisorio',proposal:true})}>Não encontrou? Sugerir novo conceito<span className="mt-1 block break-words">“{query}” · provisório, enviado ao salvar.</span></button>}
         {!canPropose&&query.length>maxLength&&<p className="p-3 text-xs text-muted-foreground">Sugestões novas: até {maxLength} caracteres. Conceitos do catálogo podem ter nomes maiores.</p>}
         <p className="border-t p-2 text-[11px] text-muted-foreground">Inclui dados <a href="https://esco.ec.europa.eu/en" target="_blank" rel="noreferrer" className="underline">ESCO / Comissão Europeia</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer" className="underline">CC BY 4.0</a>.</p>
