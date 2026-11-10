@@ -439,7 +439,7 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
                 </Link>
               </Button>
             ) : null}
-            {canEditProject ? (
+            {canEditProject&&!['completed','archived'].includes(project.status) ? (
               <Button asChild variant="outline" className="w-full rounded-2xl font-semibold sm:w-auto">
                 <Link href={`/projetos/${project.slug}/editar`}>
                   <Pencil className="h-4 w-4" aria-hidden />
@@ -452,7 +452,7 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
 
         <aside aria-label="Equipe e vagas" className="min-w-0 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:self-stretch">
           <div className="space-y-4">
-            <MembersPreviewCard
+            <MembersPreviewCard readOnly={['completed','archived'].includes(project.status)}
               key={project.id}
               onMembersChange={setMembers}
               onMemberRemoved={() => { void reloadVacancies(); void loadMembership() }}

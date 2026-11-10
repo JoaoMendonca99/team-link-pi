@@ -23,6 +23,7 @@ function isSupportMessage(senderRole: string): boolean {
 }
 
 export function SupportTicketChat({
+  readOnly=false,
   detail,
   loading,
   error,
@@ -34,6 +35,7 @@ export function SupportTicketChat({
   onStatusChange,
   onRetry,
 }: {
+  readOnly?:boolean
   detail: SupportTicketDetail | null
   loading: boolean
   error: string | null
@@ -146,7 +148,7 @@ export function SupportTicketChat({
             <select
               className="rounded-xl border border-card-outline bg-background px-2 py-1.5 text-xs font-medium"
               value={ticket.status}
-              disabled={updatingStatus || sending}
+              disabled={readOnly||updatingStatus || sending}
               onChange={(event) => void onStatusChange(event.target.value as SupportTicketStatus)}
             >
               {STATUS_OPTIONS.map((option) => (
@@ -196,7 +198,7 @@ export function SupportTicketChat({
         })}
       </div>
 
-      <footer className="shrink-0 border-t border-card-outline/70 bg-background/80 p-3 sm:p-4">
+      {readOnly?<p className="border-t p-4 text-sm text-muted-foreground">Projeto finalizado — somente leitura.</p>:<footer className="shrink-0 border-t border-card-outline/70 bg-background/80 p-3 sm:p-4">
         <label className="sr-only" htmlFor="support-reply">
           Resposta ao ticket
         </label>
@@ -226,7 +228,7 @@ export function SupportTicketChat({
           )}
           Responder
         </Button>
-      </footer>
+      </footer>}
     </div>
   )
 }

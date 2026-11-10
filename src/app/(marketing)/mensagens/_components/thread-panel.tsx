@@ -24,6 +24,7 @@ const MESSAGE_MAX_LENGTH = 2000
 
 
 export function ThreadPanel({
+  readOnly=false,
   projectTitle,
   conversation,
   hasSelectedProject,
@@ -44,6 +45,7 @@ export function ThreadPanel({
   currentUserAvatar,
   className,
 }: {
+  readOnly?:boolean
   projectTitle: string
   conversation: ChatConversationListItem | null
   hasSelectedProject: boolean
@@ -249,7 +251,7 @@ export function ThreadPanel({
         )}
       </div>
 
-      <div className="border-t border-border bg-background/70 px-3 py-3 sm:px-4">
+      {readOnly?<p className="border-t p-4 text-sm text-muted-foreground">Conversa histórica · somente leitura.</p>:(<div className="border-t border-border bg-background/70 px-3 py-3 sm:px-4">
         {sendError ? (
           <p role="alert" className="mb-2 text-xs font-medium text-destructive">
             {sendError}
@@ -290,7 +292,7 @@ export function ThreadPanel({
             {remaining} caracteres restantes
           </p>
         ) : null}
-      </div>
+      </div>)}
     </section>
   )
 }

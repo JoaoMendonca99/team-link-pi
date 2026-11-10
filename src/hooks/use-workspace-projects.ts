@@ -23,6 +23,7 @@ export function useWorkspaceProjects(user:string|undefined,current:string|null){
   const refresh=()=>{if(!document.hidden)void load()}
   const client=getSupabaseClient(),channel=client.channel('workspace-navigation:'+user)
   for(const table of ['project_members','project_recruitment_roles'])channel.on('postgres_changes',{event:'*',schema:'public',table,filter:'user_id=eq.'+user},refresh)
+  channel.on('postgres_changes',{event:'*',schema:'public',table:'activity_updates'},refresh)
   channel.subscribe();window.addEventListener('focus',refresh);document.addEventListener('visibilitychange',refresh);const timer=window.setInterval(refresh,60_000)
   return()=>{controller.current?.abort();void client.removeChannel(channel);window.removeEventListener('focus',refresh);document.removeEventListener('visibilitychange',refresh);window.clearInterval(timer)}
  },[user,load])

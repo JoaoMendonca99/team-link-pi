@@ -133,6 +133,7 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
         row = (byId.data as ProjectPublicDetailRow | null) ?? null
       }
 
+      if(!row){const historical=await client.rpc('get_historical_project',{p_slug:slug});if(!historical.error&&historical.data)row=historical.data as ProjectPublicDetailRow}
       if (bySlug.error && !row) {
         setFetchError(bySlug.error.message)
         return
@@ -205,9 +206,11 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
   }, [loadMembership])
 
   const hasPanelAccess = Boolean(user && membership)
-  const isManager = useProjectLeadership(project?.id, user?.id)
+  const projectManager = useProjectLeadership(project?.id, user?.id)
+  const historical=project?.status==='completed'||project?.status==='archived'
+  const isManager=projectManager&&!historical
   const canEditProject = isManager
-  const canViewSupport = isManager || membership?.supportAccess === true
+  const canViewSupport = projectManager || membership?.supportAccess === true
   const projectId = project?.id
   const overview = usePanelSummary(projectId, user?.id, hasPanelAccess && membershipLoaded)
   const recruitmentHref = project ? '/projetos/' + project.slug + '/painel/candidaturas' : ''
@@ -511,12 +514,13 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
                 <Link href={`/projetos/${project.slug}/editar`}>Editar projeto</Link>
               </Button>
             ) : null}
-            {isManager && <Button asChild variant="outline" size="sm" className="rounded-2xl">
+            {projectManager && <Button asChild variant="outline" size="sm" className="rounded-2xl">
               <Link id="candidaturas" href={recruitmentHref}>Candidaturas{pending > 0 && <span className="rounded-full bg-primary/10 px-2 text-primary" aria-label={pending + ' pendentes'}>{pending}</span>}</Link>
             </Button>}
-            <Button asChild variant="ghost" size="sm"><Link href="/meu-espaco/mensagens">Mensagens da equipe</Link></Button>
+            <Button asChild variant="ghost" size="sm"><Link href={'/meu-espaco/mensagens?projeto='+project.id}>Mensagens da equipe</Link></Button>
           </div>
 
+          {historical&&<p className="text-sm font-medium text-primary">Projeto finalizado — somente leitura</p>}
           <PageHeader
             compact
             eyebrow="Área da equipe"
@@ -565,7 +569,7 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
             onOpenCommit={setSelectedCommit}
           />}
           {supportOpen ? (
-            <PanelSupportSection
+            <PanelSupportSection readOnly={historical}
               className="h-fit min-w-0 self-start"
               projectId={project.id}
               isManager={isManager}

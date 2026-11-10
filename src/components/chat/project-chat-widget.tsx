@@ -33,11 +33,13 @@ import { Input } from "@/components/ui/input"
 import { MessageTextarea } from "@/components/chat/message-textarea"
 import { UserAvatar } from "@/components/team-link/user-avatar"
 import { FriendThread, useFriendChats } from "@/app/(marketing)/mensagens/_components/friend-chats"
-import { chatSearch, WidgetFriends } from "./widget-friends"
+import { chatSearch, UnifiedConversations } from "./widget-friends"
 import { useProjectPresence } from '@/hooks/use-project-presence'
 import { useProjectChatRead } from "@/hooks/use-project-chat-read"
 import { useSupabaseSession } from "@/hooks/use-supabase-session"
-import { loadMyChatProjects, loadProjectConversations } from "@/lib/chat/loaders"
+import { loadProjectConversations } from "@/lib/chat/loaders"
+import {useChatProjects} from '@/hooks/use-chat-projects'
+import type {ChatProjectListItem} from '@/lib/chat/types'
 import { profileRpc } from "@/lib/profile-social"
 import { getSupabaseClient, isSupabaseConfigured } from "@/lib/supabase/client"
 import { cn } from "@/lib/utils"
@@ -53,11 +55,7 @@ const STORAGE_KEY = "team-link:chat:open"
 
 type View = "projects" | "conversations" | "thread" | "create-group" | "members"
 
-interface ChatProject {
-  id: string
-  title: string
-  unreadCount?: number
-}
+type ChatProject = ChatProjectListItem
 
 interface ChatMessage extends ProjectMessageRow {
   author?: ProfileRow | null
@@ -107,9 +105,10 @@ function ChatWidget({ session }: { session: ReturnType<typeof useSupabaseSession
   const friendChat = chats?.find((chat) => chat.id === friendChatId)
   const [conversationUnread, setConversationUnread] = React.useState<Record<string, number>>({})
 
-  const [projects, setProjects] = React.useState<ChatProject[]>([])
-  const [projectsLoading, setProjectsLoading] = React.useState(false)
-  const [projectsError, setProjectsError] = React.useState<string | null>(null)
+  const {projects,loading:projectsLoading,error:projectsError,load:loadProjects}=useChatProjects(user?.id,mounted&&isSupabaseConfigured())
+  const [present,setPresent]=React.useState(false)
+  const panelRef=React.useRef<HTMLDivElement>(null),launcherRef=React.useRef<HTMLButtonElement>(null),restoreFocus=React.useRef(false)
+  const [viewport,setViewport]=React.useState<{height:number;bottom:number}>()
 
   const [selectedProject, setSelectedProject] = React.useState<ChatProject | null>(null)
 
@@ -178,7 +177,6 @@ function ChatWidget({ session }: { session: ReturnType<typeof useSupabaseSession
     if (isAuthenticated) return
     setOpen(false)
     setView("projects")
-    setProjects([])
     setSelectedProject(null)
     setConversations([])
     setGroupMemberCounts({})
@@ -199,35 +197,6 @@ function ChatWidget({ session }: { session: ReturnType<typeof useSupabaseSession
   // -------------------------------------------------------------------------
   // Data loaders
   // -------------------------------------------------------------------------
-
-  const loadProjects = React.useCallback(async (background = false) => {
-    if (!user) return
-    if (!supabaseReady) {
-      setProjectsError("Não foi possível conectar ao serviço de dados.")
-      return
-    }
-    if (!background) setProjectsLoading(true)
-    setProjectsError(null)
-    try {
-      setProjects(await loadMyChatProjects(user.id))
-    } catch (error) {
-      setProjects([])
-      setProjectsError(
-        error instanceof Error
-          ? error.message
-          : "Não foi possível carregar seus projetos no momento.",
-      )
-    } finally {
-      if (!background) setProjectsLoading(false)
-    }
-  }, [supabaseReady, user])
-
-  React.useEffect(() => {
-    if (!open || tab !== "projects") return
-    if (!isAuthenticated) return
-    if (view !== "projects") return
-    void loadProjects()
-  }, [isAuthenticated, loadProjects, open, tab, view])
 
   const refreshProjectCounts = React.useCallback(() => {
     void loadProjects(true)
@@ -873,6 +842,12 @@ function ChatWidget({ session }: { session: ReturnType<typeof useSupabaseSession
     }
   }, [draft, loadMessages, selectedConversation, supabaseReady, user])
 
+  React.useEffect(()=>{if(open){setPresent(true);return}const delay=matchMedia('(prefers-reduced-motion: reduce)').matches?0:200;const timer=window.setTimeout(()=>setPresent(false),delay);return()=>window.clearTimeout(timer)},[open])
+  React.useEffect(()=>{if(open&&present)panelRef.current?.focus({preventScroll:true})},[open,present])
+  React.useEffect(()=>{const vv=window.visualViewport;if(!vv)return;const update=()=>setViewport({height:Math.max(80,vv.height-32),bottom:Math.max(16,innerHeight-vv.height-vv.offsetTop+16)});update();vv.addEventListener('resize',update);vv.addEventListener('scroll',update);return()=>{vv.removeEventListener('resize',update);vv.removeEventListener('scroll',update)}},[])
+  React.useEffect(()=>{if(!open)return;const outside=(event:PointerEvent)=>{const node=event.target;if(!(node instanceof Element)||panelRef.current?.contains(node)||node.closest('[data-chat-owned]'))return;restoreFocus.current=false;setOpen(false)};const escape=(event:KeyboardEvent)=>{if(event.key!=='Escape'||event.defaultPrevented||document.querySelector('[data-chat-owned][data-state="open"]'))return;event.preventDefault();if(confirmDelete){if(!deletingGroup)setConfirmDelete(null)}else if(view==='create-group')setView('conversations');else if(view==='members')setView('thread');else{restoreFocus.current=true;setOpen(false)}};document.addEventListener('pointerdown',outside);document.addEventListener('keydown',escape);return()=>{document.removeEventListener('pointerdown',outside);document.removeEventListener('keydown',escape)}},[open,confirmDelete,deletingGroup,view])
+  React.useEffect(()=>{if(selectedProject&&!projectsLoading&&!projectsError&&!projects.some(p=>p.id===selectedProject.id)){setSelectedProject(null);setSelectedConversation(null);setView('projects');setTab('friends');setMessages([])}},[projects,projectsLoading,projectsError,selectedProject])
+
   if (!mounted) return null
   if (sessionLoading) return null
   if (!isAuthenticated) return null
@@ -890,7 +865,7 @@ function ChatWidget({ session }: { session: ReturnType<typeof useSupabaseSession
   })()
 
   const headerSubtitle = (() => {
-    if (view === "projects") return "Seus projetos ativos"
+    if (view === "projects") return undefined
     if (view === "conversations") return "Conversa geral e seus grupos"
     if (view === "create-group") return selectedProject?.title ?? undefined
     if (view === "members") return conversationLabel(selectedConversation)
@@ -908,10 +883,12 @@ function ChatWidget({ session }: { session: ReturnType<typeof useSupabaseSession
     : selectedProject ? "/mensagens?projeto=" + encodeURIComponent(selectedProject.id) +
       (selectedConversation ? "&conversa=" + encodeURIComponent(selectedConversation.id) : "") : "/mensagens"
 
-  const launcher = (
+  const home = !friendChatId && view === "projects"
+  const launcher = !open&&!present ? (
     <button
+      ref={node=>{launcherRef.current=node;if(node&&restoreFocus.current){restoreFocus.current=false;node.focus({preventScroll:true})}}}
       type="button"
-      onClick={() => setOpen((prev) => !prev)}
+      onClick={() => setOpen(true)}
       aria-label={(open ? "Fechar chat" : "Abrir chat") + (unread ? `, ${unread} mensagens não lidas` : "")}
       aria-expanded={open}
       aria-controls="project-chat-panel"
@@ -920,21 +897,23 @@ function ChatWidget({ session }: { session: ReturnType<typeof useSupabaseSession
         open && "scale-95",
       )}
     >
-      {open ? <X className="h-6 w-6" aria-hidden /> : <MessageCircle className="h-6 w-6" aria-hidden />}
+      <MessageCircle className="h-6 w-6" aria-hidden />
       {unread > 0 && <span aria-hidden className="absolute -right-1 -top-1 rounded-full bg-destructive px-2 py-0.5 text-xs text-white">{unread > 99 ? "99+" : unread}</span>}
     </button>
-  )
+  ) : null
 
-  const panel = open ? (
+  const panel = present ? (
     <div
+      ref={panelRef} tabIndex={-1} inert={!open} aria-hidden={!open} data-chat-state={open?"open":"closed"}
+      style={viewport?{height:Math.min(640,viewport.height),bottom:"max("+viewport.bottom+"px, env(safe-area-inset-bottom))"}:undefined}
       id="project-chat-panel"
       role="dialog"
       aria-modal="false"
       aria-label="Mensagens"
       className={cn(
-        "fixed z-[40] flex flex-col overflow-hidden rounded-3xl border border-card-outline bg-card text-card-foreground shadow-2xl",
-        "bottom-20 left-2 right-2 h-[min(560px,80dvh,calc(100dvh-5.5rem))]",
-        "md:bottom-24 md:left-auto md:right-6 md:h-[min(560px,80dvh,calc(100dvh-6.5rem))] md:w-[380px]",
+        "chat-floating-panel fixed z-[40] flex flex-col overflow-hidden rounded-3xl border border-card-outline bg-card text-card-foreground shadow-2xl",
+        "bottom-[max(1rem,env(safe-area-inset-bottom))] left-4 right-4 h-[min(640px,calc(100dvh-2rem))]",
+        "md:left-auto md:w-[400px]",
       )}
     >
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border bg-background/60 px-4 py-2">
@@ -997,7 +976,7 @@ function ChatWidget({ session }: { session: ReturnType<typeof useSupabaseSession
             variant="ghost"
             size="icon"
             className="h-8 w-8"
-            onClick={() => setOpen(false)}
+            onClick={() => {restoreFocus.current=true;setOpen(false)}}
             aria-label="Fechar chat"
           >
             <X className="h-4 w-4" aria-hidden />
@@ -1005,36 +984,10 @@ function ChatWidget({ session }: { session: ReturnType<typeof useSupabaseSession
         </div>
       </header>
 
-      <nav aria-label="Tipos de mensagens" className="flex shrink-0 gap-2 border-b border-border px-3 py-2">
-        <Button size="sm" variant={tab === "friends" ? "default" : "ghost"} aria-pressed={tab === "friends"} onClick={() => { setTab("friends"); setSearch("") }}>Amigos</Button>
-        <Button size="sm" variant={tab === "projects" ? "default" : "ghost"} aria-pressed={tab === "projects"} onClick={() => { setTab("projects"); setSearch("") }}>Projetos</Button>
-      </nav>
-      {(tab === "friends" ? !friendChatId : view === "projects" || view === "conversations") &&
-        <div className="shrink-0 border-b border-border px-3 py-2">
-          <Input type="search" aria-label={tab === "friends" ? "Buscar amigos" : "Buscar projetos ou conversas"} placeholder="Buscar por nome" value={search} onChange={(event) => setSearch(event.target.value)} />
-        </div>}
-      {tab === "friends" && user && (friendChatId ? friendChat ?
-        <FriendThread key={friendChat.id} chat={friendChat} profile={profile} userId={user.id} onChange={loadFriendChats} onBack={() => setFriendChatId(null)} /> :
-        <div className="space-y-2 p-3">
-          <p role="status">Conversa indisponível ou carregando…</p>
-          <Button size="sm" variant="outline" onClick={() => setFriendChatId(null)}>Voltar aos amigos</Button>
-        </div> :
-        <WidgetFriends chats={chats} query={query} onOpen={async (friend, chat) => {
-          const id = chat?.id ?? await profileRpc<string>("open_friend_chat", { p_user: friend.user_id })
-          if (!chat) await loadFriendChats()
-          setFriendChatId(id)
-        }} />)}
-      {tab === "projects" && <div className="flex min-h-0 flex-1 flex-col">
-        {view === "projects" ? (
-          <ProjectsListView
-            loading={projectsLoading}
-            error={projectsError}
-            projects={projects.filter((project) => chatSearch(project.title).includes(query))}
-            onSelect={(project) => { setSearch(""); handleSelectProject(project) }}
-            onRetry={() => void loadProjects()}
-          />
-        ) : null}
-
+      {(home||tab==='projects'&&view==='conversations')&&<div className="shrink-0 border-b border-border px-3 py-2"><Input type="search" aria-label="Buscar conversas" placeholder="Buscar conversas..." value={search} onChange={event=>setSearch(event.target.value)}/></div>}
+      {home&&<UnifiedConversations chats={chats} query={query} projects={projects} projectsLoading={projectsLoading} projectsError={projectsError} retryProjects={()=>void loadProjects()} onProject={project=>{setTab('projects');setFriendChatId(null);setSearch('');handleSelectProject(project)}} onOpen={async(friend,chat)=>{const id=chat?.id??await profileRpc<string>('open_friend_chat',{p_user:friend.user_id});if(!chat)await loadFriendChats();setTab('friends');setFriendChatId(id);setSearch('')}}/>}
+      {tab==='friends'&&friendChatId&&user&&(friendChat?<FriendThread key={friendChat.id} chat={friendChat} profile={profile} userId={user.id} onChange={loadFriendChats} onBack={()=>setFriendChatId(null)}/>:<p role="status" className="p-4">Conversa indisponível ou carregando…</p>)}
+      {tab === "projects" && !home && <div className="flex min-h-0 flex-1 flex-col">
         {view === "conversations" ? (
           <ConversationsListView
             loading={conversationsLoading}
@@ -1146,70 +1099,6 @@ function conversationLabel(conversation: ProjectConversationRow | null): string 
 // Subcomponentes
 // ----------------------------------------------------------------------------
 
-interface ProjectsListViewProps {
-  loading: boolean
-  error: string | null
-  projects: ChatProject[]
-  onSelect: (project: ChatProject) => void
-  onRetry: () => void
-}
-
-function ProjectsListView({ loading, error, projects, onSelect, onRetry }: ProjectsListViewProps) {
-  if (loading) {
-    return (
-      <div className="flex flex-1 items-center justify-center px-6 py-8 text-sm text-muted-foreground">
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> Carregando seus projetos...
-      </div>
-    )
-  }
-  if (error) {
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 py-8 text-center">
-        <p className="text-sm font-medium text-destructive">{error}</p>
-        <Button type="button" variant="outline" size="sm" onClick={onRetry}>
-          Tentar novamente
-        </Button>
-      </div>
-    )
-  }
-  if (projects.length === 0) {
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-2 px-6 py-8 text-center">
-        <MessagesSquare className="h-8 w-8 text-muted-foreground" aria-hidden />
-        <p className="text-sm font-semibold text-foreground">Sem projetos para conversar</p>
-        <p className="text-xs text-muted-foreground">
-          Quando você for membro ativo de um projeto, ele aparecerá aqui.
-        </p>
-      </div>
-    )
-  }
-  return (
-    <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2">
-      {projects.map((project) => (
-        <li key={project.id}>
-          <button
-            type="button"
-            onClick={() => onSelect(project)}
-            className="flex w-full cursor-pointer items-center gap-3 rounded-2xl px-3 py-3 text-left transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
-          >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-semibold text-primary">
-              {initialsOf(project.title)}
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm font-semibold text-foreground">
-                {project.title}
-              </span>
-              <span className="block truncate text-xs text-muted-foreground">
-                Conversas do projeto
-              </span>
-            </span>
-            <UnreadBadge count={project.unreadCount} />
-          </button>
-        </li>
-      ))}
-    </ul>
-  )
-}
 
 interface ConversationsListViewProps {
   loading: boolean
@@ -1353,7 +1242,7 @@ function ConversationsListView({
                       <MoreVertical className="h-4 w-4" aria-hidden />
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="min-w-[180px]">
+                  <DropdownMenuContent data-chat-owned="true" align="end" className="min-w-[180px]">
                     <DropdownMenuItem onSelect={() => onViewMembers(group)}>
                       <Users className="h-4 w-4" aria-hidden /> Ver membros
                     </DropdownMenuItem>

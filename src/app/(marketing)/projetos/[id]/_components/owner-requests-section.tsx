@@ -39,6 +39,7 @@ const STATUS_LABEL: Record<JoinRequestStatus, string> = {
   approved: 'Aprovada',
   rejected: 'Recusada',
   canceled: 'Cancelada',
+  closed:'Encerrada pelo projeto',
 }
 
 const STATUS_CLASSNAME: Record<JoinRequestStatus, string> = {
@@ -46,6 +47,7 @@ const STATUS_CLASSNAME: Record<JoinRequestStatus, string> = {
   approved: 'border-emerald-500/40 bg-emerald-500/10 text-emerald-900 dark:text-emerald-300',
   rejected: 'border-destructive/40 bg-destructive/10 text-destructive',
   canceled: 'border-border bg-muted text-muted-foreground',
+  closed: 'border-border bg-muted text-muted-foreground',
 }
 
 export function OwnerRequestsSection({

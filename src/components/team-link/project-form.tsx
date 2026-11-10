@@ -251,7 +251,7 @@ export function ProjectForm({ project, initialTags = [], initialVacancies = [], 
           <div className="grid gap-4 sm:grid-cols-2">
             <Field id="project-status" label="Status do projeto">
               <Choice id="project-status" value={status} onChange={(value) => setStatus(value as ProjectStatusValue)}
-                options={PROJECT_STATUS_OPTIONS.map((value) => ({ value, label: PROJECT_STATUS_LABEL[value] }))} />
+                options={PROJECT_STATUS_OPTIONS.filter(value=>project||!['completed','archived'].includes(value)).map((value) => ({ value, label: PROJECT_STATUS_LABEL[value] }))} />
             </Field>
             <Field id="project-visibility" label="Visibilidade">
               <Choice id="project-visibility" value={visibility} onChange={(value) => setVisibility(value as ProjectVisibility)}

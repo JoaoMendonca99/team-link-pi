@@ -44,7 +44,8 @@ import { MESSAGE_MAX_LENGTH, ThreadPanel } from './_components/thread-panel'
 
 type MobileStep = 'projects' | 'conversations' | 'thread'
 
-export function MessagesClient({ active = true, requestedProject, requestedConversation }: {
+export function MessagesClient({ active = true, requestedProject, requestedConversation,projectSource,hideProjectList=false,onDismissProject }: {
+  projectSource?:ChatProjectListItem[];hideProjectList?:boolean;onDismissProject?:()=>void
   active?: boolean; requestedProject?: string | null; requestedConversation?: string | null
 }) {
   const { isAuthenticated, loading: sessionLoading, user, profile } =
@@ -107,11 +108,14 @@ export function MessagesClient({ active = true, requestedProject, requestedConve
   // Helpers
   // ---------------------------------------------------------------------------
 
+  const [historicalProject,setHistoricalProject]=useState<ChatProjectListItem|null>(null)
+  useEffect(()=>{let alive=true;if(requestedProject&&!projects.some(p=>p.id===requestedProject)){setHistoricalProject(previous=>previous?.id===requestedProject?previous:null);void getSupabaseClient().rpc('get_historical_chat_project',{p_project:requestedProject}).then(({data})=>{if(!alive)return;setHistoricalProject(data as ChatProjectListItem|null);if(!data){setMessages([]);setConversations([]);setSelectedConversationId(null)}})}else setHistoricalProject(null);return()=>{alive=false}},[requestedProject,projects])
   const selectedProject = useMemo(
-    () => projects.find((project) => project.id === selectedProjectId) ?? null,
-    [projects, selectedProjectId],
+    () => projects.find((project) => project.id === selectedProjectId) ?? (historicalProject?.id===selectedProjectId?historicalProject:null),
+    [projects, selectedProjectId,historicalProject],
   )
 
+  const readOnly=Boolean(selectedProject?.readOnly)
   const selectedConversation = useMemo(
     () =>
       conversations.find((conversation) => conversation.id === selectedConversationId) ??
@@ -131,6 +135,7 @@ export function MessagesClient({ active = true, requestedProject, requestedConve
 
   const reloadProjects = useCallback(async () => {
     if (!user || !supabaseReady) return
+    if(projectSource){setProjects(projectSource);setProjectsLoading(false);return}
     setProjectsLoading(true)
     setProjectsError(null)
     try {
@@ -143,7 +148,7 @@ export function MessagesClient({ active = true, requestedProject, requestedConve
     } finally {
       setProjectsLoading(false)
     }
-  }, [supabaseReady, user])
+  }, [supabaseReady, user,projectSource])
 
   useEffect(() => {
     if (!isAuthenticated) return
@@ -193,7 +198,7 @@ export function MessagesClient({ active = true, requestedProject, requestedConve
   const deepLink = useRef<string | null>(null)
   useEffect(() => {
     if (!active || !requestedProject) { deepLink.current = null; return }
-    if (!projects.some((project) => project.id === requestedProject)) return
+    if (!projects.some((project) => project.id === requestedProject)&&historicalProject?.id!==requestedProject) return
     const key = requestedProject + ':' + (requestedConversation ?? '')
     if (deepLink.current === key) return
     if (selectedProjectId !== requestedProject) {
@@ -208,7 +213,7 @@ export function MessagesClient({ active = true, requestedProject, requestedConve
         setMobileStep('thread')
       }
     }
-  }, [active, conversations, projects, requestedConversation, requestedProject, selectedProjectId])
+  }, [active, conversations, projects, requestedConversation, requestedProject, selectedProjectId,historicalProject])
 
   const reloadMessages = useCallback(async (conversationId: string) => {
     setMessagesLoading(true)
@@ -344,7 +349,8 @@ export function MessagesClient({ active = true, requestedProject, requestedConve
     setPendingDelete(null)
     setDeleteError(null)
     setMobileStep('projects')
-  }, [])
+    onDismissProject?.()
+  }, [onDismissProject])
 
   const handleSelectConversation = useCallback(
     (conversation: ChatConversationListItem) => {
@@ -587,8 +593,9 @@ export function MessagesClient({ active = true, requestedProject, requestedConve
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background text-foreground">
+      {readOnly&&<p className="border-b p-3 text-sm font-medium">Projeto finalizado — somente leitura</p>}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden @min-[1000px]/chat:flex-row">
-        <ProjectsRail
+        {!hideProjectList&&<ProjectsRail
           projects={projects}
           selectedProjectId={selectedProjectId}
           onSelect={handleSelectProject}
@@ -599,11 +606,11 @@ export function MessagesClient({ active = true, requestedProject, requestedConve
             showProjectsOnMobile ? 'flex min-h-0 flex-1' : 'hidden',
             '@min-[1000px]/chat:flex @min-[1000px]/chat:h-auto @min-[1000px]/chat:max-h-none @min-[1000px]/chat:flex-none',
           )}
-        />
+        />}
 
-        <ConversationsRail
+        <ConversationsRail readOnly={readOnly}
           projectTitle={selectedProject?.title ?? 'Projeto'}
-          conversations={conversations}
+          conversations={readOnly?conversations.map(c=>({...c,can_delete:false})):conversations}
           selectedConversationId={selectedConversationId}
           onSelect={handleSelectConversation}
           onCreateGroup={() => void handleOpenCreateGroup()}
@@ -627,7 +634,7 @@ export function MessagesClient({ active = true, requestedProject, requestedConve
           )}
         />
 
-        <ThreadPanel
+        <ThreadPanel readOnly={readOnly}
           projectTitle={selectedProject?.title ?? ''}
           conversation={selectedConversation}
           hasSelectedProject={Boolean(selectedProjectId)}

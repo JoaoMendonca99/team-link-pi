@@ -51,6 +51,7 @@ export interface MembersPreviewCardHandle {
 }
 
 interface Props {
+  readOnly?:boolean
   projectId: string
   onAdminChange?: (allowed: boolean) => void
   currentUserId?: string | null
@@ -64,6 +65,7 @@ interface Props {
 export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
   function MembersPreviewCard(
     {
+      readOnly=false,
       projectId,
       onAdminChange,
       currentUserId,
@@ -93,7 +95,7 @@ export const MembersPreviewCard = forwardRef<MembersPreviewCardHandle, Props>(
     const confirmationRef = useRef<HTMLDialogElement>(null)
 
     const ownLevel = currentUserId ? levels[currentUserId] : undefined
-    const canChangeLevels = ownLevel === 'owner' || ownLevel === 'manager'
+    const canChangeLevels = !readOnly&&(ownLevel === 'owner' || ownLevel === 'manager')
 
     const allowedLevels = useCallback((userId: string): Level[] =>
       canChangeLevels && levels[userId] ? TEAM_LEVELS.map(({ id }) => id) : [],

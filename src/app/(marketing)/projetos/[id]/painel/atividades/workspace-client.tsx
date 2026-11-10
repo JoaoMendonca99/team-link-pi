@@ -108,10 +108,11 @@ function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
 
   if (!data) return <div className="space-y-3 p-6"><Link href={'/projetos/' + slug + '/painel'} className="text-primary underline">Voltar ao painel</Link>
     <p role={error ? 'alert' : 'status'}>{error || 'Carregando atividades…'}</p>{error && <Button onClick={() => void load()}>Tentar novamente</Button>}</div>
-  const { stages, manager, members } = data
+  const { stages, members } = data
+  const manager=data.manager&&!data.projectReadOnly
   const period=data.periods.find(p=>p.id===periodId)??data.periods.find(p=>p.is_active)
   const historical=Boolean(period&&!period.is_active)
-  const readOnly=historical&&(!manager||!historyEditing)
+  const readOnly=data.projectReadOnly||historical&&(!manager||!historyEditing)
   const tasks=data.tasks.filter(t=>t.period_id===period?.id)
   const goals=data.goals.filter(g=>g.period_id===period?.id)
   const scoped={...data,tasks,goals,selectedPeriod:period?.id,readOnly}
@@ -177,6 +178,7 @@ function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
         <Button disabled={readOnly} variant="outline" onClick={() => setGoal('new')}>Nova meta</Button><Button variant="outline" onClick={() => setStagesOpen(true)}>Gerenciar etapas</Button><Button variant="outline" onClick={()=>setPeriodsOpen(true)}>Gerenciar períodos</Button><Button variant="outline" onClick={()=>setTransfer({})}>Organizar atividades por período</Button></div>}
     </header>
 
+    {data.projectReadOnly&&<p className="text-sm font-medium text-primary">Projeto finalizado — somente leitura</p>}
     <section className="space-y-2 rounded-2xl border border-border bg-card p-3" aria-label="Períodos do projeto">
       <label className="block text-sm font-medium">Período<select aria-label="Período do projeto" className="mt-1 w-full rounded-xl border bg-background p-2 sm:max-w-xl" value={period?.id??''} onChange={e=>selectPeriod(e.target.value)}>{data.periods.map(p=><option key={p.id} value={p.id}>{p.name}{p.is_active?' · Ativo':' · Histórico'}</option>)}</select></label>
       {historical&&<div className="flex flex-wrap items-center gap-2"><p className="text-sm text-muted-foreground">Período histórico · {historyEditing?'Edição administrativa habilitada.':'Somente consulta.'}</p>{manager&&<Button size="sm" variant="outline" onClick={()=>setHistoryEditing(v=>!v)}>{historyEditing?'Voltar à consulta':'Habilitar edição deste histórico'}</Button>}</div>}

@@ -13,10 +13,10 @@ import { ConceptChipInput } from './concept-chip-input'
 import { legacyConcepts, type ConceptChoice, type ProjectConcepts } from '@/lib/concepts'
 
 export type Vacancy = { id: string; title: string; description: string; skills: string[]; positions: number; available: number; open: boolean; legacy: boolean }
-type Application = { id: string; project_id: string; project_title: string; slug: string; user_id: string; name: string | null; avatar: string | null; created_at: string; decided_at: string | null; status: 'pending' | 'review' | 'approved' | 'rejected' | 'canceled'; decision_reason?: 'vacancy_filled' | null; vacancies: { id: string; title: string; approved: boolean; rejected?: boolean }[]; message: string | null; unread: number }
+type Application = { id: string; project_id: string; project_title: string; slug: string; user_id: string; name: string | null; avatar: string | null; created_at: string; decided_at: string | null; status: 'pending' | 'review' | 'approved' | 'rejected' | 'canceled' | 'closed'; decision_reason?: 'vacancy_filled' | null; vacancies: { id: string; title: string; approved: boolean; rejected?: boolean }[]; message: string | null; unread: number }
 type Message = { id: number; sender_id: string | null; name: string | null; avatar: string | null; content: string; created_at: string }
 
-const statuses = { pending: 'Pendente', review: 'Em análise', approved: 'Aprovada', rejected: 'Recusada', canceled: 'Cancelada' }
+const statuses = { pending: 'Pendente', review: 'Em análise', approved: 'Aprovada', rejected: 'Recusada', canceled: 'Cancelada', closed:'Encerrada pelo projeto' }
 const applicationStatus = (item: Application) => statuses[item.status] + (item.decision_reason === 'vacancy_filled' ? ' · Vaga preenchida' : '')
 const vacancyDecision = (vacancy: Application['vacancies'][number]) =>
   vacancy.title + (vacancy.approved ? ' (atribuída)' : vacancy.rejected ? ' (vaga preenchida)' : '')

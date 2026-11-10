@@ -47,7 +47,7 @@ export function ActivityDetailsDialog({taskId,projectId,slug,userId,close,onChan
  const latest=data?.details.comments.at(-1)?.id
  useEffect(()=>{if(!latest)return;const element=messages.current;if(!element||!element.clientHeight)return;if(initial.current||forceBottom.current||nearBottom.current){element.scrollTop=element.scrollHeight;initial.current=false;forceBottom.current=false;setNewMessages(false)}else setNewMessages(true)},[latest,tab])
  const task=data?.tasks[0],stage=task&&data?.stages.find(s=>s.id===task.stage_id),period=data?.periods[0]
- const writable=Boolean(data&&(!data.readOnly||data.manager&&historical)),canMove=writable&&data?.permissions.move,canReview=writable&&data?.permissions.review,canCheck=writable&&data?.permissions.check,canPlan=writable&&data?.manager
+ const writable=Boolean(data&&!data.projectReadOnly&&(!data.readOnly||data.manager&&historical)),canMove=writable&&data?.permissions.move,canReview=writable&&data?.permissions.review,canCheck=writable&&data?.permissions.check,canPlan=writable&&data?.manager
  function attemptClose(){if(operation.current)return;if(dirty)setDiscard('close');else close()}
  async function perform(action:string,input:Record<string,unknown>,after?:()=>void){
   if(!data||!task||operation.current)return
@@ -81,7 +81,7 @@ export function ActivityDetailsDialog({taskId,projectId,slug,userId,close,onChan
       </form>
      </section>
      <section id="activity-pane-details" aria-label="Detalhes da atividade" className={(tab==='details'?'block':'hidden')+' min-h-0 min-w-0 space-y-5 overflow-y-auto overscroll-contain p-4 sm:p-6 lg:block'}>
-      {data.readOnly&&<div className="rounded-xl border p-3 text-sm"><p>Período histórico · {writable?'Edição habilitada':'Somente consulta'}</p>{data.manager&&<label className="mt-2 flex items-center gap-2"><input type="checkbox" checked={historical} disabled={busy} onChange={e=>setHistorical(e.target.checked)}/>Habilitar edição do histórico</label>}</div>}
+      {data.readOnly&&<div className="rounded-xl border p-3 text-sm"><p>{data.projectReadOnly?'Projeto finalizado':'Período histórico'} · {writable?'Edição habilitada':'Somente consulta'}</p>{data.manager&&!data.projectReadOnly&&<label className="mt-2 flex items-center gap-2"><input type="checkbox" checked={historical} disabled={busy} onChange={e=>setHistorical(e.target.checked)}/>Habilitar edição do histórico</label>}</div>}
       {editing?<ActivityForm data={{...data,readOnly:!writable}} task={task} busy={busy} onDirty={setEditDirty} cancel={()=>{if(editDirty)setDiscard('edit');else setEditing(false)}} save={async values=>{await perform('save_task',values,()=>{setEditing(false);setEditDirty(false)})}}/>:<>
        <section className="space-y-2"><h3 className="font-semibold">Descrição</h3><p className="whitespace-pre-wrap break-words text-sm [overflow-wrap:anywhere]">{task.description||'Sem descrição.'}</p></section>
        <section className="space-y-2"><h3 className="font-semibold">Responsáveis pela execução</h3><div className="grid gap-2 sm:grid-cols-2">{task.assignees.map(participant)}</div>{!task.assignees.length&&<p className="text-sm text-muted-foreground">Nenhum responsável designado.</p>}</section>

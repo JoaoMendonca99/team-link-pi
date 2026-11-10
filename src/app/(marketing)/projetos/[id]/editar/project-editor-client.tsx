@@ -91,6 +91,7 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
               <Button onClick={() => { setResult({ state: 'loading' }); setRetry((value) => value + 1) }}>Tentar novamente</Button>
             </div>
           )
+          : result.state==='ready'&&['completed','archived'].includes(result.data.project.status)?<div className="space-y-3"><p>Projeto finalizado — somente leitura.</p><Button asChild variant="outline"><Link href={'/projetos/'+slug+'/painel'}>Consultar projeto</Link></Button></div>
           : result.state === 'ready' ? <div className="space-y-6"><div className="mx-auto max-w-4xl"><ProjectAcademicSetup projectId={result.data.project.id}/></div><ProjectForm key={result.data.project.id} project={result.data.project}
               initialTags={result.data.tags} initialVacancies={result.data.vacancies} /></div> : null}
       </Container>

@@ -75,10 +75,12 @@ function asString(value: unknown): string | null {
 // =============================================================================
 
 interface RpcProjectRow {
+  search_terms?:string[]
   id?: string | null
   project_id?: string | null
   title?: string | null
   project_title?: string | null
+  last_message?: string | null
   last_message_content?: string | null
   last_message_at?: string | null
   unread_count?: number | string | null
@@ -89,8 +91,9 @@ function mapRpcProject(row: RpcProjectRow): ChatProjectListItem {
   const title = (row.title ?? row.project_title ?? 'Projeto sem nome') as string
   return {
     id,
+    searchTerms:row.search_terms??[],
     title,
-    lastMessageContent: row.last_message_content ?? null,
+    lastMessageContent: row.last_message_content ?? row.last_message ?? null,
     lastMessageAt: row.last_message_at ?? null,
     unreadCount: asNumber(row.unread_count) ?? 0,
   }
@@ -98,6 +101,9 @@ function mapRpcProject(row: RpcProjectRow): ChatProjectListItem {
 
 export async function loadMyChatProjects(userId: string): Promise<ChatProjectListItem[]> {
   const client = getSupabaseClient()
+  const directory=await client.rpc('get_my_chat_directory')
+  if(!directory.error)return (Array.isArray(directory.data)?directory.data as RpcProjectRow[]:[]).map(mapRpcProject).filter(item=>item.id.length>0)
+  if(!isMissingRpc(directory.error))throw new Error('Não foi possível carregar suas conversas.')
   const rpc = await client.rpc('get_my_chat_projects')
   if (!rpc.error) {
     const rows = Array.isArray(rpc.data) ? (rpc.data as RpcProjectRow[]) : []
@@ -128,6 +134,7 @@ async function loadMyChatProjectsFallback(userId: string): Promise<ChatProjectLi
   const projects = await client
     .from('projects')
     .select('id, title')
+    .in('status',['open','in_progress'])
     .in('id', projectIds)
     .order('updated_at', { ascending: false })
   if (projects.error) throw new Error(projects.error.message)

@@ -31,6 +31,7 @@ function initialsOf(value: string): string {
 }
 
 export function ConversationsRail({
+  readOnly=false,
   projectTitle,
   conversations,
   selectedConversationId,
@@ -46,6 +47,7 @@ export function ConversationsRail({
   /** Quando false, não renderiza badges de não lidas por conversa. */
   showUnreadBadges = false,
 }: {
+  readOnly?:boolean
   projectTitle: string
   conversations: ChatConversationListItem[]
   selectedConversationId: string | null
@@ -116,7 +118,7 @@ export function ConversationsRail({
             variant="secondary"
             size="sm"
             className="h-9 shrink-0 gap-1 rounded-xl px-3 text-xs font-semibold"
-            onClick={onCreateGroup}
+            disabled={readOnly} onClick={onCreateGroup}
           >
             <Plus className="h-3.5 w-3.5" aria-hidden />
             Novo grupo

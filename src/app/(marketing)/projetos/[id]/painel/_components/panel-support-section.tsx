@@ -25,6 +25,7 @@ import { SupportTicketDrawer } from './support/support-ticket-drawer'
 const SAC_API_DOCUMENTATION_HREF = '/docs/documentacao-api-sac-team-link.pdf'
 
 export interface PanelSupportSectionProps {
+  readOnly?:boolean
   projectId: string
   isManager: boolean
   integration: SupportIntegrationInfo | null
@@ -44,6 +45,7 @@ function formatWaitingBadge(count: number): string {
 }
 
 export function PanelSupportSection({
+  readOnly=false,
   projectId,
   isManager,
   integration,
@@ -76,7 +78,7 @@ export function PanelSupportSection({
   }
 
   return (
-    <SupportIntegratedCard
+    <SupportIntegratedCard readOnly={readOnly}
       className={className}
       projectId={projectId}
       isManager={isManager}
@@ -220,6 +222,7 @@ function SupportSetupCard({
 }
 
 function SupportIntegratedCard({
+  readOnly=false,
   projectId,
   isManager,
   integration,
@@ -232,6 +235,7 @@ function SupportIntegratedCard({
   onIntegrationChange,
   className,
 }: {
+  readOnly?:boolean
   projectId: string
   isManager: boolean
   integration: SupportIntegrationInfo | null
@@ -425,7 +429,7 @@ function SupportIntegratedCard({
       </SupportCardShell>
 
       {sacActive ? (
-        <SupportTicketDrawer
+        <SupportTicketDrawer readOnly={readOnly}
           open={drawerOpen}
           onClose={handleCloseDrawer}
           projectId={projectId}

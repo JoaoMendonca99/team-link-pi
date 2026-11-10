@@ -15,6 +15,8 @@ import type {
 /** Item da lista de projetos do usuário (sidebar esquerda da central). */
 export interface ChatProjectListItem {
   id: string
+  readOnly?: boolean
+  searchTerms?:string[]
   title: string
   /** Última mensagem visível em qualquer conversa do projeto. */
   lastMessageContent?: string | null

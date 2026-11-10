@@ -35,7 +35,7 @@ export type MemberBadgeColor =
 
 export type ProjectCommentStatus = "visible" | "hidden" | "removed"
 
-export type JoinRequestStatus = "pending" | "approved" | "rejected" | "canceled"
+export type JoinRequestStatus = "pending" | "approved" | "rejected" | "canceled" | "closed"
 
 // ============================================================================
 // profiles

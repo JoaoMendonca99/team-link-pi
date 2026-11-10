@@ -27,6 +27,7 @@ const REFRESH_MS = 15_000
 const LIST_LIMIT = 50
 
 export interface SupportTicketDrawerProps {
+  readOnly?:boolean
   open: boolean
   onClose: () => void
   projectId: string
@@ -37,6 +38,7 @@ export interface SupportTicketDrawerProps {
 }
 
 export function SupportTicketDrawer({
+  readOnly=false,
   open,
   onClose,
   projectId,
@@ -291,7 +293,7 @@ export function SupportTicketDrawer({
                   showMobileChat ? 'flex' : 'hidden md:flex',
                 )}
               >
-                <SupportTicketChat
+                <SupportTicketChat readOnly={readOnly}
                   detail={detail}
                   loading={detailLoading}
                   error={detailError}

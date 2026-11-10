@@ -8,7 +8,7 @@ export type Goal = { id: string; period_id: string; title: string; description: 
 export type Task = { id: string; period_id: string; title: string; description: string; stage_id: string; assignees: string[]; due_at: string | null; priority: Priority; goal_id: string | null; reviewer_id: string | null; requires_review: boolean; version: number }
 export type ChecklistItem = { id: string; task_id: string; label: string; done: boolean; version: number }
 export type Person = { id: string; name: string | null; avatar: string | null; level: string }
-export type Workspace = { project: { id: string; title: string; slug: string }; manager: boolean; periods: Period[]; selectedPeriod?: string; readOnly?: boolean; stages: Stage[]; tasks: Task[]; goals: Goal[]; checklist: ChecklistItem[]; members: Person[] }
+export type Workspace = { project: { id: string; title: string; slug: string }; projectReadOnly?:boolean; manager: boolean; periods: Period[]; selectedPeriod?: string; readOnly?: boolean; stages: Stage[]; tasks: Task[]; goals: Goal[]; checklist: ChecklistItem[]; members: Person[] }
 export type Details = {
   comments: { id: string; author_id: string | null; name: string | null; avatar: string | null; body: string; created_at: string }[]
   history: { id: number; name: string | null; action: string; details: { reason?: string; from?: string; to?: string; mode?: string }; created_at: string }[]
