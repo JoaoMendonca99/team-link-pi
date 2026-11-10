@@ -6,7 +6,8 @@ import { useEffect, useMemo, useState } from 'react'
 
 import { CoursePicker } from '@/components/team-link/course-picker'
 import { AuthCard } from '@/components/team-link/auth-card'
-import { ChipInput } from '@/components/team-link/chip-input'
+import { ConceptChipInput } from '@/components/team-link/concept-chip-input'
+import { conceptLabels, type ConceptChoice } from '@/lib/concepts'
 import { PasswordStrengthMeter } from '@/components/team-link/password-strength-meter'
 import { Container } from '@/components/layout/container'
 import { Button } from '@/components/ui/button'
@@ -170,8 +171,8 @@ export default function CadastroPage() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [course, setCourse] = useState({ id: null as string | null, name: '' })
-  const [skills, setSkills] = useState<string[]>([])
-  const [interests, setInterests] = useState<string[]>([])
+  const [skills, setSkills] = useState<ConceptChoice[]>([])
+  const [interests, setInterests] = useState<ConceptChoice[]>([])
 
   const [submitting, setSubmitting] = useState(false)
   const [registeredUserId, setRegisteredUserId] = useState<string | null>(null)
@@ -267,8 +268,8 @@ export default function CadastroPage() {
       full_name: name.trim(),
       course: course.name.trim() || null,
       course_id: course.id,
-      skills,
-      interests,
+      skills: conceptLabels(skills),
+      interests: conceptLabels(interests),
     }
 
     let userId = registeredUserId
@@ -302,12 +303,9 @@ export default function CadastroPage() {
       }
 
       // The database trigger initializes the profile with empty skills and interests.
-      const { error: profileError } = await client
-        .from('profiles')
-        .update(profilePayload)
-        .eq('id', userId)
-        .select('id')
-        .single()
+      const { error: profileError } = await client.rpc('save_profile_concepts', {
+        p_profile: profilePayload, p_skills: skills, p_interests: interests,
+      })
 
       if (profileError) {
         setErrorMessage(PROFILE_ERROR)
@@ -489,7 +487,7 @@ export default function CadastroPage() {
             <form className="space-y-4 text-left" onSubmit={handleSubmit} noValidate>
               <CoursePicker id="curso" value={course} onChange={setCourse} />
 
-              <ChipInput
+              <ConceptChipInput
                 label="Habilidades"
                 optional
                 value={skills}
@@ -498,7 +496,7 @@ export default function CadastroPage() {
                 inputId="skills-iniciais"
               />
 
-              <ChipInput
+              <ConceptChipInput
                 label="Áreas de interesse"
                 optional
                 value={interests}

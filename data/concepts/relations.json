@@ -1,0 +1,17 @@
+[
+  {
+    "from": "Tecnologia:react",
+    "to": "Tecnologia:javascript",
+    "source": "https://react.dev/"
+  },
+  {
+    "from": "Tecnologia:react native",
+    "to": "Tecnologia:react",
+    "source": "https://reactnative.dev/docs/intro-react"
+  },
+  {
+    "from": "Tecnologia:aprendizado de maquina",
+    "to": "Tecnologia:inteligencia artificial",
+    "source": "https://www.ibm.com/br-pt/think/topics/machine-learning"
+  }
+]

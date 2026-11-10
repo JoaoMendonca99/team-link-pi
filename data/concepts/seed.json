@@ -1,0 +1,909 @@
+[
+  {
+    "key": "Tecnologia:.net",
+    "name": ".NET",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Tecnologia:arduino",
+    "name": "Arduino",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Tecnologia:c#",
+    "name": "C#",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Tecnologia:git",
+    "name": "Git",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Tecnologia:github",
+    "name": "GitHub",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Tecnologia:next.js",
+    "name": "Next.js",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Tecnologia:postgresql",
+    "name": "PostgreSQL",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Tecnologia:python",
+    "name": "Python",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Tecnologia:react",
+    "name": "React",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": [
+      {
+        "name": "ReactJS",
+        "source": "https://legacy.reactjs.org/docs/faq-state.html",
+        "confirm": false
+      },
+      {
+        "name": "React.js",
+        "source": "https://legacy.reactjs.org/docs/faq-state.html",
+        "confirm": false
+      }
+    ]
+  },
+  {
+    "key": "Tecnologia:apis rest",
+    "name": "APIs REST",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": [
+      {
+        "name": "REST APIs",
+        "source": "Revisão bilíngue do termo existente; não é sinônimo de API em geral",
+        "confirm": false
+      }
+    ]
+  },
+  {
+    "key": "Tecnologia:sql",
+    "name": "SQL",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Tecnologia:supabase",
+    "name": "Supabase",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Tecnologia:typescript",
+    "name": "TypeScript",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Tecnologia:wpf",
+    "name": "WPF",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Tecnologia:ciberseguranca",
+    "name": "Cibersegurança",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Tecnologia:desenvolvimento desktop",
+    "name": "Desenvolvimento Desktop",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Tecnologia:desenvolvimento web",
+    "name": "Desenvolvimento Web",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Tecnologia:engenharia de software",
+    "name": "Engenharia de Software",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Tecnologia:inteligencia artificial",
+    "name": "Inteligência Artificial",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": [
+      {
+        "name": "Artificial Intelligence",
+        "source": "https://www.ibm.com/br-pt/think/topics/machine-learning",
+        "confirm": false
+      },
+      {
+        "name": "IA",
+        "source": "Sigla exige confirmação contextual",
+        "confirm": true
+      }
+    ]
+  },
+  {
+    "key": "Tecnologia:internet das coisas",
+    "name": "Internet das Coisas",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Tecnologia:programacao",
+    "name": "Programação",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Tecnologia:sistemas embarcados",
+    "name": "Sistemas Embarcados",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Tecnologia:aplicativo desktop",
+    "name": "Aplicativo Desktop",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Tecnologia:banco de dados",
+    "name": "Banco de Dados",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Tecnologia:excel",
+    "name": "Excel",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Tecnologia:interface homem maquina",
+    "name": "Interface Homem-Máquina",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": [
+      {
+        "name": "IHM",
+        "source": "Sigla exige confirmação contextual",
+        "confirm": true
+      }
+    ]
+  },
+  {
+    "key": "Tecnologia:monitoramento de dados",
+    "name": "Monitoramento de Dados",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Tecnologia:power bi",
+    "name": "Power BI",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Tecnologia:algoritmos",
+    "name": "Algoritmos",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Tecnologia:api",
+    "name": "API",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Tecnologia:estruturas de dados",
+    "name": "Estruturas de Dados",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Tecnologia:identificacao de bugs",
+    "name": "Identificação de Bugs",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Tecnologia:javascript",
+    "name": "JavaScript",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": [
+      {
+        "name": "JS",
+        "source": "https://developer.mozilla.org/en-US/docs/Web/JavaScript",
+        "confirm": false
+      }
+    ]
+  },
+  {
+    "key": "Tecnologia:logica de programacao",
+    "name": "Lógica de Programação",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Tecnologia:modelagem de dados",
+    "name": "Modelagem de Dados",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Tecnologia:pseudocodigo",
+    "name": "Pseudocódigo",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Tecnologia:react native",
+    "name": "React Native",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Tecnologia:teoria dos grafos",
+    "name": "Teoria dos Grafos",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Tecnologia:testes de software",
+    "name": "Testes de Software",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Tecnologia:testes manuais",
+    "name": "Testes Manuais",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Tecnologia:busca em largura",
+    "name": "Busca em Largura",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": [
+      {
+        "name": "BFS",
+        "source": "https://xlinux.nist.gov/dads/HTML/breadthfirst.html",
+        "confirm": false
+      }
+    ]
+  },
+  {
+    "key": "Tecnologia:busca em profundidade",
+    "name": "Busca em Profundidade",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": [
+      {
+        "name": "DFS",
+        "source": "https://xlinux.nist.gov/dads/HTML/depthfirst.html",
+        "confirm": false
+      }
+    ]
+  },
+  {
+    "key": "Engenharia:automacao",
+    "name": "Automação",
+    "domain": "Engenharia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Engenharia:robotica",
+    "name": "Robótica",
+    "domain": "Engenharia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Engenharia:engenharia da computacao",
+    "name": "Engenharia da Computação",
+    "domain": "Engenharia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Engenharia:melhoria continua",
+    "name": "Melhoria Contínua",
+    "domain": "Engenharia",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Educação:projetos academicos",
+    "name": "Projetos Acadêmicos",
+    "domain": "Educação",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Educação:educacao",
+    "name": "Educação",
+    "domain": "Educação",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Design:animacao 3d",
+    "name": "Animação 3D",
+    "domain": "Design",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Design:modelagem 3d",
+    "name": "Modelagem 3D",
+    "domain": "Design",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Design:design de interfaces",
+    "name": "Design de Interfaces",
+    "domain": "Design",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Design:design responsivo",
+    "name": "Design Responsivo",
+    "domain": "Design",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Design:experiencia do usuario",
+    "name": "Experiência do Usuário",
+    "domain": "Design",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": [
+      {
+        "name": "UX",
+        "source": "https://www.nngroup.com/articles/definition-user-experience/",
+        "confirm": true
+      }
+    ]
+  },
+  {
+    "key": "Design:figma",
+    "name": "Figma",
+    "domain": "Design",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Design:prototipagem",
+    "name": "Prototipagem",
+    "domain": "Design",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Design:usabilidade",
+    "name": "Usabilidade",
+    "domain": "Design",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Design:wireframes",
+    "name": "Wireframes",
+    "domain": "Design",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Administração:qualidade e producao",
+    "name": "Qualidade e Produção",
+    "domain": "Administração",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Administração:formacao de equipes",
+    "name": "Formação de Equipes",
+    "domain": "Administração",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Administração:gestao de projetos",
+    "name": "Gestão de Projetos",
+    "domain": "Administração",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Administração:logistica",
+    "name": "Logística",
+    "domain": "Administração",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Administração:transporte",
+    "name": "Transporte",
+    "domain": "Administração",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Administração:garantia da qualidade",
+    "name": "Garantia da Qualidade",
+    "domain": "Administração",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": [
+      {
+        "name": "QA",
+        "source": "Sigla exige confirmação contextual",
+        "confirm": true
+      }
+    ]
+  },
+  {
+    "key": "Artes:animacao",
+    "name": "Animação",
+    "domain": "Artes",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Geral:analise critica",
+    "name": "Análise Crítica",
+    "domain": "Geral",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Geral:jogos",
+    "name": "Jogos",
+    "domain": "Geral",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Geral:tecnologia e inovacao",
+    "name": "Tecnologia e Inovação",
+    "domain": "Geral",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Geral:colaboracao",
+    "name": "Colaboração",
+    "domain": "Geral",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Geral:criatividade",
+    "name": "Criatividade",
+    "domain": "Geral",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Geral:inovacao",
+    "name": "Inovação",
+    "domain": "Geral",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Geral:tecnologia",
+    "name": "Tecnologia",
+    "domain": "Geral",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Geral:trabalho em equipe",
+    "name": "Trabalho em Equipe",
+    "domain": "Geral",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Geral:atencao aos detalhes",
+    "name": "Atenção aos Detalhes",
+    "domain": "Geral",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Geral:comunicacao",
+    "name": "Comunicação",
+    "domain": "Geral",
+    "status": "validado",
+    "source": "Termo existente no Team Link; revisão de identidade 2026-11-09",
+    "aliases": []
+  },
+  {
+    "key": "Tecnologia:java",
+    "name": "Java",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "description": "Linguagem Java. Não equivale a JavaScript.",
+    "source": "Vocabulário inicial revisado; rótulo comum da área, sem equivalências inferidas",
+    "aliases": []
+  },
+  {
+    "key": "Tecnologia:c",
+    "name": "C",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "description": "Linguagem de programação C.",
+    "source": "Vocabulário inicial revisado; rótulo comum da área, sem equivalências inferidas",
+    "aliases": []
+  },
+  {
+    "key": "Tecnologia:c++",
+    "name": "C++",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "description": "Linguagem C++; distinta de C e C#.",
+    "source": "Vocabulário inicial revisado; rótulo comum da área, sem equivalências inferidas",
+    "aliases": []
+  },
+  {
+    "key": "Design:interface do usuario",
+    "name": "Interface do Usuário",
+    "domain": "Design",
+    "status": "validado",
+    "description": "Interface com que a pessoa interage; distinta da experiência do usuário.",
+    "source": "Vocabulário inicial revisado; rótulo comum da área, sem equivalências inferidas",
+    "aliases": [
+      {
+        "name": "UI",
+        "source": "https://www.nngroup.com/articles/definition-user-experience/",
+        "confirm": true
+      }
+    ]
+  },
+  {
+    "key": "Tecnologia:aprendizado de maquina",
+    "name": "Aprendizado de Máquina",
+    "domain": "Tecnologia",
+    "status": "validado",
+    "description": "Métodos de aprendizado de máquina; relacionado à IA, sem equivalência de identidade.",
+    "source": "Vocabulário inicial revisado; rótulo comum da área, sem equivalências inferidas",
+    "aliases": [
+      {
+        "name": "Machine Learning",
+        "source": "https://www.ibm.com/br-pt/think/topics/machine-learning",
+        "confirm": true
+      },
+      {
+        "name": "ML",
+        "source": "https://www.ibm.com/br-pt/think/topics/machine-learning",
+        "confirm": true
+      }
+    ]
+  },
+  {
+    "key": "Design:design grafico",
+    "name": "Design Gráfico",
+    "domain": "Design",
+    "status": "validado",
+    "description": null,
+    "source": "Vocabulário inicial revisado; rótulo comum da área, sem equivalências inferidas",
+    "aliases": []
+  },
+  {
+    "key": "Comunicação:marketing digital",
+    "name": "Marketing Digital",
+    "domain": "Comunicação",
+    "status": "validado",
+    "description": null,
+    "source": "Vocabulário inicial revisado; rótulo comum da área, sem equivalências inferidas",
+    "aliases": []
+  },
+  {
+    "key": "Ciências:pesquisa cientifica",
+    "name": "Pesquisa Científica",
+    "domain": "Ciências",
+    "status": "validado",
+    "description": null,
+    "source": "Vocabulário inicial revisado; rótulo comum da área, sem equivalências inferidas",
+    "aliases": []
+  },
+  {
+    "key": "Saúde:enfermagem",
+    "name": "Enfermagem",
+    "domain": "Saúde",
+    "status": "validado",
+    "description": null,
+    "source": "Vocabulário inicial revisado; rótulo comum da área, sem equivalências inferidas",
+    "aliases": []
+  },
+  {
+    "key": "Educação:educacao infantil",
+    "name": "Educação Infantil",
+    "domain": "Educação",
+    "status": "validado",
+    "description": null,
+    "source": "Vocabulário inicial revisado; rótulo comum da área, sem equivalências inferidas",
+    "aliases": []
+  },
+  {
+    "key": "Meio ambiente:sustentabilidade",
+    "name": "Sustentabilidade",
+    "domain": "Meio ambiente",
+    "status": "validado",
+    "description": null,
+    "source": "Vocabulário inicial revisado; rótulo comum da área, sem equivalências inferidas",
+    "aliases": []
+  },
+  {
+    "key": "Engenharia:engenharia mecanica",
+    "name": "Engenharia Mecânica",
+    "domain": "Engenharia",
+    "status": "validado",
+    "description": null,
+    "source": "Vocabulário inicial revisado; rótulo comum da área, sem equivalências inferidas",
+    "aliases": []
+  },
+  {
+    "key": "Administração:gestao financeira",
+    "name": "Gestão Financeira",
+    "domain": "Administração",
+    "status": "validado",
+    "description": null,
+    "source": "Vocabulário inicial revisado; rótulo comum da área, sem equivalências inferidas",
+    "aliases": []
+  },
+  {
+    "key": "Negócios:empreendedorismo",
+    "name": "Empreendedorismo",
+    "domain": "Negócios",
+    "status": "validado",
+    "description": null,
+    "source": "Vocabulário inicial revisado; rótulo comum da área, sem equivalências inferidas",
+    "aliases": []
+  },
+  {
+    "key": "Artes:artes visuais",
+    "name": "Artes Visuais",
+    "domain": "Artes",
+    "status": "validado",
+    "description": null,
+    "source": "Vocabulário inicial revisado; rótulo comum da área, sem equivalências inferidas",
+    "aliases": []
+  },
+  {
+    "key": "Saúde:saude publica",
+    "name": "Saúde Pública",
+    "domain": "Saúde",
+    "status": "validado",
+    "description": null,
+    "source": "Vocabulário inicial revisado; rótulo comum da área, sem equivalências inferidas",
+    "aliases": []
+  },
+  {
+    "key": "pending:cba",
+    "name": "CBA",
+    "domain": "Geral",
+    "status": "provisorio",
+    "description": "Sigla sem contexto suficiente para determinar a identidade.",
+    "source": "Texto legado preservado; identidade pendente de revisão",
+    "confirm": true,
+    "aliases": []
+  },
+  {
+    "key": "pending:modelagem",
+    "name": "Modelagem",
+    "domain": "Geral",
+    "status": "provisorio",
+    "description": "Pode representar modelagem de dados, 3D ou outras áreas.",
+    "source": "Texto legado preservado; identidade pendente de revisão",
+    "confirm": true,
+    "aliases": []
+  },
+  {
+    "key": "pending:redes",
+    "name": "Redes",
+    "domain": "Geral",
+    "status": "provisorio",
+    "description": "Pode representar redes de computadores, relações sociais ou outros assuntos.",
+    "source": "Texto legado preservado; identidade pendente de revisão",
+    "confirm": true,
+    "aliases": []
+  },
+  {
+    "key": "pending:oxido",
+    "name": "Oxido",
+    "domain": "Geral",
+    "status": "provisorio",
+    "description": "Grafia e contexto precisam de confirmação.",
+    "source": "Texto legado preservado; identidade pendente de revisão",
+    "confirm": true,
+    "aliases": []
+  },
+  {
+    "key": "pending:inteligente artificial",
+    "name": "Inteligente Artificial",
+    "domain": "Geral",
+    "status": "provisorio",
+    "description": "Possível erro de digitação; identidade não foi presumida.",
+    "source": "Texto legado preservado; identidade pendente de revisão",
+    "confirm": false,
+    "aliases": []
+  },
+  {
+    "key": "pending:design programacao",
+    "name": "Design,programação",
+    "domain": "Geral",
+    "status": "provisorio",
+    "description": "Texto composto preservado; não foi dividido automaticamente.",
+    "source": "Texto legado preservado; identidade pendente de revisão",
+    "confirm": true,
+    "aliases": []
+  },
+  {
+    "key": "pending:ux ui",
+    "name": "UX/UI",
+    "domain": "Geral",
+    "status": "provisorio",
+    "description": "Texto composto: experiência e interface são conceitos distintos.",
+    "source": "Texto legado preservado; identidade pendente de revisão",
+    "confirm": true,
+    "aliases": []
+  },
+  {
+    "key": "pending:webdev",
+    "name": "Webdev",
+    "domain": "Geral",
+    "status": "provisorio",
+    "description": "Possível abreviação; equivalência não foi presumida.",
+    "source": "Texto legado preservado; identidade pendente de revisão",
+    "confirm": false,
+    "aliases": []
+  },
+  {
+    "key": "pending:automatizacao",
+    "name": "Automatização",
+    "domain": "Geral",
+    "status": "provisorio",
+    "description": "Possível equivalência contextual com Automação; revisão pendente.",
+    "source": "Texto legado preservado; identidade pendente de revisão",
+    "confirm": false,
+    "aliases": []
+  }
+]

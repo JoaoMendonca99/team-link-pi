@@ -1,0 +1,190 @@
+{
+  "contexts": {
+    "legacy_requirements": {
+      "entries": 6,
+      "distinct_terms": 6
+    },
+    "profile_interests": {
+      "entries": 20,
+      "distinct_terms": 19
+    },
+    "profile_skills": {
+      "entries": 22,
+      "distinct_terms": 19
+    },
+    "project_tags": {
+      "entries": 29,
+      "distinct_terms": 27
+    },
+    "vacancy_skills": {
+      "entries": 31,
+      "distinct_terms": 30
+    }
+  },
+  "main_contexts_entries": 102,
+  "legacy_entries": 6,
+  "distinct_raw": 92,
+  "distinct_normalized": 84,
+  "shared_across_main_contexts": [
+    {
+      "term": "automacao",
+      "contexts": [
+        "profile_interests",
+        "project_tags"
+      ]
+    },
+    {
+      "term": "desenvolvimento web",
+      "contexts": [
+        "profile_interests",
+        "project_tags"
+      ]
+    },
+    {
+      "term": "projetos academicos",
+      "contexts": [
+        "profile_interests",
+        "project_tags"
+      ]
+    },
+    {
+      "term": "robotica",
+      "contexts": [
+        "profile_interests",
+        "project_tags"
+      ]
+    },
+    {
+      "term": "github",
+      "contexts": [
+        "profile_skills",
+        "vacancy_skills"
+      ]
+    },
+    {
+      "term": "wpf",
+      "contexts": [
+        "profile_skills",
+        "project_tags"
+      ]
+    },
+    {
+      "term": "banco de dados",
+      "contexts": [
+        "project_tags",
+        "vacancy_skills"
+      ]
+    },
+    {
+      "term": "logistica",
+      "contexts": [
+        "project_tags",
+        "vacancy_skills"
+      ]
+    },
+    {
+      "term": "power bi",
+      "contexts": [
+        "project_tags",
+        "vacancy_skills"
+      ]
+    }
+  ],
+  "shared_including_legacy": 13,
+  "case_only_groups": 7,
+  "accent_spacing_groups": 1,
+  "variants": [
+    {
+      "normalized": "logistica",
+      "forms": [
+        "Logistica",
+        "logistica"
+      ]
+    },
+    {
+      "normalized": "desenvolvimento web",
+      "forms": [
+        "Desenvolvimento Web",
+        "desenvolvimento web"
+      ]
+    },
+    {
+      "normalized": "internet das coisas",
+      "forms": [
+        "Internet das coisas",
+        "Internet das Coisas"
+      ]
+    },
+    {
+      "normalized": "projetos academicos",
+      "forms": [
+        "Projetos Acadêmicos",
+        "projetos acadêmicos"
+      ]
+    },
+    {
+      "normalized": "robotica",
+      "forms": [
+        "Robotica",
+        "robótica"
+      ]
+    },
+    {
+      "normalized": "github",
+      "forms": [
+        "Github",
+        "GitHub"
+      ]
+    },
+    {
+      "normalized": "sql",
+      "forms": [
+        "Sql",
+        "SQL"
+      ]
+    },
+    {
+      "normalized": "wpf",
+      "forms": [
+        "WPF",
+        "wpf"
+      ]
+    }
+  ],
+  "null_arrays": {
+    "skills": 0,
+    "interests": 0
+  },
+  "empty_arrays": {
+    "skills": 6,
+    "interests": 6
+  },
+  "synonym_candidates": {
+    "existing_pairs": [
+      [
+        "Webdev",
+        "Desenvolvimento Web"
+      ],
+      [
+        "Automatização",
+        "Automação"
+      ],
+      [
+        "Inteligente Artificial",
+        "Inteligência Artificial"
+      ]
+    ],
+    "decision": "Revisão pendente; nenhuma equivalência presumida."
+  },
+  "ambiguous_terms": [
+    "IA",
+    "IHM",
+    "QA",
+    "CBA",
+    "Modelagem",
+    "Redes",
+    "Oxido",
+    "Design,programação",
+    "UX/UI"
+  ]
+}

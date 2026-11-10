@@ -2,12 +2,14 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Plus, X } from 'lucide-react'
 
 import { AcademicDefaultsFields, PeriodAcademicFields } from './academic-fields'
 import { emptyDefaults, periodDraft, periodPayload } from '@/lib/projects/academics'
-import { ChipInput } from '@/components/team-link/chip-input'
+import { ConceptChipInput } from '@/components/team-link/concept-chip-input'
+import { conceptLabels, legacyConcepts, type ConceptChoice, type ProjectConcepts } from '@/lib/concepts'
+import { getSupabaseClient } from '@/lib/supabase/client'
 import { ProjectCard } from '@/components/team-link/project-card'
 import { FormSection } from '@/components/team-link/form-section'
 import type { Vacancy } from '@/components/team-link/recruitment'
@@ -67,6 +69,8 @@ export function ProjectForm({ project, initialTags = [], initialVacancies = [], 
   const [summary, setSummary] = useState(project?.short_description ?? '')
   const [description, setDescription] = useState(project?.description ?? '')
   const [tags, setTags] = useState(initialTags)
+  const [tagConcepts,setTagConcepts]=useState<ConceptChoice[]>(()=>legacyConcepts(initialTags))
+  const [conceptsReady,setConceptsReady]=useState(!project)
   const [status, setStatus] = useState(project?.status ?? 'open')
   const [visibility, setVisibility] = useState(project?.visibility ?? 'public')
   const [vacancies, setVacancies] = useState<VacancyDraft[]>(() => initialVacancies.map((vacancy) => ({
@@ -82,15 +86,29 @@ export function ProjectForm({ project, initialTags = [], initialVacancies = [], 
     : projectCategories
   const availableCategories = projectCategories.filter((name) => name !== category && !secondary.includes(name))
 
+  useEffect(()=>{
+    if(!project?.id)return
+    let cancelled=false
+    void getSupabaseClient().rpc('get_project_concept_refs',{p_project:project.id}).then(({data,error})=>{
+      if(cancelled)return
+      if(error||!data){setError('Não foi possível carregar os conceitos. Recarregue a página antes de salvar.');return}
+      const refs=data as ProjectConcepts
+      setTagConcepts(refs.tags);setTags(conceptLabels(refs.tags))
+      setVacancies(current=>current.map(v=>({...v,skillConcepts:refs.vacancies.find(row=>row.id===v.id)?.concepts??legacyConcepts(v.skills)})))
+      setConceptsReady(true)
+    })
+    return()=>{cancelled=true}
+  },[project?.id])
+
   function changeVacancy(key: string, values: Partial<VacancyDraft>) {
     setVacancies((current) => current.map((item) => item.key === key ? { ...item, ...values, changed: true } : item))
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (saving) return
+    if (saving || !conceptsReady) return
     setError('')
-    const values = { title, slug, category, secondary, url, summary, description, tags, status, visibility, vacancies }
+    const values = { title, slug, category, secondary, url, summary, description, tags, tagConcepts, status, visibility, vacancies }
     const validation = projectFormErrors(values)
     if (Object.keys(validation).length) return setError(Object.values(validation)[0])
 
@@ -113,7 +131,7 @@ export function ProjectForm({ project, initialTags = [], initialVacancies = [], 
 
   return (
     <form onSubmit={submit} className="mx-auto max-w-4xl space-y-6">
-      <fieldset disabled={saving} className="min-w-0 space-y-6">
+      <fieldset disabled={saving||!conceptsReady} className="min-w-0 space-y-6">
 
           <FormSection className={cardClass} title="Informações principais" description="Apresente seu projeto e ajude outras pessoas a encontrá-lo.">
             <Field id="project-title" label="Título do projeto">
@@ -153,7 +171,7 @@ export function ProjectForm({ project, initialTags = [], initialVacancies = [], 
             <Field id="project-description" label="Descrição completa">
               <Textarea id="project-description" required rows={7} value={description} onChange={(e) => setDescription(e.target.value)} />
             </Field>
-            <ChipInput label="Tags gerais do projeto" value={tags} onChange={setTags} placeholder="Digite e pressione Enter"
+            <ConceptChipInput disabled={saving||!conceptsReady} label="Tags gerais do projeto" value={tagConcepts} onChange={choices=>{setTagConcepts(choices);setTags(conceptLabels(choices))}}
               helperText="Use assuntos e palavras-chave do projeto." maxItems={10} />
           </FormSection>
 
@@ -196,8 +214,8 @@ export function ProjectForm({ project, initialTags = [], initialVacancies = [], 
                   <Textarea id={vacancy.key + '-description'} rows={3} maxLength={4000} value={vacancy.description}
                     onChange={(e) => changeVacancy(vacancy.key, { description: e.target.value })} />
                 </Field>
-                <ChipInput label="Habilidades desejadas" optional maxItems={30} maxLength={120} value={vacancy.skills}
-                  onChange={(skills) => changeVacancy(vacancy.key, { skills })} placeholder="Digite e pressione Enter" />
+                <ConceptChipInput disabled={saving||!conceptsReady} label="Habilidades desejadas" optional maxItems={30} maxLength={120} value={vacancy.skillConcepts??legacyConcepts(vacancy.skills)}
+                  onChange={skillConcepts => changeVacancy(vacancy.key, { skills:conceptLabels(skillConcepts),skillConcepts })} />
                 <Field id={vacancy.key + '-state'} label="Estado da vaga">
                   <Choice id={vacancy.key + '-state'} value={vacancy.open ? 'open' : 'closed'}
                     options={[{ value: 'open', label: 'Aberta' }, { value: 'closed', label: 'Encerrada' }]}

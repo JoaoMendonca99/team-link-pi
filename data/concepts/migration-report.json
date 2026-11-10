@@ -1,0 +1,20 @@
+{
+  "date": "2026-11-09",
+  "source_entries": 102,
+  "automatic_associations": 90,
+  "preserved_without_association": 12,
+  "ambiguous": 9,
+  "unreviewed": 3,
+  "invalid": 0,
+  "errors": 0,
+  "legacy_requirement_entries": 6,
+  "legacy_requirement_associations": 5,
+  "concepts": 99,
+  "validated_concepts": 90,
+  "provisional_concepts": 9,
+  "aliases": 113,
+  "validated_relations": 3,
+  "protected_source_data_unchanged": true,
+  "email_private": true,
+  "idempotent_rerun_verified": true
+}
