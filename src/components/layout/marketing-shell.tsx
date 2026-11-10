@@ -1,5 +1,8 @@
 "use client"
 
+import {Suspense} from 'react'
+import {WorkspaceShell} from '@/app/(marketing)/meu-espaco/workspace-shell'
+import {isInternalWorkspace} from '@/lib/workspace-navigation'
 import { usePathname } from "next/navigation"
 
 import { ThemeProvider } from "@/components/providers/theme-provider"
@@ -20,7 +23,7 @@ function normalizePathname(pathname: string | null): string {
 export function MarketingShell({ children }: { children: React.ReactNode }) {
   const pathname = normalizePathname(usePathname())
   const isMessagesPage = pathname === "/mensagens" || pathname === "/meu-espaco/mensagens"
-  const isWorkspace = pathname === "/meu-espaco" || pathname.startsWith("/meu-espaco/")
+  const isWorkspace = isInternalWorkspace(pathname)
   const hideMarketingFooter = isMessagesPage || isWorkspace
 
   return (
@@ -33,7 +36,7 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
             isMessagesPage && !isWorkspace ? "flex h-[calc(100dvh-72px)] min-h-0 flex-col" : "min-w-0 flex-1"
           }
         >
-          {children}
+          {isWorkspace?<Suspense fallback={<p role="status" className="p-8">Carregando ambiente de trabalho…</p>}><WorkspaceShell>{children}</WorkspaceShell></Suspense>:children}
         </div>
         {hideMarketingFooter ? null : <SiteFooter />}
       </div>

@@ -30,7 +30,7 @@ begin
  values_json:=jsonb_build_array(
   jsonb_build_object('id',f1,'instituicao_id',ies,'curso_id',chosen_course,'cursando_atualmente',true),
   jsonb_build_object('id',f2,'instituicao_manual','Manual University Beta','curso_manual','Manual Course Beta','cursando_atualmente',true),
-  jsonb_build_object('id',f3,'instituicao_id',ies,'curso_id',unoffered,'cursando_atualmente',false));
+  jsonb_build_object('id',f3,'instituicao_id',ies,'curso_id',unoffered,'cursando_atualmente',false,'situacao_final','interrompido'));
  perform save_profile_with_education(basic,'[]','[]',values_json,null,revision,false);revision:=revision+1;
  s:=get_my_education();
  perform pg_temp.education_assert((s->'formations'->0->>'id')=f1::text and (s->'formations'->1->>'id')=f2::text and (s->'formations'->2->>'id')=f3::text,'stable card order is preserved independently of primary choice');
@@ -66,7 +66,7 @@ begin
  -- Education changes are rolled back if a later concept/profile operation fails.
  failed:=false;begin perform save_profile_with_education(basic,(select jsonb_agg(jsonb_build_object('id',(select id from conceitos where nome='JavaScript'))) from generate_series(1,17)),'[]','[]',null,revision,false);exception when sqlstate '22023' then failed:=true;end;
  perform pg_temp.education_assert(failed and get_my_education()=before_state,'whole profile transaction rolls back on concept failure');
- values_json:=jsonb_set(values_json,'{1,cursando_atualmente}','false');
+ values_json:=jsonb_set(jsonb_set(values_json,'{1,cursando_atualmente}','false'),'{1,situacao_final}','"interrompido"');
  perform save_profile_with_education(basic,'[]','[]',values_json,f2,revision,false);revision:=revision+1;
  perform pg_temp.education_assert((select course='Manual Course Beta' and university='Manual University Beta' and course_id is null and institution_id is null from profiles where id=a),'manual primary projection is paired');
  perform pg_temp.education_assert((select cursando_atualmente=false from usuario_formacoes where id=f2),'unchecking only changes current status');

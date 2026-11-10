@@ -12,7 +12,7 @@ interface PanelAccessDeniedProps {
 
 export function PanelAccessDenied({ slug, isAuthenticated }: PanelAccessDeniedProps) {
   return (
-    <main className="bg-background pb-20">
+    <div className="bg-background pb-20">
       <Container className="py-16">
         <EmptyState
           icon={Lock}
@@ -31,6 +31,6 @@ export function PanelAccessDenied({ slug, isAuthenticated }: PanelAccessDeniedPr
           ) : null}
         </div>
       </Container>
-    </main>
+    </div>
   )
 }

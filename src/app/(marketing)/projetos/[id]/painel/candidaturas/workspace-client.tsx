@@ -30,7 +30,7 @@ export function RecruitmentWorkspace({ slug }: { slug: string }) {
   }, [slug, userId])
 
   const project = result?.userId === userId ? result?.project : null
-  return <main><Container className="space-y-6 py-8">
+  return <div><Container className="space-y-6 py-8">
     <Button asChild variant="outline" size="sm"><Link href={'/projetos/' + encodeURIComponent(slug) + '/painel'}>Voltar ao painel</Link></Button>
     {loading || (userId && result?.userId !== userId) ? <p role="status">Verificando acesso…</p> :
       project ? <>
@@ -38,5 +38,5 @@ export function RecruitmentWorkspace({ slug }: { slug: string }) {
           <h1 className="text-2xl font-bold">Vagas e candidaturas</h1></header>
         <RecruitmentManager projectId={project.id} />
       </> : <p role="alert">Esta área está disponível para Líderes e Gestores do projeto.</p>}
-  </Container></main>
+  </Container></div>
 }

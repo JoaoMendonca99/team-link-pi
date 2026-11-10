@@ -3,9 +3,10 @@
 import { useState } from 'react'
 import { Plus, Pencil, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { InstitutionPicker } from '@/components/team-link/institution-picker'
 import { CoursePicker } from '@/components/team-link/course-picker'
-import { educationDraft,educationStatus,sameEducation,type EducationDraft,type LegacyEducation } from '@/lib/education'
+import { educationDraft,educationStatus,sameEducation,educationValidation,changeCurrentEducation,type EducationDraft,type LegacyEducation } from '@/lib/education'
 
 type Props={value:EducationDraft[];onChange:(rows:EducationDraft[])=>void;primary:string|null;onPrimary:(id:string|null)=>void;disabled?:boolean;legacy?:LegacyEducation|null;resolvedLegacyId?:string|null;onResolveLegacy?:(id:string|null)=>void;onEditing?:(editing:boolean)=>void}
 function CurrentStudy({value,onChange,disabled}:{value:boolean|null;onChange:(value:boolean)=>void;disabled?:boolean}){
@@ -20,6 +21,7 @@ export function EducationEditor({value,onChange,primary,onPrimary,disabled,legac
     if(!draft)return
     if(!(draft.institution.id||draft.institution.name.trim())||!(draft.course.id||draft.course.name.trim())){setError('Informe instituição e curso para confirmar a formação.');return}
     if(draft.current===null&&draft.origin!=='legacy'){setError('Confirme se está cursando atualmente ou se não está cursando.');return}
+    const invalid=educationValidation(draft);if(invalid){setError(invalid);return}
     const duplicate=value.some(row=>row.id!==draft.id&&sameEducation(row,draft))
     if(duplicate&&!draft.duplicateAck){setError('Já existe uma formação com este par. Confirme se representa outro episódio.');return}
     onChange(value.some(row=>row.id===draft.id)?value.map(row=>row.id===draft.id?draft:row):[...value,draft])
@@ -34,13 +36,19 @@ export function EducationEditor({value,onChange,primary,onPrimary,disabled,legac
     {!value.length&&!draft&&<p className="text-sm text-muted-foreground">Nenhuma formação cadastrada.</p>}
     <ul className="grid min-w-0 gap-3">{value.map((row,index)=><li key={row.id} className="min-w-0 space-y-2 rounded-xl border p-3">
       <div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="break-words font-semibold">{row.course.name}</p><p className="break-words text-sm text-muted-foreground">{row.institution.name}</p></div><div className="flex shrink-0 gap-1"><Button type="button" size="icon" variant="ghost" aria-label={'Editar formação '+(index+1)} disabled={disabled||Boolean(draft)} onClick={()=>start(row)}><Pencil className="size-4" aria-hidden/></Button><Button type="button" size="icon" variant="ghost" aria-label={'Remover formação '+(index+1)} disabled={disabled||Boolean(draft)} onClick={()=>{onChange(value.filter(v=>v.id!==row.id));if(primary===row.id)onPrimary(null);if(resolvedLegacyId===row.id)onResolveLegacy?.(null)}}><X className="size-4" aria-hidden/></Button></div></div>
-      <CurrentStudy value={row.current} disabled={disabled||Boolean(draft)} onChange={current=>onChange(value.map(v=>v.id===row.id?{...v,current}:v))}/>
-      <p className="text-xs text-muted-foreground">{educationStatus(row.current)}{row.institution.id&&row.course.id?' · Instituição e curso padronizados':''}</p>
+      <CurrentStudy value={row.current} disabled={disabled||Boolean(draft)} onChange={current=>start(changeCurrentEducation(row,current))}/>
+      <p className="text-xs text-muted-foreground">{educationStatus(row.current,row.ending)}{row.institution.id&&row.course.id?' · Instituição e curso padronizados':''}</p>
     </li>)}</ul>
     {draft&&<div role="group" aria-label="Dados da formação" className="min-w-0 space-y-4 rounded-2xl border border-primary/30 bg-muted/15 p-4">
       <InstitutionPicker label="Faculdade ou universidade" value={draft.institution} onChange={institution=>setDraft({...draft,institution})}/>
       <CoursePicker label="Curso" value={draft.course} onChange={course=>setDraft({...draft,course})}/>
-      <CurrentStudy value={draft.current} disabled={disabled} onChange={current=>setDraft({...draft,current})}/>
+      <label className="block space-y-1 text-sm">Data de início<Input placeholder="MM/AAAA" inputMode="numeric" maxLength={7} value={draft.start} onChange={e=>setDraft({...draft,start:e.target.value})}/></label>
+      <CurrentStudy value={draft.current} disabled={disabled} onChange={current=>setDraft(changeCurrentEducation(draft,current))}/>
+      {draft.current===true?<label className="block space-y-1 text-sm">Previsão de conclusão<Input placeholder="MM/AAAA" inputMode="numeric" maxLength={7} value={draft.forecast} onChange={e=>setDraft({...draft,forecast:e.target.value})}/></label>:draft.current===false?<>
+       <label className="block space-y-1 text-sm">{draft.ending==='concluido'?'Data de conclusão':'Data de término/interrupção'}<Input placeholder="MM/AAAA" inputMode="numeric" maxLength={7} value={draft.end} onChange={e=>setDraft({...draft,end:e.target.value})}/></label>
+       <label className="block space-y-1 text-sm">Situação acadêmica<select className="min-h-10 w-full rounded-xl border bg-background p-2 text-foreground" value={draft.ending} onChange={e=>setDraft({...draft,ending:e.target.value as EducationDraft['ending']})}><option value="">{draft.requireEnding?'Selecione a situação':'Situação não informada'}</option><option value="concluido">Concluído</option><option value="interrompido">Interrompido ou trancado</option></select></label>
+      </>:null}
+      <p className="text-xs text-muted-foreground">Datas opcionais em MM/AAAA. Previsão e término efetivo são informações separadas.</p>
       {duplicate&&<label className="flex items-start gap-2 text-sm"><input type="checkbox" checked={draft.duplicateAck===true} onChange={e=>setDraft({...draft,duplicateAck:e.target.checked})}/>É outro episódio de formação na mesma instituição e curso.</label>}
       {error&&<p role="alert" className="text-sm text-destructive">{error}</p>}
       <div className="flex flex-wrap gap-2"><Button type="button" disabled={disabled} onClick={confirm}>Confirmar formação</Button><Button type="button" variant="outline" disabled={disabled} onClick={close}>Cancelar formação</Button></div>

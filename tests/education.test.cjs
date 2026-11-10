@@ -4,12 +4,12 @@ const E=require('../src/lib/education.ts')
 test('unknown legacy status and false status never imply graduation',()=>{
  assert.equal(E.educationDraft(undefined,{university:'Instituição',institution_id:null,course:null,course_id:null}).current,null)
  assert.equal(E.educationStatus(null),'Situação não informada')
- assert.equal(E.educationStatus(false),'Não cursando atualmente')
+ assert.equal(E.educationStatus(false),'Situação não informada')
  assert.equal(E.educationStatus(true),'Cursando atualmente')
 })
 test('official IDs and paired manual names survive the typed payload; client authority is discarded',()=>{
  const rows=[{...E.educationDraft(),institution:{id:'official-i',name:'Nome do catálogo'},course:{id:null,name:' Curso manual '},current:true,role:'admin',user_id:'other',origin:'legacy'}]
- assert.deepEqual(E.educationPayload(rows),[{id:rows[0].id,instituicao_id:'official-i',instituicao_manual:null,curso_id:null,curso_manual:'Curso manual',cursando_atualmente:true,duplicate_ack:false}])
+ assert.deepEqual(E.educationPayload(rows),[{id:rows[0].id,instituicao_id:'official-i',instituicao_manual:null,curso_id:null,curso_manual:'Curso manual',cursando_atualmente:true,duplicate_ack:false,inicio_mes:null,previsao_conclusao_mes:null,termino_mes:null,situacao_final:null}])
  assert.equal(E.educationDraft().current,false)
  assert.notEqual(E.educationDraft().id,E.educationDraft().id)
 })

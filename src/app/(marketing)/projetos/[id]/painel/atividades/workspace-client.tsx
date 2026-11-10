@@ -17,7 +17,7 @@ import { ActivityEditor, GoalEditor, StageEditor, Dialog } from './workspace-edi
 export function ActivitiesClient({ slug }: { slug: string }) {
   const { user, loading } = useSupabaseSession()
   if (loading) return <p role="status" className="p-6">Carregando…</p>
-  if (!user) return <main className="space-y-3 p-6"><p>Entre na sua conta para acessar as atividades.</p><Link href="/login" className="text-primary underline">Entrar</Link></main>
+  if (!user) return <div className="space-y-3 p-6"><p>Entre na sua conta para acessar as atividades.</p><Link href="/login" className="text-primary underline">Entrar</Link></div>
   return <ActivityWorkspace key={user.id} userId={user.id} slug={slug} />
 }
 
@@ -103,8 +103,8 @@ function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
     finally { setBusy(false) }
   }
 
-  if (!data) return <main className="space-y-3 p-6"><Link href={'/projetos/' + slug + '/painel'} className="text-primary underline">Voltar ao painel</Link>
-    <p role={error ? 'alert' : 'status'}>{error || 'Carregando atividades…'}</p>{error && <Button onClick={() => void load()}>Tentar novamente</Button>}</main>
+  if (!data) return <div className="space-y-3 p-6"><Link href={'/projetos/' + slug + '/painel'} className="text-primary underline">Voltar ao painel</Link>
+    <p role={error ? 'alert' : 'status'}>{error || 'Carregando atividades…'}</p>{error && <Button onClick={() => void load()}>Tentar novamente</Button>}</div>
   const { stages, manager, members } = data
   const period=data.periods.find(p=>p.id===periodId)??data.periods.find(p=>p.is_active)
   const historical=Boolean(period&&!period.is_active)
@@ -164,7 +164,7 @@ function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
       </label>
     </article>
   }
-  return <main className="min-w-0 space-y-5 px-4 py-6 sm:px-6 lg:px-8">
+  return <div className="min-w-0 space-y-5 px-4 py-6 sm:px-6 lg:px-8">
     <header className="flex flex-wrap items-center justify-between gap-3">
       <div><Link href={'/projetos/' + slug + '/painel'} className="text-sm text-primary hover:underline">Voltar ao painel</Link>
         <p className="mt-2 text-sm text-muted-foreground">{data.project.title}</p><h1 className="text-2xl font-bold">Controle de Atividades</h1></div>
@@ -222,5 +222,5 @@ function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
     {periodsOpen&&<PeriodManager data={data} busy={busy} mutate={mutate} close={()=>setPeriodsOpen(false)} />}
     {transfer&&<PeriodTransfer data={data} source={period?.id??''} initial={transfer} busy={busy} mutate={mutate} close={()=>setTransfer(null)} completed={()=>{setTransfer(null);setTask(null);setGoal(null)}} />}
     {stagesOpen && <StageEditor data={data} busy={busy} mutate={mutate} close={() => setStagesOpen(false)} />}
-  </main>
+  </div>
 }

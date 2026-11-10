@@ -3,7 +3,10 @@
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
-import { Briefcase, CheckSquare, FileUser, LayoutDashboard, LogOut, Search, MessageCircle, Settings, UserRound, Users, X } from 'lucide-react'
+import { PanelLeftClose,PanelLeftOpen,X } from 'lucide-react'
+import {WorkspaceNavigation} from './workspace-navigation'
+import {useWorkspaceProjects} from '@/hooks/use-workspace-projects'
+import {internalProject,sidebarPreferenceKey} from '@/lib/workspace-navigation'
 import { Button } from '@/components/ui/button'
 import { usePendingFriendships } from '@/components/profile/friendships-provider'
 import { useSupabaseSession } from '@/hooks/use-supabase-session'
@@ -13,52 +16,23 @@ type CacheEntry = { data: MySpace; at: number }
 const Cache = createContext<Map<string, CacheEntry> | null>(null)
 export function useWorkspaceCache() { return useContext(Cache)! }
 
-const groups = [
-  { title: 'Principal', items: [
-    { href: '/meu-espaco', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/meu-espaco/projetos', label: 'Meus projetos', icon: Briefcase },
-    { href: '/meu-espaco/vagas', label: 'Explorar vagas', icon: Search },
-    { href: '/meu-espaco/atividades', label: 'Minhas atividades', icon: CheckSquare },
-    { href: '/meu-espaco/candidaturas', label: 'Minhas candidaturas', icon: FileUser },
-  ] },
-  { title: 'Conexões', items: [
-    { href: '/meu-espaco/mensagens', label: 'Mensagens', icon: MessageCircle },
-    { href: '/meu-espaco/amigos', label: 'Amigos', icon: Users },
-    { href: '/meu-espaco/perfil', label: 'Meu perfil', icon: UserRound },
-  ] },
-  { title: 'Conta', items: [{ href: '/meu-espaco/configuracoes', label: 'Configurações', icon: Settings }] },
-]
-const navigationEvent = 'team-link:navigation-open'
-
-function WorkspaceNavigation({ close }: { close?: () => void }) {
-  const pathname = usePathname(), router = useRouter()
-  const count = usePendingFriendships()
-  const { signOut } = useSupabaseSession()
-  const [busy, setBusy] = useState(false), [error, setError] = useState('')
-  return <nav aria-label="Meu Espaço" className="flex min-h-0 flex-1 flex-col gap-6">
-    {groups.map(group => <div key={group.title} className={group.title === 'Conta' ? 'mt-auto' : ''}>
-      <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">{group.title}</p>
-      <ul className="space-y-1">{group.items.map(item => {
-        const active = item.href === '/meu-espaco' ? pathname === item.href : pathname.startsWith(item.href)
-        return <li key={item.href}><Link href={item.href} onClick={close} aria-current={active ? 'page' : undefined}
-          className={'flex min-w-0 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-primary ' + (active ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}>
-          <item.icon className="size-4 shrink-0" aria-hidden /><span className="min-w-0 flex-1">{item.label}</span>
-          {item.label === 'Amigos' && count > 0 && <span aria-label={count + ' solicitações recebidas'} className="rounded-full bg-primary px-1.5 text-xs leading-5 text-primary-foreground">{count}</span>}
-        </Link></li>
-      })}</ul>
-    </div>)}
-    <div className="border-t border-border pt-3"><Button variant="ghost" disabled={busy} className="w-full justify-start text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={async () => {
-      setBusy(true); setError(''); close?.()
-      try { await signOut(); router.replace('/') } catch { setError('Não foi possível sair. Tente novamente.'); setBusy(false) }
-    }}><LogOut aria-hidden className="size-4" />{busy ? 'Saindo…' : 'Sair'}</Button>
-    {error && <p role="alert" className="text-xs text-destructive">{error}</p>}</div>
-  </nav>
-}
+const navigationEvent='team-link:navigation-open'
 
 export function WorkspaceShell({ children }: { children: ReactNode }) {
   const pathname = usePathname(), params = useSearchParams(), router = useRouter()
-  const { user, loading } = useSupabaseSession()
+  const { user, loading, signOut } = useSupabaseSession()
+  const userId=user?.id
   const hadSession = useRef(false)
+  const projectRoute=internalProject(pathname),reference=projectRoute?.reference??null
+  const projects=useWorkspaceProjects(user?.id,reference),count=usePendingFriendships()
+  const [preference,setPreference]=useState<{user:string;collapsed:boolean}>(),[projectsOpen,setProjectsOpen]=useState(false)
+  const collapsed=preference?.user===user?.id&&preference?.collapsed===true
+  useEffect(()=>{if(!userId)return;let value=false;try{value=localStorage.getItem(sidebarPreferenceKey(userId))==='collapsed'}catch{}setPreference({user:userId,collapsed:value})},[userId])
+  useEffect(()=>{if(reference)setProjectsOpen(true)},[reference])
+  function setCollapsed(value:boolean){if(!user)return;setPreference({user:user.id,collapsed:value});try{localStorage.setItem(sidebarPreferenceKey(user.id),value?'collapsed':'expanded')}catch{}}
+  function toggleProjects(mobile=false){if(collapsed&&!mobile){setCollapsed(false);setProjectsOpen(true)}else setProjectsOpen(value=>!value)}
+  const navProps={count,projects,signOut,expanded:projectsOpen,onLogout:()=>router.replace('/')}
+
   const [open, setOpen] = useState(false)
   const dialog = useRef<HTMLDialogElement>(null)
   const cache = useRef(new Map<string, CacheEntry>())
@@ -91,18 +65,25 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
     element?.showModal()
     return () => { element?.close(); viewport.style.overflow = overflow; viewport.style.scrollbarGutter = scrollbarGutter; previous?.focus({ preventScroll: true }) }
   }, [open])
-  if (loading) return <p role="status" className="p-8">Carregando Meu Espaço…</p>
+  if (loading||(user&&preference?.user!==user.id)) return <p role="status" className="p-8">Carregando Meu Espaço…</p>
   if (!user) return <div className="space-y-4 p-8"><h1 className="text-2xl font-bold">Entre para acessar Meu Espaço</h1><Button asChild><Link href={'/login?next=' + encodeURIComponent(pathname)}>Entrar</Link></Button></div>
   const messages = pathname === '/meu-espaco/mensagens'
-  return <Cache.Provider value={cache.current}><div className="mx-auto grid w-full min-w-0 max-w-[1600px] lg:grid-cols-[240px_minmax(0,1fr)]">
-    <aside className="sticky top-[var(--site-header-height)] hidden h-[calc(100dvh-var(--site-header-height))] min-w-0 self-start overflow-y-auto overscroll-contain border-r border-border bg-card/40 p-4 lg:flex lg:flex-col"><p className="mb-6 px-3 text-lg font-bold">Meu Espaço</p><WorkspaceNavigation /></aside>
+  return <Cache.Provider value={cache.current}><div style={{'--workspace-sidebar-width':collapsed?'72px':'240px'} as React.CSSProperties} className="mx-auto grid w-full min-w-0 max-w-[1600px] motion-safe:transition-[grid-template-columns] motion-safe:duration-150 lg:grid-cols-[var(--workspace-sidebar-width)_minmax(0,1fr)]">
+    <aside id="workspace-sidebar" aria-label="Menu lateral do Meu Espaço" className={'sticky top-[var(--site-header-height)] hidden h-[calc(100dvh-var(--site-header-height))] min-w-0 self-start overflow-y-auto overscroll-contain border-r border-border bg-card/40 lg:flex lg:flex-col '+(collapsed?'p-2':'p-3')}>
+     <div className={'mb-3 flex items-center '+(collapsed?'justify-center':'justify-between gap-2 px-2')}>
+      {!collapsed&&<p className="text-base font-bold">Meu Espaço</p>}
+      <Button type="button" variant="ghost" size="icon" className="shrink-0" title={collapsed?'Expandir menu lateral':'Recolher menu lateral'} aria-label={collapsed?'Expandir menu lateral':'Recolher menu lateral'} aria-expanded={!collapsed} aria-controls="workspace-sidebar" onClick={()=>setCollapsed(!collapsed)}>{collapsed?<PanelLeftOpen className="size-4" aria-hidden/>:<PanelLeftClose className="size-4" aria-hidden/>}</Button>
+     </div><WorkspaceNavigation {...navProps} collapsed={collapsed} onProjects={()=>toggleProjects()}/>
+    </aside>
     <div className="min-w-0">
-      <main id="workspace-content" className={messages ? 'workspace-messages flex h-[calc(100dvh-var(--site-header-height))] min-h-0 min-w-0 flex-col' : 'min-w-0 space-y-6 p-4 pb-24 sm:p-6 sm:pb-24 xl:p-8 xl:pb-24'}>{children}</main>
+      <main id="workspace-content" className={projectRoute ? 'min-w-0 pb-16' : messages ? 'workspace-messages flex h-[calc(100dvh-var(--site-header-height))] min-h-0 min-w-0 flex-col' : 'min-w-0 space-y-6 p-4 pb-24 sm:p-6 sm:pb-24 xl:p-8 xl:pb-24'}>
+       {projectRoute&&<nav aria-label="Caminho do projeto" className="flex min-w-0 flex-wrap items-center gap-2 border-b px-4 py-3 text-xs text-muted-foreground sm:px-6 lg:px-8"><Link href="/meu-espaco/projetos" className="text-primary hover:underline">Meus projetos</Link><span aria-hidden>/</span>{projects.data?.current&&<><Link href={'/projetos/'+encodeURIComponent(projects.data.current.slug)} title={projects.data.current.title} className="max-w-64 truncate text-primary hover:underline">{projects.data.current.title}</Link><span aria-hidden>/</span></>}<span>{projectRoute.editing?'Editar projeto':pathname.endsWith('/atividades')?'Atividades':pathname.endsWith('/relatorios')?'Relatórios':pathname.endsWith('/candidaturas')?'Candidaturas':'Painel'}</span></nav>}
+       {children}</main>
     </div>
     <dialog ref={dialog} id="workspace-navigation" aria-label="Navegação do Meu Espaço" onCancel={event => { event.preventDefault(); setOpen(false) }} onClick={event => {
       if (event.target === event.currentTarget) { const bounds = event.currentTarget.getBoundingClientRect(); if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) setOpen(false) }
     }} className="fixed inset-y-0 left-0 right-auto m-0 h-dvh max-h-dvh w-[min(280px,90vw)] max-w-none overflow-y-auto border-r border-border bg-card p-4 text-card-foreground shadow-xl backdrop:bg-black/60">
-      <div className="mb-6 flex items-center justify-between gap-3"><strong>Meu Espaço</strong><Button size="icon" variant="ghost" aria-label="Fechar navegação do Meu Espaço" onClick={() => setOpen(false)}><X aria-hidden /></Button></div><div className="flex min-h-[calc(100dvh-104px)] flex-col"><WorkspaceNavigation close={() => setOpen(false)} /></div>
+      <div className="mb-6 flex items-center justify-between gap-3"><strong>Meu Espaço</strong><Button size="icon" variant="ghost" aria-label="Fechar navegação do Meu Espaço" onClick={() => setOpen(false)}><X aria-hidden /></Button></div><div className="flex min-h-[calc(100dvh-104px)] flex-col"><WorkspaceNavigation {...navProps} mobile onProjects={()=>toggleProjects(true)} close={() => setOpen(false)} /></div>
     </dialog>
   </div></Cache.Provider>
 }

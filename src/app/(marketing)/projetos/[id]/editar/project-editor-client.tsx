@@ -64,16 +64,16 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
   }, [slug, userId, retry])
 
   return (
-    <main className="bg-background pb-20">
+    <div className="bg-background pb-20">
       <div className="border-b border-border bg-gradient-to-br from-muted/60 via-background to-background">
-        <Container className="space-y-6 py-12">
+        <Container className="space-y-4 py-5">
           <Button asChild variant="ghost" className="gap-2">
             <Link href={'/projetos/' + slug}><ArrowLeft aria-hidden className="size-4" /> Voltar ao projeto</Link>
           </Button>
-          <PageHeader title="Editar projeto" description="Atualize a apresentação, as vagas e as configurações de publicação." />
+          <PageHeader compact title="Editar projeto" description="Atualize a apresentação, as vagas e as configurações de publicação." />
         </Container>
       </div>
-      <Container className="py-8 sm:py-12">
+      <Container className="py-5 sm:py-6">
         {sessionLoading ? <p role="status">Carregando…</p>
           : !isSupabaseConfigured() ? <p role="alert">Não foi possível conectar ao serviço de dados.</p>
           : !userId ? (
@@ -94,6 +94,6 @@ export function ProjectEditorClient({ slug }: { slug: string }) {
           : result.state === 'ready' ? <div className="space-y-6"><div className="mx-auto max-w-4xl"><ProjectAcademicSetup projectId={result.data.project.id}/></div><ProjectForm key={result.data.project.id} project={result.data.project}
               initialTags={result.data.tags} initialVacancies={result.data.vacancies} /></div> : null}
       </Container>
-    </main>
+    </div>
   )
 }

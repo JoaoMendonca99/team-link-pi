@@ -460,20 +460,20 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
 
   if (loading || sessionLoading) {
     return (
-      <main className="bg-background">
+      <div className="bg-background">
         <Container className="py-24">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-5 w-5 animate-spin" />
             Carregando painel…
           </div>
         </Container>
-      </main>
+      </div>
     )
   }
 
   if (envMissing || (fetchError && !project) || notFound || !project) {
     return (
-      <main className="bg-background">
+      <div className="bg-background">
         <Container className="py-24">
           <EmptyState
             icon={LayoutDashboard}
@@ -487,7 +487,7 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
             href="/explorar"
           />
         </Container>
-      </main>
+      </div>
     )
   }
 
@@ -496,9 +496,9 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
   }
 
   return (
-    <main className="bg-background pb-20">
+    <div className="bg-background pb-20">
       <div className="border-b border-border bg-gradient-to-b from-muted/50 to-transparent">
-        <Container className="space-y-4 py-5 sm:py-6">
+        <Container className="space-y-3 py-4">
           <div className="flex flex-wrap items-center gap-3">
             <Button asChild variant="outline" size="sm" className="rounded-2xl font-semibold">
               <Link href={`/projetos/${project.slug}`}>
@@ -514,10 +514,11 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
             {isManager && <Button asChild variant="outline" size="sm" className="rounded-2xl">
               <Link id="candidaturas" href={recruitmentHref}>Candidaturas{pending > 0 && <span className="rounded-full bg-primary/10 px-2 text-primary" aria-label={pending + ' pendentes'}>{pending}</span>}</Link>
             </Button>}
-            <Button asChild variant="ghost" size="sm"><Link href="/mensagens">Mensagens da equipe</Link></Button>
+            <Button asChild variant="ghost" size="sm"><Link href="/meu-espaco/mensagens">Mensagens da equipe</Link></Button>
           </div>
 
           <PageHeader
+            compact
             eyebrow="Área da equipe"
             title={project.title}
             className="border-0 pb-0"
@@ -599,6 +600,6 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
         commit={githubOpen ? selectedCommit : null}
         onClose={() => setSelectedCommit(null)}
       />
-    </main>
+    </div>
   )
 }
