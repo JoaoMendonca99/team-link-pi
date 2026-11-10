@@ -89,10 +89,6 @@ export function ChipInput({
       commit(draft)
       return
     }
-    if (event.key === 'Backspace' && draft.length === 0 && value.length > 0) {
-      event.preventDefault()
-      onChange(value.slice(0, -1))
-    }
   }
 
   function handleBlur() {

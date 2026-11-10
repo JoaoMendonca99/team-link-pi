@@ -4,7 +4,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 
-import { CoursePicker } from '@/components/team-link/course-picker'
+import { EducationEditor } from '@/components/profile/education-editor'
+import { educationPayload,type EducationDraft,type EducationState } from '@/lib/education'
 import { AuthCard } from '@/components/team-link/auth-card'
 import { ConceptChipInput } from '@/components/team-link/concept-chip-input'
 import { conceptLabels, type ConceptChoice } from '@/lib/concepts'
@@ -94,7 +95,7 @@ function SignupOrientationPanel({ step }: { step: SignupStep }) {
             </h1>
             <p className="text-sm leading-relaxed text-muted-foreground">
               Primeiro informe seus dados de acesso. Depois você pode completar seu perfil acadêmico com
-              curso, habilidades e áreas de interesse.
+              formações, habilidades e áreas de interesse, se desejar.
             </p>
           </div>
 
@@ -134,7 +135,7 @@ function SignupOrientationPanel({ step }: { step: SignupStep }) {
             Complete seu perfil acadêmico
           </h1>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            Se desejar, informe seu curso e adicione habilidades e áreas de interesse.
+            Se desejar, adicione formações completas, habilidades e áreas de interesse.
           </p>
         </div>
 
@@ -170,7 +171,8 @@ export default function CadastroPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [course, setCourse] = useState({ id: null as string | null, name: '' })
+  const [formations,setFormations]=useState<EducationDraft[]>([]),[primary,setPrimary]=useState<string|null>(null),[editingEducation,setEditingEducation]=useState(false)
+  const [educationRevision,setEducationRevision]=useState<number|null>(null)
   const [skills, setSkills] = useState<ConceptChoice[]>([])
   const [interests, setInterests] = useState<ConceptChoice[]>([])
 
@@ -223,7 +225,7 @@ export default function CadastroPage() {
     return Object.keys(errors).length === 0
   }
 
-  function validateStep2(): boolean { return true }
+  function validateStep2(): boolean { return !editingEducation }
 
   const handleContinue = () => {
     setErrorMessage(null)
@@ -266,8 +268,6 @@ export default function CadastroPage() {
     const normalizedEmail = trimmedEmail.toLowerCase()
     const profilePayload = {
       full_name: name.trim(),
-      course: course.name.trim() || null,
-      course_id: course.id,
       skills: conceptLabels(skills),
       interests: conceptLabels(interests),
     }
@@ -303,8 +303,14 @@ export default function CadastroPage() {
       }
 
       // The database trigger initializes the profile with empty skills and interests.
-      const { error: profileError } = await client.rpc('save_profile_concepts', {
-        p_profile: profilePayload, p_skills: skills, p_interests: interests,
+      let revision=educationRevision
+      if(revision===null){
+        const {data,error}=await client.rpc('get_my_education')
+        if(error||!data){setErrorMessage(PROFILE_ERROR);return}
+        revision=(data as EducationState).revision;setEducationRevision(revision)
+      }
+      const { error: profileError } = await client.rpc('save_profile_with_education', {
+        p_profile: profilePayload, p_skills: skills, p_interests: interests,p_formations:educationPayload(formations),p_primary:primary,p_revision:revision,p_resolve_legacy:false,
       })
 
       if (profileError) {
@@ -337,7 +343,7 @@ export default function CadastroPage() {
           description={
             step === 1
               ? 'Nome, e-mail e senha para começar.'
-              : 'Curso obrigatório. Habilidades e interesses são opcionais.'
+              : 'Formação acadêmica, habilidades e interesses são opcionais.'
           }
           className="h-full w-full max-w-none p-6 sm:p-7 [&>div:first-child]:mb-5"
         >
@@ -485,7 +491,7 @@ export default function CadastroPage() {
             </form>
           ) : (
             <form className="space-y-4 text-left" onSubmit={handleSubmit} noValidate>
-              <CoursePicker id="curso" value={course} onChange={setCourse} />
+              <EducationEditor value={formations} onChange={setFormations} primary={primary} onPrimary={setPrimary} onEditing={setEditingEducation} disabled={submitting}/>
 
               <ConceptChipInput
                 label="Habilidades"
@@ -535,7 +541,7 @@ export default function CadastroPage() {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={submitting || signupNotice}
+                  disabled={submitting || signupNotice || editingEducation}
                   className="w-full rounded-2xl py-4 text-base font-semibold sm:flex-[1.4]"
                 >
                   {submitting ? 'Finalizando...' : 'Finalizar cadastro'}

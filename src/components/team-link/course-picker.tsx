@@ -12,5 +12,5 @@ export function CoursePicker({ id, label = 'Curso (opcional)', value, onChange }
   return <CatalogPicker id={id} label={label} value={value} onChange={onChange} search={search}
     placeholder="Busque pelo nome do curso" manualPlaceholder="Nome do curso"
     selectedHelp="Curso selecionado no catálogo oficial do Inep." resultsLabel="Cursos encontrados"
-    loadingText="Buscando cursos…" emptyText="Nenhum curso encontrado." manualAction="Não encontrei meu curso" clearAction="Não informar curso" />
+    loadingText="Buscando cursos…" emptyText="Nenhum curso encontrado." manualAction="Meu curso não está na lista" clearAction="Limpar curso" />
 }

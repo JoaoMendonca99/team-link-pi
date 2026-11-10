@@ -42,6 +42,7 @@ export type JoinRequestStatus = "pending" | "approved" | "rejected" | "canceled"
 // ============================================================================
 
 export interface ProfileRow {
+  educations?: import('@/lib/education').Education[]
   course_id?: string | null
   course_catalog?: { nome: string } | { nome: string }[] | null
   institution_id?: string | null

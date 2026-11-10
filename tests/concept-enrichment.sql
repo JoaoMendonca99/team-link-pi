@@ -1,0 +1,50 @@
+begin;
+do $$begin if current_setting('team_link.test_environment',true) is distinct from 'isolated' then raise exception 'Isolated database required';end if;end$$;
+create function pg_temp.enrichment_assert(ok boolean,label text) returns void language plpgsql as $$begin if ok is distinct from true then raise exception 'FAIL: %',label;end if;end$$;
+select pg_temp.enrichment_assert(count(*)=616 and count(*)filter(where status='validado')=607 and count(*)filter(where status='provisorio')=9,'reviewed enrichment and original provisional terms preserved') from conceitos where source_key is not null;
+select pg_temp.enrichment_assert(count(*)=534 and bool_and(licenca='CC BY 4.0' and fonte='ESCO / Comissão Europeia'),'external identifiers and reuse license recorded') from conceitos_fontes;
+select pg_temp.enrichment_assert(count(*)=92,'source hierarchy direction retained') from conceitos_relacoes where tipo='mais_especifico_que';
+select pg_temp.enrichment_assert(count(*)=3,'original related concepts remain separate from directional hierarchy') from conceitos_relacoes where tipo='relacionado_a';
+select pg_temp.enrichment_assert(count(distinct dominio)>=12,'diverse coverage') from conceitos;
+do $$
+declare actor uuid:=gen_random_uuid(); js uuid; python uuid; child uuid; parent uuid; other uuid; target uuid; proposal uuid; failed boolean; old_count integer;
+begin
+ select id into js from conceitos where nome='JavaScript';select id into python from conceitos where nome='Python';
+ perform pg_temp.enrichment_assert(concept_private.resolve_exact('JS')=js and (select id=python from search_concepts('pyt',12)limit 1),'partial search prioritizes reviewed identities and aliases');
+ perform pg_temp.enrichment_assert(concept_private.resolve_exact('ML') is null,'ML language and machine learning acronym are not conflated');
+ insert into auth.users(id)values(actor);insert into profiles(id,full_name)values(actor,'Enrichment test owner');
+ execute 'set local role authenticated';perform set_config('request.jwt.claim.sub',actor::text,true);
+ proposal:=concept_private.propose('Novo conhecimento sintético','Domínio ignorado');
+ perform pg_temp.enrichment_assert((select dominio='Geral' and status='provisorio' from conceitos where id=proposal),'no manual or invented domain required');
+ perform pg_temp.enrichment_assert(proposal=concept_private.propose('  novo   conhecimento SINTÉTICO ','Saúde'),'own trivial duplicates reused without a domain choice');
+ perform pg_temp.enrichment_assert(js=concept_private.propose('JS','Geral'),'exact reviewed identity reused across the obsolete domain parameter');
+ failed:=false;begin perform concept_private.propose('ML','Geral');exception when sqlstate '22023' then failed:=true;end;perform pg_temp.enrichment_assert(failed,'ambiguous identifiers require explicit selection');
+ failed:=false;begin insert into conceitos_fontes(identificador,conceito_id,fonte,versao,licenca,rotulo_original)values('Fake',js,'Fake','Fake','Fake','Fake');exception when insufficient_privilege then failed:=true;end;
+ perform pg_temp.enrichment_assert(failed,'users cannot forge provenance or official aliases');
+ failed:=false;begin perform concept_private.import_enrichment('[]');exception when insufficient_privilege then failed:=true;end;perform pg_temp.enrichment_assert(failed,'source importer is admin only');
+ execute 'reset role';
+ select origem_id,destino_id into child,parent from conceitos_relacoes where tipo='mais_especifico_que' limit 1;
+ failed:=false;begin insert into conceitos_relacoes(origem_id,destino_id,tipo,fonte,validado)values(parent,child,'mais_especifico_que','Controlled reverse cycle',true);exception when check_violation then failed:=true;end;
+ perform pg_temp.enrichment_assert(failed,'hierarchy cycles are rejected');
+ failed:=false;begin insert into conceitos_relacoes(origem_id,destino_id,tipo,fonte,validado)values(child,child,'mais_especifico_que','Controlled self cycle',true);exception when check_violation then failed:=true;end;
+ perform pg_temp.enrichment_assert(failed,'self relations are rejected');
+ -- Consolidation of a synthetic equivalent preserves directed endpoints and stable source mapping.
+ insert into conceitos(nome,dominio,status,origem)values('Directed synthetic child','Geral','provisorio','Isolated test')returning id into child;
+ insert into conceitos(nome,dominio,status,origem)values('Directed synthetic parent','Geral','validado','Isolated test')returning id into parent;
+ insert into conceitos(nome,dominio,status,origem)values('Directed synthetic equivalent','Geral','validado','Isolated test')returning id into target;
+ insert into conceitos_relacoes(origem_id,destino_id,tipo,fonte,validado)values(child,parent,'mais_especifico_que','Isolated reviewed relation',true);
+ insert into conceitos_fontes(identificador,conceito_id,fonte,versao,licenca,rotulo_original)values('synthetic-source',child,'Isolated','test','CC BY 4.0','Synthetic');
+ perform concept_private.consolidate(child,target,'Equivalent identity reviewed exclusively in isolated test');
+ perform pg_temp.enrichment_assert(exists(select 1 from conceitos_relacoes where origem_id=target and destino_id=parent and tipo='mais_especifico_que'),'consolidation preserves child to parent direction');
+ perform pg_temp.enrichment_assert((select conceito_id=target from conceitos_fontes where identificador='synthetic-source'),'source identifiers follow the reviewed redirect');
+ -- Original server-side proposal quotas still apply.
+ insert into conceitos(nome,dominio,status,origem)select 'Enrichment quota '||n,'Geral','provisorio','Isolated quota' from generate_series(1,39)n;
+ insert into concept_private.propostas(id,autor,chave,dominio)select id,actor,nome_normalizado,'Geral' from conceitos where origem='Isolated quota';
+ execute 'set local role authenticated';perform set_config('request.jwt.claim.sub',actor::text,true);
+ failed:=false;begin perform concept_private.propose('Exceeds synthetic quota','Geral');exception when sqlstate 'P0001' then failed:=true;end;perform pg_temp.enrichment_assert(failed,'server proposal quota preserved');
+ execute 'reset role';execute 'set local role anon';perform set_config('request.jwt.claim.sub','',true);
+ perform pg_temp.enrichment_assert((select count(*)<=12 from search_concepts('engenharia',12)),'public search remains bounded');
+ failed:=false;begin perform concept_private.propose('Anonymous synthetic','Geral');exception when insufficient_privilege then failed:=true;end;perform pg_temp.enrichment_assert(failed,'anonymous suggestions denied');
+ execute 'reset role';
+end $$;
+rollback;

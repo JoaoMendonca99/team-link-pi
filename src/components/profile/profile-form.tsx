@@ -15,14 +15,14 @@ import { Textarea } from '@/components/ui/textarea'
 import { getSupabaseClient } from '@/lib/supabase/client'
 import { PROFILE_CHANGED } from '@/lib/profile-social'
 import { PresenceControl, usePresencePreference } from './presence-preference'
-import { InstitutionPicker } from '@/components/team-link/institution-picker'
-import { CoursePicker } from '@/components/team-link/course-picker'
+import { EducationEditor } from './education-editor'
+import { educationDraft,educationPayload,type EducationDraft,type EducationState,type LegacyEducation } from '@/lib/education'
 import type { ProfileRow } from '@/types/database'
 
 export function ProfileForm({ profile, backHref='/perfil' }: { profile: ProfileRow; backHref?:string }) {
   const [name, setName] = useState(profile.full_name ?? '')
-  const [course, setCourse] = useState({ id: profile.course_id ?? null, name: profile.course ?? '' })
-  const [institution, setInstitution] = useState({ id: profile.institution_id ?? null, name: profile.university ?? '' })
+  const [formations,setFormations]=useState<EducationDraft[]>([]),[primary,setPrimary]=useState<string|null>(null)
+  const [revision,setRevision]=useState(0),[legacy,setLegacy]=useState<LegacyEducation|null>(null),[resolvedLegacyId,setResolvedLegacyId]=useState<string|null>(null),[editingEducation,setEditingEducation]=useState(false)
   const [bio, setBio] = useState(profile.bio ?? '')
   const [skills, setSkills] = useState<ConceptChoice[]>(() => legacyConcepts(normalizeStringArray(profile.skills)))
   const [interests, setInterests] = useState<ConceptChoice[]>(() => legacyConcepts(normalizeStringArray(profile.interests)))
@@ -36,10 +36,13 @@ export function ProfileForm({ profile, backHref='/perfil' }: { profile: ProfileR
 
   useEffect(() => {
     let cancelled=false
-    void getSupabaseClient().rpc('get_my_concept_refs').then(({data,error})=>{
+    const client=getSupabaseClient()
+    void Promise.all([client.rpc('get_my_concept_refs'),client.rpc('get_my_education')]).then(([concepts,education])=>{
       if(cancelled)return
-      if(error || !data){setError('Não foi possível carregar os conceitos. Recarregue a página para editar com segurança.');return}
-      setSkills(data.skills);setInterests(data.interests);setConceptsReady(true)
+      if(concepts.error || !concepts.data || education.error || !education.data){setError('Não foi possível carregar os dados. Recarregue a página para editar com segurança.');return}
+      const state=education.data as EducationState
+      setFormations(state.formations.map(row=>educationDraft(row)));setPrimary(state.primary_id);setRevision(state.revision);setLegacy(state.legacy)
+      setSkills(concepts.data.skills);setInterests(concepts.data.interests);setConceptsReady(true)
     })
     return()=>{cancelled=true}
   },[profile.id])
@@ -57,7 +60,7 @@ export function ProfileForm({ profile, backHref='/perfil' }: { profile: ProfileR
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (saving || !conceptsReady) return
+    if (saving || !conceptsReady || editingEducation) return
     setSaving(true)
     setError('')
     setStatus('')
@@ -65,12 +68,13 @@ export function ProfileForm({ profile, backHref='/perfil' }: { profile: ProfileR
     try {
       const client = getSupabaseClient()
       const photo = draft ? await exportAvatar(draft) : undefined
-      const { error } = await client.rpc('save_profile_concepts', { p_profile: {
-        full_name: name.trim(), course: course.name.trim() || null, course_id: course.id, university: institution.name.trim() || null, institution_id: institution.id,
+      const { error } = await client.rpc('save_profile_with_education', { p_profile: {
+        full_name: name.trim(),
         bio: bio.trim() || null,
-      }, p_skills: skills, p_interests: interests })
-      if (error) throw new Error('Não foi possível salvar os dados do perfil.')
+      }, p_skills: skills, p_interests: interests,p_formations:educationPayload(formations),p_primary:primary,p_revision:revision,p_resolve_legacy:formations.some(f=>f.id===resolvedLegacyId) })
+      if (error) throw new Error(['22023','40001'].includes(error.code)?error.message:'Não foi possível salvar os dados do perfil.')
       profileSaved = true
+      setRevision(current=>current+1)
       const { data: savedConcepts } = await client.rpc('get_my_concept_refs')
       if(savedConcepts){setSkills(savedConcepts.skills);setInterests(savedConcepts.interests)}
       await saveVisibility()
@@ -93,17 +97,16 @@ export function ProfileForm({ profile, backHref='/perfil' }: { profile: ProfileR
   }
 
   return <form className="space-y-4" onSubmit={save}>
-    <FormSection title="Identidade acadêmica">
+    <FormSection title="Dados do perfil">
       <AvatarEditor name={name || 'Estudante'} avatarUrl={avatarUrl} draft={draft} onChange={setDraft} disabled={saving} />
       <div className="space-y-2"><Label htmlFor="profile-name">Nome completo</Label>
         <Input id="profile-name" required value={name} onChange={(event) => setName(event.target.value)} /></div>
-      <div id="profile-academics" tabIndex={-1} className="grid scroll-mt-36 gap-3 sm:grid-cols-2">
-        <CoursePicker id="profile-course" value={course} onChange={setCourse} />
-        <InstitutionPicker id="profile-university" value={institution} onChange={setInstitution} />
-      </div>
       <div className="space-y-2"><Label htmlFor="profile-bio">Biografia</Label>
         <Textarea id="profile-bio" className="scroll-mt-36" rows={4} value={bio} onChange={(event) => setBio(event.target.value)} /></div>
     </FormSection>
+    <div id="profile-academics" tabIndex={-1} className="min-w-0 scroll-mt-36 rounded-3xl border border-card-outline bg-card p-5 sm:p-7">
+      <EducationEditor value={formations} onChange={setFormations} primary={primary} onPrimary={setPrimary} legacy={legacy} resolvedLegacyId={resolvedLegacyId} onResolveLegacy={setResolvedLegacyId} onEditing={setEditingEducation} disabled={saving||!conceptsReady}/>
+    </div>
     <FormSection title="Habilidades e interesses">
       <ConceptChipInput inputId="profile-skills" label="Habilidades" value={skills} onChange={setSkills} disabled={!conceptsReady||saving} optional
         placeholder="Ex.: Python, React, Design" />
@@ -117,7 +120,7 @@ export function ProfileForm({ profile, backHref='/perfil' }: { profile: ProfileR
     {status && <p role="status" className="text-sm font-medium text-primary">{status}</p>}
     <div className="flex flex-wrap justify-end gap-2">
       <Button asChild variant="outline"><Link href={backHref}>Voltar ao perfil</Link></Button>
-      <Button type="submit" disabled={saving||!conceptsReady}>{saving ? 'Salvando…' : 'Salvar alterações'}</Button>
+      <Button type="submit" disabled={saving||!conceptsReady||editingEducation}>{saving ? 'Salvando…' : 'Salvar alterações'}</Button>
     </div>
   </form>
 }

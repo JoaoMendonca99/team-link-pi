@@ -12,5 +12,5 @@ export function InstitutionPicker({ id, label = 'Faculdade ou universidade (opci
   return <CatalogPicker id={id} label={label} value={value} onChange={onChange} search={search}
     placeholder="Busque pelo nome ou sigla" manualPlaceholder="Nome da instituição"
     selectedHelp="Instituição selecionada no catálogo oficial do Inep." resultsLabel="Instituições encontradas"
-    loadingText="Buscando instituições…" emptyText="Nenhuma instituição encontrada." manualAction="Não encontrei minha instituição" clearAction="Não informar instituição" />
+    loadingText="Buscando instituições…" emptyText="Nenhuma instituição encontrada." manualAction="Minha instituição não está na lista" clearAction="Limpar instituição" />
 }

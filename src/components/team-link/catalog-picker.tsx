@@ -22,10 +22,11 @@ export function CatalogPicker({ id, label, value, onChange, search, placeholder,
   const popup = useRef<HTMLDivElement>(null)
   const [position, setPosition] = useState<CSSProperties>()
   const cache = useRef(new Map<string, CatalogOption[]>())
-  const [query, setQuery] = useState(value.name), [manual, setManual] = useState(Boolean(value.name && !value.id))
+  const [query, setQuery] = useState(value.name), [manual, setManual] = useState(false)
+  const [manualDraft,setManualDraft]=useState(''),[manualError,setManualError]=useState('')
   const [open, setOpen] = useState(false), [rows, setRows] = useState<CatalogOption[]>([]), [active, setActive] = useState(-1)
   const [loading, setLoading] = useState(false), [error, setError] = useState(false)
-  useEffect(() => { setQuery(value.name); setManual(Boolean(value.name && !value.id)) }, [value.id, value.name])
+  useEffect(() => { setQuery(value.name); setManual(false) }, [value.id, value.name])
   useEffect(() => {
     const close = (event: PointerEvent) => { if (event.target instanceof Node && !root.current?.contains(event.target) && !popup.current?.contains(event.target)) setOpen(false) }
     document.addEventListener('pointerdown', close)
@@ -65,15 +66,26 @@ export function CatalogPicker({ id, label, value, onChange, search, placeholder,
   useEffect(() => { if (active >= 0) document.getElementById(listId + '-' + active)?.scrollIntoView({ block: 'nearest' }) }, [active, listId])
   function choose(row: CatalogOption) { onChange({ id: row.id, name: row.name }); setQuery(row.name); setManual(false); setOpen(false); setActive(-1); input.current?.focus() }
   function clear() { onChange({ id: null, name: '' }); setQuery(''); setManual(false); setOpen(false); setActive(-1) }
+  function confirmManual(){
+    const name=manualDraft.trim()
+    if(!name || /[<>\x00-\x1f]/.test(name)){setManualError('Informe um nome válido antes de confirmar.');return}
+    onChange({id:null,name});setQuery(name);setManual(false);setOpen(false);setManualError('')
+  }
+  function cancelManual(){setManual(false);setQuery(value.name);setOpen(false);setManualError('')}
   const showResults = open && query.trim().length >= 2 && !loading && !error
   return <div ref={root} className="relative min-w-0 space-y-2" onBlur={event => {
     if (!event.currentTarget.contains(event.relatedTarget) && !popup.current?.contains(event.relatedTarget)) { setOpen(false); if (!manual) setQuery(value.name) }
   }}>
     <label htmlFor={manual ? inputId + '-manual' : inputId} className="text-sm font-medium">{label}</label>
     {manual ? <>
-      <Input id={inputId + '-manual'} maxLength={500} value={value.name} aria-describedby={inputId + '-help'} placeholder={manualPlaceholder} onChange={event => onChange({ id: null, name: event.target.value })} />
+      <Input autoFocus id={inputId + '-manual'} maxLength={500} value={manualDraft} aria-describedby={inputId + '-help'} placeholder={manualPlaceholder} onChange={event => {setManualDraft(event.target.value);setManualError('')}}
+        onKeyDown={event=>{if(event.key==='Enter'){event.preventDefault();confirmManual()}if(event.key==='Escape'){event.preventDefault();event.stopPropagation();cancelManual()}}} />
       <p id={inputId + '-help'} className="text-xs text-muted-foreground">Informação manual, sem associação ao catálogo oficial.</p>
-      <Button type="button" size="sm" variant="outline" onClick={() => { clear(); setOpen(true) }}>Pesquisar no catálogo</Button>
+      {value.name&&<p className="break-words text-xs text-muted-foreground">Seleção atual mantida até confirmar: {value.name}</p>}
+      {manualError&&<p role="alert" className="text-xs text-destructive">{manualError}</p>}
+      <div className="flex flex-wrap gap-2"><Button type="button" size="sm" onClick={confirmManual}>Confirmar</Button>
+        <Button type="button" size="sm" variant="outline" onClick={()=>{setManual(false);setQuery(manualDraft);setOpen(true);setManualError('')}}>Voltar à pesquisa</Button>
+        <Button type="button" size="sm" variant="ghost" onClick={cancelManual}>Cancelar</Button></div>
     </> : <>
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-2.5 size-4 text-muted-foreground" aria-hidden />
@@ -87,7 +99,7 @@ export function CatalogPicker({ id, label, value, onChange, search, placeholder,
           }} />
         <ChevronDown className="pointer-events-none absolute right-3 top-2.5 size-4 text-muted-foreground" aria-hidden />
       </div>
-      <p id={inputId + '-help'} className="text-xs text-muted-foreground">{value.id ? selectedHelp : 'Opcional. Digite pelo menos 2 caracteres e selecione um resultado.'}</p>
+      <p id={inputId + '-help'} className="text-xs text-muted-foreground">{value.id ? selectedHelp : value.name ? 'Nome informado manualmente, sem associação ao catálogo oficial.' : 'Digite pelo menos 2 caracteres e selecione um resultado.'}</p>
       {open && position && createPortal(<div ref={popup} style={position} className="fixed z-[80] overflow-y-auto rounded-xl border bg-popover p-1 text-popover-foreground shadow-xl">
         {query.trim().length < 2 ? <p className="p-3 text-sm text-muted-foreground">Digite pelo menos 2 caracteres.</p>
           : loading ? <p role="status" className="p-3 text-sm">{loadingText}</p>
@@ -101,11 +113,10 @@ export function CatalogPicker({ id, label, value, onChange, search, placeholder,
             </li>)}</ul>
           </>}
         <Button type="button" variant="ghost" className="min-h-11 h-auto w-full justify-start whitespace-normal text-left" onMouseDown={event => event.preventDefault()} onClick={() => {
-          const name = query === value.name && value.id ? '' : query
-          setManual(true); onChange({ id: null, name }); setOpen(false)
+          setManualDraft(query);setManualError('');setManual(true);setOpen(false)
         }}>{manualAction}</Button>
       </div>, root.current?.closest('dialog') ?? document.body)}
     </>}
-    {(value.id || value.name || manual) && <Button type="button" variant="ghost" size="sm" className="min-h-9" onClick={clear}><X className="size-3.5" aria-hidden />{clearAction}</Button>}
+    {!manual&&(value.id || value.name) && <Button type="button" variant="ghost" size="sm" className="min-h-9" onClick={clear}><X className="size-3.5" aria-hidden />{clearAction}</Button>}
   </div>
 }

@@ -10,6 +10,7 @@ import { PresenceLabel } from '@/components/profile/friendships'
 import type { ProfileRow } from '@/types/database'
 import type { ProjectDisplay } from '@/lib/projects/display'
 import type { SocialSummary } from '@/lib/profile-social'
+import { educationLabels,educationStatus } from '@/lib/education'
 
 export function ProfileHeading({ profile, projects, projectCount, social, own, children, editHref = '/perfil/editar' }: {
   profile: ProfileRow
@@ -27,7 +28,7 @@ export function ProfileHeading({ profile, projects, projectCount, social, own, c
   const preview = useRef<HTMLDialogElement>(null)
   useEffect(() => () => { if (card) URL.revokeObjectURL(card) }, [card])
   const name = profile.full_name?.trim() || 'Estudante Team Link'
-  const academic = [profile.course, profile.university].filter(Boolean).join(' · ')
+  const academic = profile.course&&profile.university?[profile.course,profile.university].join(' · '):''
   const publicUrl = () => new URL('/usuarios/' + profile.id, window.location.origin).href
 
   async function share() {
@@ -62,7 +63,7 @@ export function ProfileHeading({ profile, projects, projectCount, social, own, c
       <div className="min-w-0 flex-1 space-y-2">
         <p className="text-xs font-semibold uppercase tracking-widest text-primary">{own ? 'Seu perfil' : 'Perfil acadêmico'}</p>
         <h1 className="break-words text-2xl font-bold sm:text-3xl">{name}</h1>
-        {academic && <p className="break-words text-sm text-muted-foreground">{academic}</p>}
+        {profile.educations?.length?<section className="space-y-2" aria-label="Formação acadêmica"><h2 className="text-sm font-semibold">Formação acadêmica</h2><ul className="grid gap-2 sm:grid-cols-2">{profile.educations.map(row=>{const names=educationLabels(row);return <li key={row.id} className="min-w-0 rounded-xl border bg-background/40 p-3 text-sm"><p className="break-words font-medium">{names.course}</p><p className="break-words text-muted-foreground">{names.institution}{names.acronym?' — '+names.acronym:''}</p><p className="mt-1 text-xs text-muted-foreground">{educationStatus(row.cursando_atualmente)}</p></li>})}</ul></section>:academic&&<p className="break-words text-sm text-muted-foreground">{academic}</p>}
         {profile.bio && <p className="whitespace-pre-line break-words text-sm leading-relaxed">{profile.bio}</p>}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
           {social && <span><strong className="text-foreground">{social.count}</strong> {social.count === 1 ? 'amigo' : 'amigos'}</span>}

@@ -31,7 +31,7 @@ export function PublicProfileClient({ userId }: { userId: string }) {
       try {
         const client = getSupabaseClient()
         const [profile, projects] = await Promise.all([
-          client.from('profiles').select(PROFILE_FIELDS).eq('id', userId).maybeSingle(),
+          client.from('profiles').select(PROFILE_FIELDS).eq('id', userId).returns<ProfileRow[]>().maybeSingle(),
           loadProfileProjects(userId),
         ])
         if (profile.error) throw new Error('Falha na consulta.')
