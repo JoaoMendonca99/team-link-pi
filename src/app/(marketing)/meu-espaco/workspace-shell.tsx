@@ -69,7 +69,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
   if (!user) return <div className="space-y-4 p-8"><h1 className="text-2xl font-bold">Entre para acessar Meu Espaço</h1><Button asChild><Link href={'/login?next=' + encodeURIComponent(pathname)}>Entrar</Link></Button></div>
   const messages = pathname === '/meu-espaco/mensagens'
   return <Cache.Provider value={cache.current}><div style={{'--workspace-sidebar-width':collapsed?'72px':'240px'} as React.CSSProperties} className="mx-auto grid w-full min-w-0 max-w-[1600px] motion-safe:transition-[grid-template-columns] motion-safe:duration-150 lg:grid-cols-[var(--workspace-sidebar-width)_minmax(0,1fr)]">
-    <aside id="workspace-sidebar" aria-label="Menu lateral do Meu Espaço" className={'sticky top-[var(--site-header-height)] hidden h-[calc(100dvh-var(--site-header-height))] min-w-0 self-start overflow-y-auto overscroll-contain border-r border-border bg-card/40 lg:flex lg:flex-col '+(collapsed?'p-2':'p-3')}>
+    <aside id="workspace-sidebar" aria-label="Menu lateral do Meu Espaço" className={'sticky top-[var(--site-header-height)] hidden h-[calc(100dvh-var(--site-header-height))] min-w-0 self-start workspace-scroll overflow-y-auto overscroll-contain border-r border-border bg-card/40 lg:flex lg:flex-col '+(collapsed?'p-2':'p-3')}>
      <div className={'mb-3 flex items-center '+(collapsed?'justify-center':'justify-between gap-2 px-2')}>
       {!collapsed&&<p className="text-base font-bold">Meu Espaço</p>}
       <Button type="button" variant="ghost" size="icon" className="shrink-0" title={collapsed?'Expandir menu lateral':'Recolher menu lateral'} aria-label={collapsed?'Expandir menu lateral':'Recolher menu lateral'} aria-expanded={!collapsed} aria-controls="workspace-sidebar" onClick={()=>setCollapsed(!collapsed)}>{collapsed?<PanelLeftOpen className="size-4" aria-hidden/>:<PanelLeftClose className="size-4" aria-hidden/>}</Button>
@@ -82,7 +82,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
     </div>
     <dialog ref={dialog} id="workspace-navigation" aria-label="Navegação do Meu Espaço" onCancel={event => { event.preventDefault(); setOpen(false) }} onClick={event => {
       if (event.target === event.currentTarget) { const bounds = event.currentTarget.getBoundingClientRect(); if (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom) setOpen(false) }
-    }} className="fixed inset-y-0 left-0 right-auto m-0 h-dvh max-h-dvh w-[min(280px,90vw)] max-w-none overflow-y-auto border-r border-border bg-card p-4 text-card-foreground shadow-xl backdrop:bg-black/60">
+    }} className="fixed inset-y-0 left-0 right-auto m-0 h-dvh max-h-dvh w-[min(280px,90vw)] max-w-none workspace-scroll overflow-y-auto border-r border-border bg-card p-4 text-card-foreground shadow-xl backdrop:bg-black/60">
       <div className="mb-6 flex items-center justify-between gap-3"><strong>Meu Espaço</strong><Button size="icon" variant="ghost" aria-label="Fechar navegação do Meu Espaço" onClick={() => setOpen(false)}><X aria-hidden /></Button></div><div className="flex min-h-[calc(100dvh-104px)] flex-col"><WorkspaceNavigation {...navProps} mobile onProjects={()=>toggleProjects(true)} close={() => setOpen(false)} /></div>
     </dialog>
   </div></Cache.Provider>

@@ -8,6 +8,8 @@ import {
 } from '@supabase/supabase-js'
 import { Loader2 } from 'lucide-react'
 
+import {ActivityDetailsDialog} from '@/components/activities/activity-details-dialog'
+import {CHAT_DIRECTORY_CHANGED} from '@/lib/chat/unified'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/team-link/page-header'
 import {
@@ -55,6 +57,7 @@ export function MessagesClient({ active = true, requestedProject, requestedConve
   // Estado base
   // ---------------------------------------------------------------------------
 
+  const [activityTask,setActivityTask]=useState<string|null>(null)
   const [supabaseReady, setSupabaseReady] = useState(false)
 
   useEffect(() => {
@@ -593,6 +596,7 @@ export function MessagesClient({ active = true, requestedProject, requestedConve
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-background text-foreground">
+      {activityTask&&selectedProjectId&&user&&<ActivityDetailsDialog initialSection="discussion" key={activityTask} taskId={activityTask} projectId={selectedProjectId} userId={user.id} close={()=>setActivityTask(null)} onChanged={()=>window.dispatchEvent(new Event(CHAT_DIRECTORY_CHANGED))}/>}
       {readOnly&&<p className="border-b p-3 text-sm font-medium">Projeto finalizado — somente leitura</p>}
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden @min-[1000px]/chat:flex-row">
         {!hideProjectList&&<ProjectsRail
@@ -608,7 +612,7 @@ export function MessagesClient({ active = true, requestedProject, requestedConve
           )}
         />}
 
-        <ConversationsRail readOnly={readOnly}
+        <ConversationsRail readOnly={readOnly} activities={selectedProject?.activities} onActivity={setActivityTask}
           projectTitle={selectedProject?.title ?? 'Projeto'}
           conversations={readOnly?conversations.map(c=>({...c,can_delete:false})):conversations}
           selectedConversationId={selectedConversationId}

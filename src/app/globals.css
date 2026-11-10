@@ -234,6 +234,10 @@ html {
   @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-background;
 }
 
+/* Reserve the vertical gutter on both sidebar scroll areas, including browsers without gutter support. */
+.workspace-scroll { scrollbar-gutter: stable; }
+@supports not (scrollbar-gutter: stable) { .workspace-scroll { overflow-y: scroll; } }
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;

@@ -75,6 +75,7 @@ function asString(value: unknown): string | null {
 // =============================================================================
 
 interface RpcProjectRow {
+  activities?:import('./types').ActivityDiscussionSummary[]
   search_terms?:string[]
   id?: string | null
   project_id?: string | null
@@ -92,6 +93,7 @@ function mapRpcProject(row: RpcProjectRow): ChatProjectListItem {
   return {
     id,
     searchTerms:row.search_terms??[],
+    activities:row.activities??[],
     title,
     lastMessageContent: row.last_message_content ?? row.last_message ?? null,
     lastMessageAt: row.last_message_at ?? null,

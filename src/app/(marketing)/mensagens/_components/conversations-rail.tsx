@@ -12,6 +12,11 @@ import {
   X,
 } from 'lucide-react'
 
+import {useState} from 'react'
+import {Input} from '@/components/ui/input'
+import {ActivityDiscussions} from '@/components/chat/activity-discussions'
+import {normalizeChatSearch} from '@/lib/chat/unified'
+import type {ActivityDiscussionSummary} from '@/lib/chat/types'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -31,6 +36,7 @@ function initialsOf(value: string): string {
 }
 
 export function ConversationsRail({
+  activities=[],onActivity,
   readOnly=false,
   projectTitle,
   conversations,
@@ -47,6 +53,7 @@ export function ConversationsRail({
   /** Quando false, não renderiza badges de não lidas por conversa. */
   showUnreadBadges = false,
 }: {
+  activities?:ActivityDiscussionSummary[];onActivity:(id:string)=>void
   readOnly?:boolean
   projectTitle: string
   conversations: ChatConversationListItem[]
@@ -63,6 +70,8 @@ export function ConversationsRail({
   className?: string
   showUnreadBadges?: boolean
 }) {
+  const [search,setSearch]=useState(''),query=normalizeChatSearch(search.trim())
+  conversations=conversations.filter(c=>normalizeChatSearch(c.title??'Geral').includes(query))
   const general = conversations.find((conversation) => conversation.kind === 'general')
   const groups = conversations.filter((conversation) => conversation.kind === 'group')
 
@@ -124,6 +133,7 @@ export function ConversationsRail({
             Novo grupo
           </Button>
         </div>
+        <Input type="search" aria-label="Buscar conversas do projeto" placeholder="Buscar conversas do projeto..." value={search} onChange={e=>setSearch(e.target.value)} className="mt-3"/>
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -181,6 +191,7 @@ export function ConversationsRail({
                 />
               </li>
             ))}
+            {!readOnly&&<ActivityDiscussions items={activities} query={query} onOpen={onActivity}/>}
           </ul>
         )}
       </div>

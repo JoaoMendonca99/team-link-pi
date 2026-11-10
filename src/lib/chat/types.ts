@@ -17,6 +17,7 @@ export interface ChatProjectListItem {
   id: string
   readOnly?: boolean
   searchTerms?:string[]
+  activities?:ActivityDiscussionSummary[]
   title: string
   /** Última mensagem visível em qualquer conversa do projeto. */
   lastMessageContent?: string | null
@@ -24,6 +25,8 @@ export interface ChatProjectListItem {
   /** Total de mensagens ainda não lidas pelo usuário neste projeto. */
   unreadCount?: number
 }
+
+export type ActivityDiscussionSummary={id:string;project_id:string;title:string;kind:'todo'|'doing';preview:string;author_name:string|null;last_message_at:string;unread_count:number}
 
 /** Item da lista de conversas de um projeto (coluna do meio). */
 export interface ChatConversationListItem {

@@ -10,15 +10,18 @@ import {getSupabaseClient} from '@/lib/supabase/client'
 import {lockDialogScroll} from '@/lib/dialog-scroll-lock'
 import {activityDate,activityRpc,historyLabels,overdue,priorities} from '@/lib/activities'
 import {activityUuid,contextualStage,type ActivityContext} from '@/lib/activity-details'
+import {ActivityProfileLink} from './activity-profile-link'
 import {ActivityForm} from './activity-form'
 import {ActivityComposer} from './activity-attachments'
 import {ActivityDiscussionFeed} from './activity-discussion-feed'
+import {CHAT_DIRECTORY_CHANGED} from '@/lib/chat/unified'
 
-type Props={taskId:string;projectId?:string;slug?:string;userId:string;close:()=>void;onChanged:()=>void;historicalEdit?:boolean;requestTransfer?:()=>void}
-export function ActivityDetailsDialog({taskId,projectId,slug,userId,close,onChanged,historicalEdit=false,requestTransfer}:Props){
+type Props={initialSection?:'details'|'discussion';taskId:string;projectId?:string;slug?:string;userId:string;close:()=>void;onChanged:()=>void;historicalEdit?:boolean;requestTransfer?:()=>void}
+export function ActivityDetailsDialog({initialSection='details',taskId,projectId,slug,userId,close,onChanged,historicalEdit=false,requestTransfer}:Props){
  const dialog=useRef<HTMLDialogElement>(null),messages=useRef<HTMLDivElement>(null),nearBottom=useRef(true),forceBottom=useRef(true),initial=useRef(true),operation=useRef(false),request=useRef(0)
+ const readEnd=useRef<HTMLSpanElement>(null),lastRead=useRef(new Map<string,number>())
  const [data,setData]=useState<ActivityContext>(),[loading,setLoading]=useState(true),[loadError,setLoadError]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false)
- const [tab,setTab]=useState<'details'|'discussion'>('details'),[editing,setEditing]=useState(false),[editDirty,setEditDirty]=useState(false),[historical,setHistorical]=useState(historicalEdit)
+ const [tab,setTab]=useState<'details'|'discussion'>(initialSection),[editing,setEditing]=useState(false),[editDirty,setEditDirty]=useState(false),[historical,setHistorical]=useState(historicalEdit)
  const [draftDirty,setDraftDirty]=useState(false),[reply,setReply]=useState<{id:string;body:string}>(),[check,setCheck]=useState(''),[reason,setReason]=useState(''),[deleting,setDeleting]=useState(false),[discard,setDiscard]=useState<'close'|'edit'|'transfer'|null>(null),[newMessages,setNewMessages]=useState(false)
  const [editingItem,setEditingItem]=useState<{id:string;label:string;version:number}|null>(null)
  const dirty=Boolean(draftDirty||reason.trim()||check.trim()||editDirty||editingItem)
@@ -47,6 +50,16 @@ export function ActivityDetailsDialog({taskId,projectId,slug,userId,close,onChan
  useEffect(()=>{const previous=document.activeElement as HTMLElement|null,element=dialog.current;element?.showModal();const unlock=lockDialogScroll();return()=>{element?.close();unlock();if(previous?.isConnected)previous.focus({preventScroll:true})}},[])
  useEffect(()=>{if(!dirty)return;const protect=(e:BeforeUnloadEvent)=>{e.preventDefault();e.returnValue=''};window.addEventListener('beforeunload',protect);return()=>window.removeEventListener('beforeunload',protect)},[dirty])
  const latest=(data?.details.comments.at(-1)?.id??'')+':'+(data?.details.history.at(-1)?.id??'')
+ const through=data?.details.comments.reduce((max,c)=>Math.max(max,c.discussion_sequence??0),0)??0
+ useEffect(()=>{
+  const end=readEnd.current,root=messages.current,key=userId+':'+taskId;if(!through||!end||!root)return
+  let visible=false,alive=true,pending=false
+  const mark=()=>{if(!alive||!visible||document.hidden||pending||through<=(lastRead.current.get(key)??0))return;pending=true
+   void activityRpc<boolean>('mark_activity_discussion_read',{p_task:taskId,p_through:through}).then(changed=>{if(!alive)return;lastRead.current.set(key,Math.max(lastRead.current.get(key)??0,through));if(changed)window.dispatchEvent(new Event(CHAT_DIRECTORY_CHANGED))}).catch(()=>{}).finally(()=>{pending=false})}
+  const observer=new IntersectionObserver(entries=>{visible=Boolean(entries[0]?.isIntersecting);mark()},{root,threshold:1});observer.observe(end)
+  document.addEventListener('visibilitychange',mark);window.addEventListener('focus',mark)
+  return()=>{alive=false;observer.disconnect();document.removeEventListener('visibilitychange',mark);window.removeEventListener('focus',mark)}
+ },[through,taskId,tab,userId])
  useEffect(()=>{if(!latest)return;const element=messages.current;if(!element||!element.clientHeight)return;if(initial.current||forceBottom.current||nearBottom.current){element.scrollTop=element.scrollHeight;initial.current=false;forceBottom.current=false;setNewMessages(false)}else setNewMessages(true)},[latest,tab])
  const task=data?.tasks[0],stage=task&&data?.stages.find(s=>s.id===task.stage_id),period=data?.periods[0]
  const writable=Boolean(data&&!data.projectReadOnly&&(!data.readOnly||data.manager&&historical)),canMove=writable&&data?.permissions.move,canReview=writable&&data?.permissions.review,canCheck=writable&&data?.permissions.check,canPlan=writable&&data?.manager
@@ -62,7 +75,7 @@ export function ActivityDetailsDialog({taskId,projectId,slug,userId,close,onChan
  const input=task?{id:task.id,version:task.version}:{}
  const next=task&&contextualStage(task,stage?.kind),nextStages=next?data?.stages.filter(s=>s.kind===next.kind)??[]:[]
  const checklist=data?.checklist??[]
- function participant(id:string){const person=data?.members.find(p=>p.id===id);return <div key={id} className="flex min-w-0 items-center gap-2"><UserAvatar name={person?.name||'Integrante indisponível'} imageUrl={person?.avatar??undefined} sizeClassName="size-8"/><span className="min-w-0 break-words text-sm">{person?.name||'Integrante indisponível'}</span></div>}
+ function participant(id:string){const person=data?.members.find(p=>p.id===id);return <ActivityProfileLink key={id} id={person?.id} name={person?.name||'Integrante indisponível'} className="min-w-0 gap-2"><UserAvatar name={person?.name||'Integrante indisponível'} imageUrl={person?.avatar??undefined} sizeClassName="size-8"/><span className="min-w-0 break-words text-sm">{person?.name||'Integrante indisponível'}</span></ActivityProfileLink>}
  return <dialog ref={dialog} aria-label={task?.title||'Carregando atividade'} onCancel={event=>{event.preventDefault();attemptClose()}} className="fixed inset-0 m-auto h-[92dvh] max-h-[960px] w-[calc(100%_-_1rem)] max-w-6xl overflow-hidden rounded-2xl border border-card-outline bg-card p-0 text-card-foreground shadow-xl backdrop:bg-black/70">
   <div className="flex h-full min-h-0 min-w-0 flex-col">
    <header className="flex shrink-0 items-start justify-between gap-3 border-b border-border p-4 sm:px-6"><div className="min-w-0 space-y-1"><h2 className="break-words text-lg font-semibold sm:text-xl">{task?.title||'Atividade'}</h2>{data&&task&&<><p className="break-words text-xs text-muted-foreground">{data.project.title} · {period?.name||'Período não informado'}</p><p className={'text-xs '+(overdue(task.due_at,stage?.kind==='done')?'text-destructive':'text-muted-foreground')}>{stage?.name} · Prioridade {priorities[task.priority].toLocaleLowerCase('pt-BR')} · {activityDate(task.due_at)}</p></>}</div><Button type="button" variant="ghost" size="icon" disabled={busy} aria-label="Fechar atividade" onClick={attemptClose}><X aria-hidden/></Button></header>
@@ -75,6 +88,7 @@ export function ActivityDetailsDialog({taskId,projectId,slug,userId,close,onChan
       <h3 className="hidden shrink-0 border-b px-4 py-3 font-semibold lg:block">Discussão</h3>
       <div ref={messages} onScroll={event=>{const e=event.currentTarget;nearBottom.current=e.scrollHeight-e.scrollTop-e.clientHeight<70;if(nearBottom.current)setNewMessages(false)}} role="log" aria-label="Mensagens da atividade" aria-live="polite" aria-relevant="additions" className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-4">
        <ActivityDiscussionFeed details={data.details} userId={userId} canReply={writable&&data.permissions.comment} onReply={entry=>setReply({id:entry.id,body:entry.body})}/>
+       <span ref={readEnd} aria-hidden className="block h-px"/>
       </div>
       {newMessages&&<Button variant="ghost" size="sm" onClick={()=>{if(messages.current)messages.current.scrollTop=messages.current.scrollHeight;setNewMessages(false)}}>Ver mensagens recentes</Button>}
       {writable&&data.permissions.comment?<ActivityComposer taskId={task.id} replyTo={reply} historical={historical} onDirty={setDraftDirty} cancelReply={()=>setReply(undefined)} onSent={async()=>{forceBottom.current=true;await load();onChanged()}}/>:<p className="shrink-0 border-t p-3 text-xs text-muted-foreground">Discussão disponível para consulta. Você não pode enviar mensagens nesta atividade.</p>}
@@ -84,7 +98,7 @@ export function ActivityDetailsDialog({taskId,projectId,slug,userId,close,onChan
       {editing?<ActivityForm data={{...data,readOnly:!writable}} task={task} busy={busy} onDirty={setEditDirty} cancel={()=>{if(editDirty)setDiscard('edit');else setEditing(false)}} save={async values=>{await perform('save_task',values,()=>{setEditing(false);setEditDirty(false)})}}/>:<>
        <section className="space-y-2"><h3 className="font-semibold">Descrição</h3><p className="whitespace-pre-wrap break-words text-sm [overflow-wrap:anywhere]">{task.description||'Sem descrição.'}</p></section>
        <section className="space-y-2"><h3 className="font-semibold">Responsáveis pela execução</h3><div className="grid gap-2 sm:grid-cols-2">{task.assignees.map(participant)}</div>{!task.assignees.length&&<p className="text-sm text-muted-foreground">Nenhum responsável designado.</p>}</section>
-       {data.assigned_by&&<section className="space-y-2"><h3 className="text-sm font-semibold">Designada por</h3><div className="flex items-center gap-2"><UserAvatar name={data.assigned_by.name||'Usuário indisponível'} imageUrl={data.assigned_by.avatar??undefined} sizeClassName="size-7"/><span className="break-words text-sm">{data.assigned_by.name||'Usuário indisponível'}</span></div></section>}
+       {data.assigned_by&&<section className="space-y-2"><h3 className="text-sm font-semibold">Designada por</h3><ActivityProfileLink id={data.assigned_by.id} name={data.assigned_by.name||'Usuário indisponível'} className="gap-2"><UserAvatar name={data.assigned_by.name||'Usuário indisponível'} imageUrl={data.assigned_by.avatar??undefined} sizeClassName="size-7"/><span className="break-words text-sm">{data.assigned_by.name||'Usuário indisponível'}</span></ActivityProfileLink></section>}
        <section className="space-y-2"><h3 className="text-sm font-semibold">Revisor</h3>{task.reviewer_id?participant(task.reviewer_id):<p className="text-sm text-muted-foreground">Administradores do projeto</p>}{task.requires_review&&<p className="text-xs text-muted-foreground">Revisão obrigatória antes da conclusão.</p>}</section>
        <section className="space-y-3 rounded-xl border p-3"><h3 className="font-semibold">Etapa atual · {stage?.name}</h3><div className="flex flex-wrap gap-2">
         {canMove&&next&&nextStages.map((s,index)=><Button key={s.id} variant={index===0?'default':'outline'} disabled={busy} onClick={()=>run('move',{...input,stage_id:s.id})}>{next.label}{nextStages.length>1?' · '+s.name:''}</Button>)}

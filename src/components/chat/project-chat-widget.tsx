@@ -38,6 +38,10 @@ import { useProjectPresence } from '@/hooks/use-project-presence'
 import { useProjectChatRead } from "@/hooks/use-project-chat-read"
 import { useSupabaseSession } from "@/hooks/use-supabase-session"
 import { loadProjectConversations } from "@/lib/chat/loaders"
+import {ActivityDetailsDialog} from '@/components/activities/activity-details-dialog'
+import {ActivityDiscussions} from '@/components/chat/activity-discussions'
+import type {ActivityDiscussionSummary} from '@/lib/chat/types'
+import {CHAT_DIRECTORY_CHANGED} from '@/lib/chat/unified'
 import {useChatProjects} from '@/hooks/use-chat-projects'
 import type {ChatProjectListItem} from '@/lib/chat/types'
 import { profileRpc } from "@/lib/profile-social"
@@ -96,6 +100,7 @@ function ChatWidget({ session }: { session: ReturnType<typeof useSupabaseSession
   const { isAuthenticated, user, profile, loading: sessionLoading } = session
 
   const [mounted, setMounted] = React.useState(false)
+  const [activityTask,setActivityTask]=React.useState<string|null>(null)
   const [open, setOpen] = React.useState(false)
   const [view, setView] = React.useState<View>("projects")
   const [tab, setTab] = React.useState<"friends" | "projects">("friends")
@@ -845,7 +850,7 @@ function ChatWidget({ session }: { session: ReturnType<typeof useSupabaseSession
   React.useEffect(()=>{if(open){setPresent(true);return}const delay=matchMedia('(prefers-reduced-motion: reduce)').matches?0:200;const timer=window.setTimeout(()=>setPresent(false),delay);return()=>window.clearTimeout(timer)},[open])
   React.useEffect(()=>{if(open&&present)panelRef.current?.focus({preventScroll:true})},[open,present])
   React.useEffect(()=>{const vv=window.visualViewport;if(!vv)return;const update=()=>setViewport({height:Math.max(80,vv.height-32),bottom:Math.max(16,innerHeight-vv.height-vv.offsetTop+16)});update();vv.addEventListener('resize',update);vv.addEventListener('scroll',update);return()=>{vv.removeEventListener('resize',update);vv.removeEventListener('scroll',update)}},[])
-  React.useEffect(()=>{if(!open)return;const outside=(event:PointerEvent)=>{const node=event.target;if(!(node instanceof Element)||panelRef.current?.contains(node)||node.closest('[data-chat-owned]'))return;restoreFocus.current=false;setOpen(false)};const escape=(event:KeyboardEvent)=>{if(event.key!=='Escape'||event.defaultPrevented||document.querySelector('[data-chat-owned][data-state="open"]'))return;event.preventDefault();if(confirmDelete){if(!deletingGroup)setConfirmDelete(null)}else if(view==='create-group')setView('conversations');else if(view==='members')setView('thread');else{restoreFocus.current=true;setOpen(false)}};document.addEventListener('pointerdown',outside);document.addEventListener('keydown',escape);return()=>{document.removeEventListener('pointerdown',outside);document.removeEventListener('keydown',escape)}},[open,confirmDelete,deletingGroup,view])
+  React.useEffect(()=>{if(!open||activityTask)return;const outside=(event:PointerEvent)=>{const node=event.target;if(!(node instanceof Element)||panelRef.current?.contains(node)||node.closest('[data-chat-owned]'))return;restoreFocus.current=false;setOpen(false)};const escape=(event:KeyboardEvent)=>{if(event.key!=='Escape'||event.defaultPrevented||document.querySelector('[data-chat-owned][data-state="open"]'))return;event.preventDefault();if(confirmDelete){if(!deletingGroup)setConfirmDelete(null)}else if(view==='create-group')setView('conversations');else if(view==='members')setView('thread');else{restoreFocus.current=true;setOpen(false)}};document.addEventListener('pointerdown',outside);document.addEventListener('keydown',escape);return()=>{document.removeEventListener('pointerdown',outside);document.removeEventListener('keydown',escape)}},[open,confirmDelete,deletingGroup,view,activityTask])
   React.useEffect(()=>{if(selectedProject&&!projectsLoading&&!projectsError&&!projects.some(p=>p.id===selectedProject.id)){setSelectedProject(null);setSelectedConversation(null);setView('projects');setTab('friends');setMessages([])}},[projects,projectsLoading,projectsError,selectedProject])
 
   if (!mounted) return null
@@ -990,6 +995,7 @@ function ChatWidget({ session }: { session: ReturnType<typeof useSupabaseSession
       {tab === "projects" && !home && <div className="flex min-h-0 flex-1 flex-col">
         {view === "conversations" ? (
           <ConversationsListView
+            activities={projects.find(p=>p.id===selectedProject?.id)?.activities??[]} activityQuery={query} onActivity={setActivityTask}
             loading={conversationsLoading}
             error={conversationsError}
             conversations={conversations.filter((conversation) => chatSearch(conversationLabel(conversation)).includes(query))}
@@ -1061,6 +1067,7 @@ function ChatWidget({ session }: { session: ReturnType<typeof useSupabaseSession
         ) : null}
       </div>}
 
+      {activityTask&&selectedProject&&user&&<ActivityDetailsDialog initialSection="discussion" key={activityTask} taskId={activityTask} projectId={selectedProject.id} userId={user.id} close={()=>setActivityTask(null)} onChanged={()=>window.dispatchEvent(new Event(CHAT_DIRECTORY_CHANGED))}/>}
       {tab === "projects" && confirmDelete ? (
         <ConfirmDeleteOverlay
           conversation={confirmDelete}
@@ -1101,6 +1108,7 @@ function conversationLabel(conversation: ProjectConversationRow | null): string 
 
 
 interface ConversationsListViewProps {
+  activities:ActivityDiscussionSummary[];activityQuery:string;onActivity:(id:string)=>void
   loading: boolean
   error: string | null
   conversations: ProjectConversationRow[]
@@ -1115,6 +1123,7 @@ interface ConversationsListViewProps {
 }
 
 function ConversationsListView({
+  activities,activityQuery,onActivity,
   loading,
   error,
   conversations,
@@ -1258,6 +1267,7 @@ function ConversationsListView({
             </li>
           )
         })}
+        <ActivityDiscussions items={activities} query={activityQuery} onOpen={onActivity}/>
       </ul>
     </div>
   )
