@@ -14,7 +14,7 @@ export function FormSection({
   return (
     <section
       className={cn(
-        "rounded-3xl border border-card-outline bg-card/80 p-6 shadow-lg backdrop-blur-sm",
+        "rounded-2xl border border-card-outline bg-card p-4 sm:p-6",
         className,
       )}
     >

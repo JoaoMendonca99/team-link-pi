@@ -90,9 +90,9 @@ function SignupOrientationPanel({ step }: { step: SignupStep }) {
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">
               Etapa 1 de 2
             </p>
-            <h1 className="text-balance text-2xl font-bold leading-tight sm:text-[1.65rem] lg:text-3xl">
+            <h2 className="text-balance text-2xl font-bold leading-tight sm:text-[1.65rem] lg:text-3xl">
               Crie sua conta no Team Link
-            </h1>
+            </h2>
             <p className="text-sm leading-relaxed text-muted-foreground">
               Primeiro informe seus dados de acesso. Depois você pode completar seu perfil acadêmico com
               formações, habilidades e áreas de interesse, se desejar.
@@ -131,9 +131,9 @@ function SignupOrientationPanel({ step }: { step: SignupStep }) {
           <p className="text-xs font-semibold uppercase tracking-[0.3em] text-primary">
             Etapa 2 de 2
           </p>
-          <h1 className="text-balance text-2xl font-bold leading-tight sm:text-[1.65rem] lg:text-3xl">
+          <h2 className="text-balance text-2xl font-bold leading-tight sm:text-[1.65rem] lg:text-3xl">
             Complete seu perfil acadêmico
-          </h1>
+          </h2>
           <p className="text-sm leading-relaxed text-muted-foreground">
             Se desejar, adicione formações completas, habilidades e áreas de interesse.
           </p>
@@ -334,9 +334,9 @@ export default function CadastroPage() {
   return (
     <div className="bg-gradient-to-b from-muted/50 via-background to-background py-12 sm:py-14">
       <Container className="grid items-stretch gap-6 md:grid-cols-2 md:gap-8 lg:gap-10">
-        <SignupOrientationPanel step={step} />
+        <div className="order-2 md:order-1"><SignupOrientationPanel step={step} /></div>
 
-        <div className="flex min-h-0 w-full min-w-0 flex-col">
+        <div className="order-1 flex min-h-0 w-full min-w-0 flex-col md:order-2">
         <AuthCard
           eyebrow={step === 1 ? 'Cadastro' : 'Perfil'}
           title={step === 1 ? 'Criar conta' : 'Completar perfil'}

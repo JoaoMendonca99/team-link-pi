@@ -34,6 +34,7 @@
   --color-secondary: var(--secondary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary: var(--primary);
+  --color-link: var(--link);
   --color-popover-foreground: var(--popover-foreground);
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
@@ -263,6 +264,25 @@ html {
 .chat-floating-panel[data-chat-state="closed"]{animation:chat-panel-out 200ms ease-in forwards;pointer-events:none}
 @media(prefers-reduced-motion:reduce){.chat-floating-panel{animation:none!important}}
 
+body:has(dialog[open], [role="dialog"][aria-modal="true"]:not(dialog)) [data-chat-launcher] { visibility:hidden; pointer-events:none; }
+@media (min-width:1024px) { body:has([data-chat-reservation]) .chat-safe-content { padding-right:5rem; padding-bottom:calc(5.5rem + env(safe-area-inset-bottom)); } }
+:root { --link: #1d4ed8; }
+.dark { --link: #60a5fa; }
+.dark :is(a, button).text-primary, .dark :is(a, button).hover\:text-primary:hover { color: var(--link); }
+/* Operational UI families: links are independent of solid primary fills. */
+@layer base {
+  :is(button, input, select, textarea) { scroll-margin-block: 6rem; }
+  :is(button, [role="button"]) { touch-action: manipulation; }
+}
+@layer components {
+  .workspace-filters { display:grid; gap:1rem; align-items:end; grid-template-columns:repeat(auto-fit,minmax(min(100%,12rem),1fr)); }
+  .workspace-filters label { display:flex; min-width:0; flex-direction:column; gap:.5rem; font-size:.875rem; }
+  .workspace-filters :is(input,select) { width:100%; min-width:0; min-height:2.75rem; margin-left:0; border-radius:.5rem; }
+}
+@media (pointer:coarse) {
+  [data-slot="button"] { min-height:44px; }
+  [data-slot="button"]:not(:has(span)):has(>svg:only-child) { min-width:44px; }
+}
 /* Light-only hero colors; layout, effects and the approved dark palette are untouched. */
 :root:not(.dark) .team-link-hero { background-color: #174caa; border-color: #c5d5ec; }
 :root:not(.dark) .team-link-hero-shade { background-image: linear-gradient(120deg, rgba(20,63,144,.9), rgba(29,88,188,.87)); }

@@ -113,6 +113,8 @@ function ChatWidget({ session }: { session: ReturnType<typeof useSupabaseSession
   const {projects,loading:projectsLoading,error:projectsError,load:loadProjects}=useChatProjects(user?.id,mounted&&isSupabaseConfigured())
   const [present,setPresent]=React.useState(false)
   const panelRef=React.useRef<HTMLDivElement>(null),launcherRef=React.useRef<HTMLButtonElement>(null),restoreFocus=React.useRef(false)
+  const [desktopLauncher,setDesktopLauncher]=React.useState(false)
+  React.useEffect(()=>{const media=matchMedia("(min-width:1024px)");const update=()=>setDesktopLauncher(media.matches);update();media.addEventListener("change",update);return()=>media.removeEventListener("change",update)},[])
   const [viewport,setViewport]=React.useState<{height:number;bottom:number}>()
 
   const [selectedProject, setSelectedProject] = React.useState<ChatProject | null>(null)
@@ -891,6 +893,7 @@ function ChatWidget({ session }: { session: ReturnType<typeof useSupabaseSession
   const home = !friendChatId && view === "projects"
   const launcher = !open&&!present ? (
     <button
+      data-chat-launcher
       ref={node=>{launcherRef.current=node;if(node&&restoreFocus.current){restoreFocus.current=false;node.focus({preventScroll:true})}}}
       type="button"
       onClick={() => setOpen(true)}
@@ -898,7 +901,7 @@ function ChatWidget({ session }: { session: ReturnType<typeof useSupabaseSession
       aria-expanded={open}
       aria-controls="project-chat-panel"
       className={cn(
-        "fixed bottom-4 right-4 z-[40] inline-flex h-14 w-14 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/40 md:bottom-6 md:right-6",
+        "relative h-11 w-11 lg:fixed lg:bottom-[max(1rem,env(safe-area-inset-bottom))] lg:right-[max(1rem,env(safe-area-inset-right))] z-[40] inline-flex lg:h-14 lg:w-14 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 motion-safe:transition-transform motion-safe:hover:scale-105 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-primary/40",
         open && "scale-95",
       )}
     >
@@ -1085,10 +1088,10 @@ function ChatWidget({ session }: { session: ReturnType<typeof useSupabaseSession
   ) : null
 
   return createPortal(
-    <>
+    <div data-chat-reservation className="contents">
       {panel}
-      {launcher}
-    </>,
+      {launcher && createPortal(launcher, desktopLauncher ? document.body : document.getElementById("chat-launcher-slot") ?? document.body)}
+    </div>,
     document.body,
   )
 }

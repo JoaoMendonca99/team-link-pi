@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { ArrowRight } from 'lucide-react'
 
 import {getSafeRedirectPath} from '@/lib/auth/redirect'
@@ -32,6 +32,8 @@ export function LoginClient() {
   const [submitting, setSubmitting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [envMissing, setEnvMissing] = useState(false)
+  const [fieldErrors, setFieldErrors] = useState<{email?:string;password?:string}>({})
+  const emailRef = useRef<HTMLInputElement>(null), passwordRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     setEnvMissing(!isSupabaseConfigured())
@@ -50,12 +52,13 @@ export function LoginClient() {
     setErrorMessage(null)
 
     const trimmedEmail = email.trim().toLowerCase()
-    if (!trimmedEmail) {
-      setErrorMessage('Informe seu e-mail.')
-      return
+    const errors = {
+      email: !trimmedEmail ? 'Informe seu e-mail.' : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail) ? 'Informe um e-mail válido.' : undefined,
+      password: !recovering && !password ? 'Informe sua senha.' : undefined,
     }
-    if (!recovering && !password) {
-      setErrorMessage('Informe sua senha.')
+    setFieldErrors(errors)
+    if (errors.email || errors.password) {
+      (errors.email ? emailRef : passwordRef).current?.focus()
       return
     }
 
@@ -109,7 +112,7 @@ export function LoginClient() {
       <Container className="relative z-10 grid min-w-0 gap-8 md:grid-cols-2 md:gap-12">
         <div className="order-2 space-y-5 text-balance rounded-[2rem] border border-white/60 bg-background/85 p-5 shadow-xl backdrop-blur-xl sm:space-y-6 sm:p-8 dark:bg-card/85 md:order-1">
           <p className="text-xs font-semibold uppercase tracking-[0.34em] text-primary">Acesso</p>
-          <h1 className="text-3xl font-bold sm:text-4xl md:text-[2.85rem]">Entre na sua conta Team Link.</h1>
+          <h2 className="text-3xl font-bold sm:text-4xl md:text-[2.85rem]">Entre na sua conta Team Link.</h2>
           <ul className="space-y-3 text-muted-foreground">
             <li>• Acompanhe e gerencie os projetos que você publicou.</li>
             <li>• Solicite participação em projetos compatíveis com suas habilidades.</li>
@@ -137,6 +140,7 @@ export function LoginClient() {
               onClick={() => {
                 setRecovering(!recovering)
                 setPassword('')
+                setFieldErrors({})
                 setErrorMessage(null)
                 setRecoveryRequested(false)
               }}
@@ -151,28 +155,34 @@ export function LoginClient() {
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
+                name="email" ref={emailRef} spellCheck={false}
+                aria-invalid={Boolean(fieldErrors.email)} aria-describedby={fieldErrors.email ? "email-error" : undefined}
                 type="email"
                 autoComplete="email"
                 value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                onChange={(event) => { setEmail(event.target.value); setFieldErrors(current=>({...current,email:undefined})) }}
                 placeholder="seu.email@exemplo.com"
                 className="rounded-2xl"
                 required
               />
+              {fieldErrors.email && <p id="email-error" className="text-sm text-destructive">{fieldErrors.email}</p>}
             </div>
             {!recovering ? (
               <div className="space-y-3">
                 <Label htmlFor="senha">Senha</Label>
                 <Input
                   id="senha"
+                  name="password" ref={passwordRef}
+                  aria-invalid={Boolean(fieldErrors.password)} aria-describedby={fieldErrors.password ? "password-error" : undefined}
                   type="password"
                   autoComplete="current-password"
                   value={password}
-                  onChange={(event) => setPassword(event.target.value)}
+                  onChange={(event) => { setPassword(event.target.value); setFieldErrors(current=>({...current,password:undefined})) }}
                   placeholder="••••••••"
                   className="rounded-2xl"
                   required
                 />
+                {fieldErrors.password && <p id="password-error" className="text-sm text-destructive">{fieldErrors.password}</p>}
               </div>
             ) : null}
 

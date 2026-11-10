@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import type { ReactNode } from "react"
-import { motion } from "framer-motion"
+import { motion, useReducedMotion } from "framer-motion"
 import { Heart, MessageCircle, Users } from "lucide-react"
 
 import { CategoryBadge } from "@/components/team-link/category-badge"
@@ -26,10 +26,11 @@ export function ProjectCard({
   disableLink?: boolean
   footer?: ReactNode
 }) {
+  const reducedMotion = useReducedMotion()
   const target = href ?? `/projetos/${project.slug}`
 
   const interactiveClasses =
-    "flex h-full flex-col rounded-[1.65rem] border border-card-outline bg-card p-6 shadow-sm outline-none ring-offset-background transition-shadow duration-200 ease-out hover:shadow-xl focus-visible:ring-[3px] focus-visible:ring-ring/55"
+    "flex flex-col rounded-[1.65rem] border border-card-outline bg-card p-6 shadow-sm outline-none ring-offset-background transition-shadow duration-200 ease-out hover:border-primary/50 focus-visible:ring-[3px] focus-visible:ring-ring/55"
 
   const createdAtLabel = (() => {
     const date = new Date(project.createdAt)
@@ -69,7 +70,7 @@ export function ProjectCard({
         </div>
       ) : null}
 
-      <div className="mt-auto flex flex-col gap-4 border-t border-border/70 pt-5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+      <div className="mt-5 flex flex-col gap-4 border-t border-border/70 pt-5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div className="flex min-w-0 items-center gap-3">
           <UserAvatar name={project.ownerName} imageUrl={project.ownerAvatarUrl ?? undefined} sizeClassName="h-9 w-9" />
           <div className="min-w-0">
@@ -103,10 +104,10 @@ export function ProjectCard({
 
   return (
     <motion.div
-      layout
-      whileHover={disableLink ? undefined : { translateY: -4, scale: 1.01 }}
-      transition={{ duration: 0.22, ease: "easeOut" }}
-      className={cn("flex h-full flex-col", className)}
+      layout={!reducedMotion}
+      whileHover={disableLink || reducedMotion ? undefined : { translateY: -2 }}
+      transition={{ duration: 0.15, ease: "easeOut" }}
+      className={cn("flex flex-col", className)}
     >
       {disableLink || footer ? (
         <div className={cn(interactiveClasses, footer && "h-auto flex-1")}>{cardBody}</div>

@@ -25,6 +25,7 @@ export function ActivitiesClient({ slug }: { slug: string }) {
 
 function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
   const activityLink=useActivityLink()
+  const [mobileStage,setMobileStage]=useState('')
   const [exportOpen,setExportOpen]=useState(false)
   const [periodId,setPeriodId]=useState('')
   const [historyEditing,setHistoryEditing]=useState(false)
@@ -128,6 +129,7 @@ function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
   function closeTask(){if(task==='new')setTask(null);else activityLink.close()}
   const selectedGoal = goals.find((item) => item.id === goal)
   const filters={assignee,stageFilter,lateOnly,filter,priority,deadline,search}
+  const focusedStage=stages.find(stage=>stage.id===mobileStage)??stages[0]
   const filtered=filterTasks(tasks,stages,filters)
   const summaries = [
     { label: 'Total de atividades', value: tasks.length, filter: 'all' },
@@ -186,7 +188,7 @@ function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
     <section aria-label="Dashboard do projeto" className="grid gap-4 rounded-2xl border border-card-outline bg-card p-4 xl:grid-cols-2">
       <div className="space-y-3">
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{summaries.map(entry=><button type="button" key={entry.label} onClick={()=>{setFilter(entry.filter);setStageFilter('all');setLateOnly(false);document.getElementById('team-kanban')?.scrollIntoView({block:'start',behavior:'smooth'})}} className="rounded-xl border border-border p-3 text-left hover:border-primary"><p className="text-xs text-muted-foreground">{entry.label}</p><p className="text-xl font-bold">{entry.value}</p></button>)}</div>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">{summaries.map(entry=><button type="button" key={entry.label} onClick={()=>{setFilter(entry.filter);setStageFilter('all');setLateOnly(false);document.getElementById('team-kanban')?.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'})}} className="rounded-xl border border-border p-3 text-left hover:border-primary"><p className="text-xs text-muted-foreground">{entry.label}</p><p className="text-xl font-bold">{entry.value}</p></button>)}</div>
         <h2 className="text-sm font-semibold">Progresso geral do projeto — {percent}%</h2>
         <progress aria-label="Progresso geral do projeto" value={percent} max={100} className="h-2 w-full accent-primary" />
         <p className="text-xs text-muted-foreground">{tasks.filter(done).length} de {tasks.length} atividades concluídas · {tasks.filter(item=>!done(item)).length} pendentes{!tasks.length?' · Crie sua primeira atividade.':''}</p>
@@ -200,27 +202,28 @@ function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
     <div className="grid items-start gap-4 xl:grid-cols-[minmax(0,3fr)_minmax(0,1fr)]">
       <section id="team-kanban" aria-label="Kanban da equipe" className="@container/kanban min-w-0 scroll-mt-24 space-y-3">
         <header className="flex flex-wrap items-center justify-between gap-2"><h2 className="text-lg font-semibold">Kanban da equipe</h2><div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={()=>setExportOpen(true)}><Download aria-hidden className="size-4" />Baixar PDF</Button><Button size="sm" variant="ghost" onClick={()=>{setFilter('all');setPriority('all');setDeadline('');setSearch('');setAssignee('all');setStageFilter('all');setLateOnly(false)}}>Limpar filtros</Button></div></header>
-        <div className="flex flex-wrap items-end gap-2 text-xs">
-          <Input aria-label="Buscar atividades" placeholder="Buscar título" value={search} onChange={e=>setSearch(e.target.value)} className="max-w-48" />
+        <div className="workspace-filters text-xs">
+          <label>Buscar atividades<Input aria-label="Buscar atividades" placeholder="Buscar título" value={search} onChange={e=>setSearch(e.target.value)} /></label>
           <label>Responsável<select className="ml-1 rounded-lg border bg-background p-2" value={assignee} onChange={e=>setAssignee(e.target.value)}><option value="all">Todos</option>{members.map(person=><option key={person.id} value={person.id}>{person.name||'Integrante'}</option>)}</select></label>
           <label>Status<select className="ml-1 rounded-lg border bg-background p-2" value={filter} onChange={e=>setFilter(e.target.value)}><option value="all">Todos</option><option value="pending">Pendentes</option><option value="late">Atrasadas</option>{Object.entries(kinds).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
           <label>Etapa<select className="ml-1 rounded-lg border bg-background p-2" value={stageFilter} onChange={e=>setStageFilter(e.target.value)}><option value="all">Todas</option>{stages.map(stage=><option key={stage.id} value={stage.id}>{stage.name}</option>)}</select></label>
           <label>Prioridade<select className="ml-1 rounded-lg border bg-background p-2" value={priority} onChange={e=>setPriority(e.target.value)}><option value="all">Todas</option>{Object.entries(priorities).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
           <label>Prazo até<Input type="date" value={deadline} onChange={e=>setDeadline(e.target.value)} /></label>
-          <label className="flex items-center gap-1 py-2"><input type="checkbox" checked={lateOnly} onChange={e=>setLateOnly(e.target.checked)} />Somente atrasadas</label>
+          <label className="!flex-row items-center gap-2 py-2"><input className="!min-h-4 !w-4" type="checkbox" checked={lateOnly} onChange={e=>setLateOnly(e.target.checked)} />Somente atrasadas</label>
         </div>
-        <div className="grid min-w-0 grid-cols-1 gap-3 pb-3 @min-[32rem]/kanban:grid-cols-2 @min-[54rem]/kanban:grid-cols-4" aria-label="Quadro Kanban">{stages.map(stage=><section key={stage.id} aria-label={stage.name} className="flex max-h-[65dvh] min-w-0 flex-col rounded-2xl border border-border bg-muted/30" onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();const moved=tasks.find(item=>item.id===e.dataTransfer.getData('text/plain'));if(moved&&!readOnly)void mutate('move',{id:moved.id,version:moved.version,stage_id:stage.id}).catch((err:Error)=>setError(err.message))}}>
-          <h3 className="shrink-0 break-words p-3 font-semibold">{stage.name} · {filtered.filter(item=>item.stage_id===stage.id).length}</h3><div className="min-h-20 space-y-3 overflow-y-auto p-3 pt-0">{filtered.filter(item=>item.stage_id===stage.id).map(taskCard)}</div>
+        <label className="block space-y-2 text-sm @min-[32rem]/kanban:hidden">Etapa em foco<select aria-label="Etapa em foco no Kanban" className="min-h-11 w-full rounded-lg border bg-background p-2" value={focusedStage?.id??''} onChange={event=>setMobileStage(event.target.value)}>{stages.map(stage=><option key={stage.id} value={stage.id}>{stage.name} · {filtered.filter(task=>task.stage_id===stage.id).length}</option>)}</select><span className="block text-xs text-muted-foreground">Escolha uma etapa para ver suas atividades. Use o menu de cada card para mover entre etapas.</span></label>
+        <div className="grid min-w-0 items-start grid-cols-1 gap-3 pb-3 @min-[32rem]/kanban:grid-cols-2 @min-[54rem]/kanban:grid-cols-4" aria-label="Quadro Kanban">{stages.map(stage=><section key={stage.id} aria-label={stage.name} className={(stage.id===focusedStage?.id?"flex ":"hidden @min-[32rem]/kanban:flex ")+"min-w-0 flex-col rounded-2xl border border-border bg-muted/30 @min-[54rem]/kanban:max-h-[72dvh]"} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();const moved=tasks.find(item=>item.id===e.dataTransfer.getData('text/plain'));if(moved&&!readOnly)void mutate('move',{id:moved.id,version:moved.version,stage_id:stage.id}).catch((err:Error)=>setError(err.message))}}>
+          <h3 className="shrink-0 break-words p-3 font-semibold">{stage.name} · {filtered.filter(item=>item.stage_id===stage.id).length}</h3><div tabIndex={0} role="region" aria-label={"Atividades em "+stage.name} className="min-h-0 space-y-3 p-3 pt-0 @min-[54rem]/kanban:overflow-y-auto">{filtered.filter(item=>item.stage_id===stage.id).map(taskCard)}{!filtered.some(item=>item.stage_id===stage.id)&&<p className="text-xs text-muted-foreground">Nenhuma atividade nesta etapa.</p>}</div>
         </section>)}</div>{!filtered.length&&<p className="text-sm text-muted-foreground">Nenhuma atividade neste filtro.</p>}
       </section>
-      <aside aria-label="Minhas atividades" className="min-w-0 space-y-3 rounded-2xl border border-border bg-card p-3"><h2 className="text-lg font-semibold">Minhas atividades</h2>
+      <aside aria-label="Minhas atividades" className="min-w-0 rounded-2xl border border-border bg-card p-3"><details open className="space-y-3"><summary className="cursor-pointer text-lg font-semibold">Minhas atividades</summary>
         <label className="block text-xs">Exibir<select className="ml-2 rounded-lg border bg-background p-2" value={mineFilter} onChange={e=>setMineFilter(e.target.value)}>{[['pending','Pendentes'],['doing','Em andamento'],['review','Em revisão'],['done','Concluídas'],['all','Todas']].map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
-        <div className="max-h-[65dvh] space-y-3 overflow-y-auto">{tasks.filter(item=>item.assignees.includes(userId)&&(mineFilter==='all'||mineFilter==='pending'&&!done(item)||taskKind(item,stages)===mineFilter)).sort((a,b)=>{
+        <div className="space-y-3 xl:max-h-[65dvh] xl:overflow-y-auto">{tasks.filter(item=>item.assignees.includes(userId)&&(mineFilter==='all'||mineFilter==='pending'&&!done(item)||taskKind(item,stages)===mineFilter)).sort((a,b)=>{
           const rank=(item:Task)=>done(item)?6:overdue(item.due_at,false)?0:dueSoon(item.due_at,false)?1:taskKind(item,stages)==='review'?2:taskKind(item,stages)==='doing'?3:4
           return rank(a)-rank(b)||Date.parse(a.due_at??'9999-01-01')-Date.parse(b.due_at??'9999-01-01')||a.title.localeCompare(b.title)
         }).map(taskCard)}</div>
         {!tasks.some(item=>item.assignees.includes(userId)&&(mineFilter==='all'||mineFilter==='pending'&&!done(item)||taskKind(item,stages)===mineFilter))&&<p className="text-sm text-muted-foreground">Nenhuma atividade atribuída neste filtro.</p>}
-      </aside>
+      </details></aside>
     </div>
     {exportOpen&&<ActivityExport data={scoped} filters={filters} close={()=>setExportOpen(false)} />}
     {allGoalsOpen&&<Dialog title="Todas as metas" busy={busy} close={()=>setAllGoalsOpen(false)}>{manager&&!readOnly&&<Button onClick={()=>setGoal('new')}>Nova meta</Button>}{goalCards([...goals].sort(goalsByDeadline))}{!goals.length&&<p className="text-sm text-muted-foreground">Nenhuma meta cadastrada.</p>}</Dialog>}

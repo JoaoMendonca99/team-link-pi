@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Loader2, RefreshCcw, Users, X } from 'lucide-react'
 
+import { AccessibleDialog } from '@/components/ui/accessible-dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { UserAvatar } from '@/components/team-link/user-avatar'
@@ -77,11 +78,11 @@ export function CreateGroupModal({
       return
     }
     if (cleanTitle.length > GROUP_TITLE_MAX_LENGTH) {
-      setValidation(`O nome deve ter no máximo ${GROUP_TITLE_MAX_LENGTH} caracteres.`)
+      setValidation(`O nome deve ter no mÃ¡ximo ${GROUP_TITLE_MAX_LENGTH} caracteres.`)
       return
     }
     if (selectedOthers.length === 0) {
-      setValidation('Selecione pelo menos um membro além de você.')
+      setValidation('Selecione pelo menos um membro alÃ©m de vocÃª.')
       return
     }
     setValidation(null)
@@ -91,22 +92,7 @@ export function CreateGroupModal({
   const error = validation ?? saveError
 
   return (
-    <>
-      <button
-        type="button"
-        aria-label="Fechar"
-        className="fixed inset-0 z-[80] bg-background/70 backdrop-blur-sm"
-        onClick={() => {
-          if (saving) return
-          onCancel()
-        }}
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="Criar novo grupo"
-        className="fixed inset-0 z-[90] flex items-end justify-center p-3 sm:items-center sm:p-6"
-      >
+    <AccessibleDialog open={open} label="Criar novo grupo" busy={saving} onClose={onCancel}>
         <div className="flex max-h-[min(calc(100dvh-2rem),720px)] w-full max-w-lg flex-col overflow-hidden rounded-3xl border border-card-outline bg-card shadow-2xl">
           <header className="flex items-start gap-2 border-b border-border bg-background/60 px-5 py-4">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary/15 text-primary">
@@ -162,7 +148,7 @@ export function CreateGroupModal({
                   Membros do projeto
                 </p>
                 <p className="text-[11px] text-muted-foreground">
-                  Você entra como administrador.
+                  VocÃª entra como administrador.
                 </p>
               </div>
 
@@ -173,7 +159,7 @@ export function CreateGroupModal({
               ) : loadError ? (
                 <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-destructive/40 bg-destructive/10 py-6 text-center">
                   <p className="text-sm font-medium text-destructive">
-                    Não foi possível carregar os membros.
+                    NÃ£o foi possÃ­vel carregar os membros.
                   </p>
                   <Button
                     type="button"
@@ -191,11 +177,11 @@ export function CreateGroupModal({
                   <Users className="h-7 w-7 text-muted-foreground" aria-hidden />
                   <p className="text-sm font-semibold text-foreground">Sem outros membros</p>
                   <p className="text-xs text-muted-foreground">
-                    Convide alguém para o projeto antes de criar um grupo.
+                    Convide alguÃ©m para o projeto antes de criar um grupo.
                   </p>
                 </div>
               ) : (
-                <ul className="max-h-72 overflow-y-auto rounded-2xl border border-border bg-background/60">
+                <ul className=" rounded-2xl border border-border bg-background/60">
                   {others.map((member) => {
                     const checked = selected.has(member.user_id)
                     const displayName = member.full_name?.trim() || 'Membro do projeto'
@@ -275,7 +261,6 @@ export function CreateGroupModal({
             </div>
           </div>
         </div>
-      </div>
-    </>
+    </AccessibleDialog>
   )
 }

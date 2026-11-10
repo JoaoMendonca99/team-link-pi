@@ -411,7 +411,7 @@ export function RecruitmentManager({ projectId }: { projectId: string }) {
       <summary className="cursor-pointer text-sm font-semibold">Editar vagas preenchidas ou encerradas</summary>
       <div className="mt-3 flex flex-wrap gap-2">{inactiveVacancies.map((v) => <Button key={v.id} variant="outline" className="h-auto whitespace-normal text-left" onClick={() => setEditing(v)}>{v.title} · {vacancyStatus(v)}</Button>)}</div>
     </details>}
-    {!activeVacancies.length && <p className="text-sm text-muted-foreground">Nenhuma vaga aberta com posições disponíveis.</p>}
+    {!activeVacancies.length && <p className="text-sm text-muted-foreground">Nenhuma vaga aberta com posições disponíveis. Crie ou reabra uma vaga para receber candidaturas.</p>}
     <section className="space-y-3 border-t border-border pt-4">
       <h2 className="text-lg font-semibold">Candidaturas</h2>
       <div className="flex flex-wrap gap-2" aria-label="Filtrar candidaturas">
@@ -427,7 +427,7 @@ export function RecruitmentManager({ projectId }: { projectId: string }) {
         </div>
         <Button type="button" size="sm" variant="outline" onClick={() => setSelected(entry.id)}>Ver candidatura</Button>
       </li>)}</ul>
-      {!visible.length && <p className="text-sm text-muted-foreground">Nenhuma candidatura neste filtro.</p>}
+      {!visible.length && <div className="space-y-2 rounded-xl bg-muted/30 p-4 text-sm"><p className="font-medium">{items.length ? 'Nenhuma candidatura neste filtro.' : 'Este projeto ainda não recebeu candidaturas.'}</p><p className="text-muted-foreground">{items.length ? 'Experimente outra situação para consultar as candidaturas existentes.' : vacancies.length ? 'Divulgue a página pública do projeto e mantenha vagas abertas para receber interessados.' : 'Crie uma vaga e compartilhe a página pública do projeto para receber interessados.'}</p>{items.length&&filter!=='history'&&<Button type="button" variant="outline" size="sm" onClick={()=>setFilter('history')}>Ver histórico</Button>}{items.length&&filter!=='pending'&&<Button type="button" variant="outline" size="sm" onClick={()=>setFilter('pending')}>Ver pendentes</Button>}</div>}
     </section>
     {item && <Modal title="Detalhes da candidatura" close={() => { if (!busy) setSelected(null) }}
       dismissOutside={!busy && !drafts[item.id]?.trim()}>

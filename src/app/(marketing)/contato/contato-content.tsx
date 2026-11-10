@@ -34,18 +34,18 @@ export function ContatoContent() {
 
   return (
     <main className="bg-muted/30 pb-20">
-      <div className="border-b border-border bg-gradient-to-b from-muted/80 to-background py-14">
-        <Container className="space-y-5 py-14">
+      <div className="border-b border-border bg-gradient-to-b from-muted/80 to-background py-6">
+        <Container className="space-y-5">
           <p className="text-xs font-semibold uppercase tracking-[0.34em] text-primary">Contato</p>
-          <div className="grid gap-6 lg:grid-cols-[1.05fr,minmax(0,0.9fr)]">
+          <div className="grid gap-6 lg:grid-cols-[1.05fr_minmax(0,0.9fr)]">
             <div>
               <h1 className="text-4xl font-bold md:text-5xl">Fale com a equipe do Team Link</h1>
               <p className="mt-5 max-w-xl text-muted-foreground">
-                Tem uma dúvida, sugestão ou quer falar com a gente? Use o formulário abaixo. Vamos responder pelo canal indicado assim que possível.
+                Este formulário é uma demonstração e ainda não envia mensagens. Não inclua dados pessoais ou informações confidenciais.
               </p>
             </div>
-            <aside className="rounded-[2rem] border border-primary/35 team-link-soft-section bg-[#081021] p-8 text-sm text-white shadow-xl">
-              <p className="text-xs uppercase tracking-[0.32em] text-white/65">Como podemos ajudar</p>
+            <details className="rounded-[2rem] border border-primary/35 team-link-soft-section bg-[#081021] p-4 text-sm text-white">
+              <summary className="cursor-pointer font-semibold">Como podemos ajudar</summary>
               <ul className="mt-6 space-y-5">
                 {supportTopics.map((topic) => {
                   const Icon = topic.icon
@@ -62,12 +62,12 @@ export function ContatoContent() {
                   )
                 })}
               </ul>
-            </aside>
+            </details>
           </div>
         </Container>
       </div>
 
-      <Container size="narrow" className="py-12">
+      <Container size="narrow" className="py-6">
         <form
           className="space-y-10"
           onSubmit={(event) => {
@@ -100,7 +100,7 @@ export function ContatoContent() {
             </div>
 
             <Button type="submit" className="w-full rounded-2xl py-6 text-lg font-semibold">
-              Enviar mensagem
+              Visualizar demonstração
             </Button>
           </FormSection>
         </form>
@@ -108,9 +108,9 @@ export function ContatoContent() {
 
       <DemoBanner
         open={bannerOpen}
-        tone="success"
+        tone="info"
         onClose={() => setBannerOpen(false)}
-        message="Recebemos sua mensagem. Responderemos pelo canal indicado em breve."
+        message="Demonstração concluída. Nenhuma mensagem foi enviada ou recebida pela equipe."
       />
     </main>
   )

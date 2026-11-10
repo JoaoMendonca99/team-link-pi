@@ -21,6 +21,7 @@ export function ProfileHeading({ profile, projects, projectCount, social, own, c
   own?: boolean
   children?: ReactNode
 }) {
+  const [bioExpanded,setBioExpanded]=useState(false)
   const [status, setStatus] = useState('')
   const [error, setError] = useState('')
   const [card, setCard] = useState('')
@@ -64,7 +65,7 @@ export function ProfileHeading({ profile, projects, projectCount, social, own, c
         <p className="text-xs font-semibold uppercase tracking-widest text-primary">{own ? 'Seu perfil' : 'Perfil acadêmico'}</p>
         <h1 className="break-words text-2xl font-bold sm:text-3xl">{name}</h1>
         {profile.educations?.length?<section className="space-y-2" aria-label="Formação acadêmica"><h2 className="text-sm font-semibold">Formação acadêmica</h2><ul className="grid gap-2 sm:grid-cols-2">{profile.educations.map(row=>{const names=educationLabels(row);return <li key={row.id} className="min-w-0 rounded-xl border bg-background/40 p-3 text-sm"><p className="break-words font-medium">{names.course}</p><p className="break-words text-muted-foreground">{names.institution}{names.acronym?' — '+names.acronym:''}</p><p className="mt-1 text-xs text-muted-foreground">{educationDateLabel(row)}</p><p className="mt-1 text-xs text-muted-foreground">{educationStatus(row.cursando_atualmente,row.situacao_final)}</p></li>})}</ul></section>:academic&&<p className="break-words text-sm text-muted-foreground">{academic}</p>}
-        {profile.bio && <p className="whitespace-pre-line break-words text-sm leading-relaxed">{profile.bio}</p>}
+        {profile.bio && <div className="max-w-prose space-y-1"><p id="profile-bio" className={'whitespace-pre-line break-words text-sm leading-relaxed '+(!bioExpanded?'line-clamp-4':'')}>{profile.bio}</p>{(profile.bio.length>120||profile.bio.split('\n').length>4)&&<Button type="button" variant="link" size="sm" className="px-0" aria-expanded={bioExpanded} aria-controls="profile-bio" onClick={()=>setBioExpanded(v=>!v)}>{bioExpanded?'Recolher biografia':'Ler biografia completa'}</Button>}</div>}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
           {social && <span><strong className="text-foreground">{social.count}</strong> {social.count === 1 ? 'amigo' : 'amigos'}</span>}
           <span><strong className="text-foreground">{projectCount ?? projects.length}</strong> {(projectCount ?? projects.length) === 1 ? 'projeto' : 'projetos'}</span>
@@ -100,11 +101,12 @@ export function ProfileHeading({ profile, projects, projectCount, social, own, c
 }
 
 export function AcademicTags({ profile }: { profile: ProfileRow }) {
+  const [expanded,setExpanded]=useState<Record<string,boolean>>({})
   return <div className="grid min-w-0 gap-3 sm:grid-cols-2">
     {([['Habilidades', profile.skills], ['Interesses', profile.interests]] as const).map(([title, tags]) =>
       <section key={title} className="min-w-0 rounded-2xl border border-card-outline bg-card p-4">
         <h2 className="mb-2 font-semibold">{title}</h2>
-        {tags?.length ? <TagList tags={tags} max={tags.length} /> : <p className="text-sm text-muted-foreground">Nenhuma informação cadastrada.</p>}
+        {tags?.length ? <><TagList tags={tags} max={expanded[title]?tags.length:6} />{tags.length>6&&<Button type="button" variant="link" size="sm" className="mt-2 px-0" aria-expanded={Boolean(expanded[title])} onClick={()=>setExpanded(current=>({...current,[title]:!current[title]}))}>{expanded[title]?"Mostrar menos":"Ver todas ("+tags.length+")"}</Button>}</> : <p className="text-sm text-muted-foreground">Nenhuma informação cadastrada.</p>}
       </section>
     )}
   </div>

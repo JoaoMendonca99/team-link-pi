@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
-import { useEffect,useRef,useState } from 'react'
+import {deviceLabel} from '@/lib/device-label'
+import { useCallback,useEffect,useRef,useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { useSupabaseSession } from '@/hooks/use-supabase-session'
 import { getSupabaseClient } from '@/lib/supabase/client'
@@ -11,17 +12,18 @@ export function PushSettings({ automatic=false }:{automatic?:boolean}){
  const {user,loading}=useSupabaseSession();const uid=user?.id
  const [offer,setOffer]=useState(false),[never,setNever]=useState(false),[error,setError]=useState(''),[busy,setBusy]=useState(false),[key,setKey]=useState(''),[configured,setConfigured]=useState(false)
  const [settings,setSettings]=useState(defaults),[devices,setDevices]=useState<{id:string;label:string;updated_at:string}[]>([])
+ const [currentDevice,setCurrentDevice]=useState<string|null>(null)
  const visit=useRef<string|null>(null)
  const ios=typeof navigator!=='undefined'&&(/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1))
  const installed=typeof window!=='undefined'&&(matchMedia('(display-mode: standalone)').matches||(navigator as Navigator & {standalone?:boolean}).standalone===true)
  const supported=typeof window!=='undefined'&&'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window
- async function refresh(){const {data,error}=await getSupabaseClient().rpc('manage_push_device',{p_action:'list'});if(error)throw new Error('Não foi possível carregar os dispositivos.');setDevices(data??[])}
+ const refresh=useCallback(async()=>{if(supported){const registration=await navigator.serviceWorker.getRegistration('/');const sub=await registration?.pushManager.getSubscription();if(sub){const own=await getSupabaseClient().rpc('manage_push_device',{p_action:'owns',p_data:{endpoint:sub.endpoint}});setCurrentDevice(!own.error?own.data?.id??null:null)}else setCurrentDevice(null)}const {data,error}=await getSupabaseClient().rpc('manage_push_device',{p_action:'list'});if(error)throw new Error('Não foi possível carregar os dispositivos.');setDevices(data??[])},[supported])
  useEffect(()=>{
   if(loading)return
   if(!uid){visit.current=null;setOffer(false);if('serviceWorker' in navigator)void bindPush(null).catch(()=>{});return}
   let current=true
   void (async()=>{
-   if(supported){const registration=await pushWorker();const sub=await registration.pushManager.getSubscription();if(sub){const own=await getSupabaseClient().rpc('manage_push_device',{p_action:'owns',p_data:{endpoint:sub.endpoint}});if(!current)return;if(!own.error&&own.data)await bindPush(uid);else{await bindPush(null);await sub.unsubscribe()}}else await bindPush(null)}
+   if(supported){const registration=await pushWorker();const sub=await registration.pushManager.getSubscription();if(sub){const own=await getSupabaseClient().rpc('manage_push_device',{p_action:'owns',p_data:{endpoint:sub.endpoint}});if(!current)return;if(!own.error&&own.data){setCurrentDevice(own.data.id??null);await bindPush(uid);}else{await bindPush(null);await sub.unsubscribe()}}else await bindPush(null)}
    const {data,error}=await getSupabaseClient().functions.invoke('push-delivery',{method:'GET'})
    if(!current)return
    if(!error&&data?.publicKey){setKey(data.publicKey);setConfigured(true)}
@@ -30,7 +32,7 @@ export function PushSettings({ automatic=false }:{automatic?:boolean}){
    if(!localStorage.getItem('push-never:'+uid)&&!sessionStorage.getItem('push-visit:'+uid)&&(supported||ios)&&data?.publicKey){sessionStorage.setItem('push-visit:'+uid,'1');setOffer(!supported||Notification.permission!=='granted'||!(await (await pushWorker()).pushManager.getSubscription()))}
   })().catch(()=>{if(current&&!automatic)setError('Não foi possível carregar a configuração de notificações.')})
   return()=>{current=false}
- },[uid,loading,automatic,supported,ios])
+ },[uid,loading,automatic,supported,ios,refresh])
  async function run(action:()=>Promise<void>){setBusy(true);setError('');try{await action()}catch(err){setError(err instanceof Error?err.message:'Não foi possível configurar as notificações.')}finally{setBusy(false)}}
  async function activate(){
   if(!supported||ios&&!installed)throw new Error('No iPhone/iPad, use Compartilhar → Adicionar à Tela de Início e abra o Team Link pelo ícone instalado.')
@@ -60,7 +62,7 @@ export function PushSettings({ automatic=false }:{automatic?:boolean}){
   {automatic?<><label className="flex gap-2 text-sm"><input type="checkbox" checked={never} onChange={e=>setNever(e.target.checked)}/>Não pedir novamente</label><Link className="text-sm text-primary underline" href="/perfil/notificacoes">Configurar notificações</Link></>:<>
    {Object.entries(labels).map(([name,label])=><label key={name} className="flex gap-2 text-sm"><input type="checkbox" checked={settings[name as keyof typeof defaults]} disabled={busy} onChange={e=>void run(async()=>{const next={...settings,[name]:e.target.checked};const {error}=await getSupabaseClient().from('push_preferences').upsert({user_id:uid,settings:next});if(error)throw new Error('Não foi possível salvar a preferência.');setSettings(next)})}/>{label}</label>)}
    <Button type="button" variant="outline" onClick={()=>{localStorage.removeItem('push-never:'+uid);sessionStorage.removeItem('push-visit:'+uid);setError('Convites reativados para a próxima visita.')}}>Reativar convites</Button>
-   <h3 className="font-semibold">Dispositivos autorizados</h3>{devices.map(device=><div key={device.id} className="flex flex-wrap items-center gap-2 border-t border-border py-2"><p className="min-w-0 flex-1 break-words text-xs">{device.label}</p><Button type="button" size="sm" variant="outline" disabled={busy} onClick={()=>void run(async()=>{const {error}=await getSupabaseClient().rpc('manage_push_device',{p_action:'remove',p_data:{id:device.id}});if(error)throw new Error('Não foi possível remover o dispositivo.');await refresh()})}>Remover dispositivo</Button></div>)}
+   <h3 className="font-semibold">Dispositivos autorizados</h3>{devices.map(device=><div key={device.id} className="flex flex-wrap items-center gap-2 border-t border-border py-2"><div className="min-w-0 flex-1 space-y-1"><p className="text-sm font-medium">{deviceLabel(device.label)}{device.id===currentDevice&&<span className="ml-2 text-xs text-link">Este dispositivo</span>}</p><p className="text-xs text-muted-foreground">Atualizado em {new Date(device.updated_at).toLocaleDateString("pt-BR")}</p><details className="text-xs text-muted-foreground"><summary className="cursor-pointer">Detalhes técnicos</summary><p className="mt-2 break-all">{device.label}</p></details></div><Button type="button" size="sm" variant="outline" disabled={busy} onClick={()=>void run(async()=>{const {error}=await getSupabaseClient().rpc('manage_push_device',{p_action:'remove',p_data:{id:device.id}});if(error)throw new Error('Não foi possível remover o dispositivo.');await refresh()})}>Remover dispositivo</Button></div>)}
    <p className="text-xs text-muted-foreground">As notificações internas continuam funcionando. Som e entrega dependem do navegador e do sistema operacional.</p>
   </>}
  </section>

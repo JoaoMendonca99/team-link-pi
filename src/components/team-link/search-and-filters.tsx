@@ -51,22 +51,23 @@ export function SearchAndFilters({
   onClear: () => void
 }) {
   return (
-    <div className="rounded-[1.75rem] border border-card-outline bg-card/90 p-4 shadow-lg backdrop-blur sm:p-6">
+    <div className="rounded-2xl border border-card-outline bg-card/90 p-4 sm:p-6">
       <div className="grid min-w-0 gap-4 lg:grid-cols-12 lg:gap-3">
-        <div className="relative min-w-0 lg:col-span-4">
+        <div className="min-w-0 space-y-2 lg:col-span-4"><label htmlFor="explore-search" className="block text-sm font-medium">Buscar projetos</label><div className="relative">
           <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            value={searchTerm}
+            id="explore-search" value={searchTerm}
             onChange={(event) => onSearchChange(event.target.value)}
             placeholder="Busque por título, descrição, categoria ou tags..."
             aria-label="Buscar projetos"
             className="h-12 w-full min-w-0 rounded-2xl pl-11 text-base"
           />
-        </div>
+        </div></div>
 
         <div className="min-w-0 lg:col-span-2">
+          <label id="explore-category-label" htmlFor="explore-category" className="mb-2 block text-sm font-medium">Categoria</label>
           <Select value={category} onValueChange={onCategoryChange}>
-            <SelectTrigger className="h-12 w-full rounded-2xl">
+            <SelectTrigger id="explore-category" aria-labelledby="explore-category-label" className="h-12 w-full rounded-2xl">
               <SelectValue placeholder="Categoria" />
             </SelectTrigger>
             <SelectContent>
@@ -81,8 +82,9 @@ export function SearchAndFilters({
         </div>
 
         <div className="min-w-0 lg:col-span-2">
+          <label id="explore-status-label" htmlFor="explore-status" className="mb-2 block text-sm font-medium">Status</label>
           <Select value={status} onValueChange={(value) => onStatusChange(value as ExploreStatusFilter)}>
-            <SelectTrigger className="h-12 w-full rounded-2xl">
+            <SelectTrigger id="explore-status" aria-labelledby="explore-status-label" className="h-12 w-full rounded-2xl">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -97,8 +99,9 @@ export function SearchAndFilters({
         </div>
 
         <div className="min-w-0 lg:col-span-2">
+          <label id="explore-tag-label" htmlFor="explore-tag" className="mb-2 block text-sm font-medium">Tags do projeto</label>
           <Select value={tag} onValueChange={onTagChange}>
-            <SelectTrigger className="h-12 w-full rounded-2xl">
+            <SelectTrigger id="explore-tag" aria-labelledby="explore-tag-label" className="h-12 w-full rounded-2xl">
               <SelectValue placeholder="Habilidades / Tags" />
             </SelectTrigger>
             <SelectContent>
@@ -113,8 +116,9 @@ export function SearchAndFilters({
         </div>
 
         <div className="min-w-0 lg:col-span-2">
+          <label id="explore-sort-label" htmlFor="explore-sort" className="mb-2 block text-sm font-medium">Ordenação</label>
           <Select value={sort} onValueChange={(value) => onSortChange(value as ExploreSort)}>
-            <SelectTrigger className="h-12 w-full rounded-2xl">
+            <SelectTrigger id="explore-sort" aria-labelledby="explore-sort-label" className="h-12 w-full rounded-2xl">
               <SelectValue placeholder="Ordenar" />
             </SelectTrigger>
             <SelectContent>

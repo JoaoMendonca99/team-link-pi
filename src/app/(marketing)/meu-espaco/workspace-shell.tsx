@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import {WorkspaceLoading} from '@/components/layout/workspace-loading'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { PanelLeftClose,PanelLeftOpen,X } from 'lucide-react'
@@ -65,7 +66,7 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
     element?.showModal()
     return () => { element?.close(); viewport.style.overflow = overflow; viewport.style.scrollbarGutter = scrollbarGutter; previous?.focus({ preventScroll: true }) }
   }, [open])
-  if (loading||(user&&preference?.user!==user.id)) return <p role="status" className="p-8">Carregando Meu Espaço…</p>
+  if (loading||(user&&preference?.user!==user.id)) return <WorkspaceLoading />
   if (!user) return <div className="space-y-4 p-8"><h1 className="text-2xl font-bold">Entre para acessar Meu Espaço</h1><Button asChild><Link href={'/login?next=' + encodeURIComponent(pathname)}>Entrar</Link></Button></div>
   const messages = pathname === '/meu-espaco/mensagens'
   return <Cache.Provider value={cache.current}><div style={{'--workspace-sidebar-width':collapsed?'72px':'240px'} as React.CSSProperties} className="mx-auto grid w-full min-w-0 max-w-[1600px] motion-safe:transition-[grid-template-columns] motion-safe:duration-150 lg:grid-cols-[var(--workspace-sidebar-width)_minmax(0,1fr)]">

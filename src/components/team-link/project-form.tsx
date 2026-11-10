@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Plus, X } from 'lucide-react'
 
 import { AcademicDefaultsFields, PeriodAcademicFields } from './academic-fields'
@@ -27,7 +27,7 @@ import { saveProjectForm } from '@/lib/projects/save-form'
 import { slugify } from '@/lib/projects/slug'
 import type { ProjectRow, ProjectStatusValue, ProjectVisibility } from '@/types/database'
 
-const cardClass = 'min-w-0 p-5 sm:p-7'
+const cardClass = 'min-w-0 border-0 bg-transparent p-0 pt-4 sm:p-0 sm:pt-4'
 
 export function Field({ id, label, children }: { id: string; label: string; children: ReactNode }) {
   return <div className="min-w-0 space-y-2"><Label htmlFor={id}>{label}</Label>{children}</div>
@@ -79,6 +79,17 @@ export function ProjectForm({ project, initialTags = [], initialVacancies = [], 
   })))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const initialSnapshot=useRef<string|null>(null),saved=useRef(false)
+  const snapshot=JSON.stringify({title,category,secondary,url,summary,description,tags,tagConcepts,status,visibility,vacancies,context,academicDefaults,firstPeriod})
+  useEffect(()=>{if(conceptsReady&&initialSnapshot.current===null)initialSnapshot.current=snapshot},[conceptsReady,snapshot])
+  const dirty=initialSnapshot.current!==null&&initialSnapshot.current!==snapshot
+  useEffect(()=>{
+    if(!dirty)return
+    const unload=(event:BeforeUnloadEvent)=>{if(!saved.current){event.preventDefault();event.returnValue=''}}
+    const navigate=(event:MouseEvent)=>{const a=(event.target as Element).closest?.('a[href]');if(!a||saved.current||event.defaultPrevented||event.ctrlKey||event.metaKey||event.shiftKey||event.altKey)return;const href=a.getAttribute('href');if(!href||href.startsWith('#')||a.getAttribute('target')==='_blank'||a.hasAttribute('download'))return;if(!window.confirm('Há alterações não salvas. Deseja sair sem salvar?')){event.preventDefault();event.stopPropagation()}}
+    window.addEventListener('beforeunload',unload);document.addEventListener('click',navigate,true)
+    return()=>{window.removeEventListener('beforeunload',unload);document.removeEventListener('click',navigate,true)}
+  },[dirty])
   const slug = project?.slug ?? slugify(title)
   const cancelHref = project ? '/projetos/' + project.slug : '/explorar'
   const categories = project?.category && !projectCategories.includes(project.category)
@@ -122,6 +133,7 @@ export function ProjectForm({ project, initialTags = [], initialVacancies = [], 
         setSaving(false)
         return
       }
+      saved.current=true
       router.push('/projetos/' + data)
     } catch {
       setError('Não foi possível salvar agora. Confira sua conexão e tente novamente.')
@@ -130,10 +142,12 @@ export function ProjectForm({ project, initialTags = [], initialVacancies = [], 
   }
 
   return (
-    <form onSubmit={submit} className="mx-auto max-w-4xl space-y-6">
+    <form onSubmit={submit} onInvalidCapture={event=>{const target=event.target as HTMLElement;let parent=target.parentElement;while(parent){if(parent instanceof HTMLDetailsElement)parent.open=true;parent=parent.parentElement}requestAnimationFrame(()=>target.focus())}} className="mx-auto max-w-4xl space-y-6">
+      <nav aria-label="Seções do editor" className="flex flex-wrap gap-2">{[['project-information','Informações'],['project-vacancies-section','Vagas'],['project-publication','Publicação']].map(([id,label])=><Button key={id} type="button" variant="outline" size="sm" onClick={()=>{const section=document.getElementById(id);if(section instanceof HTMLDetailsElement)section.open=true;section?.scrollIntoView({block:'start',behavior:'instant'})}}>{label}</Button>)}</nav>
+      <p role="status" className="text-xs text-muted-foreground">{dirty?'Alterações não salvas. Salve ao concluir.':'Edite as seções abaixo. As alterações serão aplicadas ao salvar.'}</p>
       <fieldset disabled={saving||!conceptsReady} className="min-w-0 space-y-6">
 
-          <FormSection className={cardClass} title="Informações principais" description="Apresente seu projeto e ajude outras pessoas a encontrá-lo.">
+          <details id="project-information" open className="editor-section scroll-mt-24 rounded-2xl border border-border p-4"><summary className="cursor-pointer font-semibold">Informações do projeto</summary><FormSection className={cardClass} title="Informações principais" description="Apresente seu projeto e ajude outras pessoas a encontrá-lo.">
             <Field id="project-title" label="Título do projeto">
               <Input id="project-title" required maxLength={120} value={title} onChange={(e) => setTitle(e.target.value)} />
             </Field>
@@ -175,15 +189,16 @@ export function ProjectForm({ project, initialTags = [], initialVacancies = [], 
               helperText="Use assuntos e palavras-chave do projeto." maxItems={10} />
           </FormSection>
 
+          </details>
           {!project&&<FormSection className={cardClass} title="Contexto do projeto" description="Independente das categorias e tags. As informações acadêmicas são opcionais.">
             <label className="block space-y-2 text-sm">Contexto do projeto<select aria-label="Contexto do projeto" className="block w-full rounded-xl border bg-background p-2" value={context} onChange={e=>setContext(e.target.value)}><option value="">Não configurado</option><option value="academic">Acadêmico</option><option value="general">Geral / Profissional</option></select></label>
             {context==='academic'&&<><AcademicDefaultsFields value={academicDefaults} onChange={setAcademicDefaults}/><details><summary className="cursor-pointer font-medium">Primeiro período acadêmico</summary><div className="mt-4 space-y-3"><label className="block text-sm">Nome ou identificação do semestre<Input maxLength={160} placeholder="Período inicial" value={firstPeriod.name} onChange={e=>setFirstPeriod({...firstPeriod,name:e.target.value})}/></label><div className="grid gap-3 sm:grid-cols-2">{(['starts_on','ends_on'] as const).map(key=><label key={key} className="block text-sm">{key==='starts_on'?'Data de início':'Data de término'}<Input type="date" value={firstPeriod[key]} onChange={e=>setFirstPeriod({...firstPeriod,[key]:e.target.value})}/></label>)}</div><PeriodAcademicFields draft={firstPeriod} onChange={setFirstPeriod} defaults={academicDefaults}/><p className="text-xs text-muted-foreground">Este será o período ativo inicial, compartilhado com atividades e relatórios. O módulo de atividades não precisa ser ativado.</p></div></details></>}
           </FormSection>}
-          <FormSection className={cardClass} title="Vagas do projeto" description="Defina os perfis e as habilidades de cada vaga.">
+          <details id="project-vacancies-section" className="editor-section scroll-mt-24 rounded-2xl border border-border p-4"><summary className="cursor-pointer font-semibold">Vagas · {vacancies.length}</summary><FormSection className={cardClass} title="Vagas do projeto" description="Defina os perfis e as habilidades de cada vaga.">
             <span id="project-vacancies" className="scroll-mt-24" aria-hidden/>
             {vacancies.length === 0 && <p className="text-sm text-muted-foreground">Nenhuma vaga cadastrada.</p>}
             {vacancies.map((vacancy, index) => (
-              <section key={vacancy.key} className="min-w-0 space-y-4 rounded-2xl border border-border p-4 sm:p-5">
+              <details key={vacancy.key} open={!vacancy.id} className="min-w-0 space-y-4 rounded-xl border border-border p-4"><summary className="cursor-pointer break-words font-medium">{vacancy.title.trim() || "Nova vaga"} · {vacancy.open?"Aberta":"Encerrada"}</summary>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h3 className="min-w-0 break-words font-semibold">{vacancy.title.trim() || 'Vaga ' + (index + 1)}</h3>
                   {vacancy.id ? (
@@ -222,7 +237,7 @@ export function ProjectForm({ project, initialTags = [], initialVacancies = [], 
                     options={[{ value: 'open', label: 'Aberta' }, { value: 'closed', label: 'Encerrada' }]}
                     onChange={(value) => changeVacancy(vacancy.key, { open: value === 'open' })} />
                 </Field>
-              </section>
+              </details>
             ))}
             <Button type="button" variant="outline" className="w-fit gap-2"
               onClick={() => setVacancies((current) => [...current, {
@@ -232,6 +247,7 @@ export function ProjectForm({ project, initialTags = [], initialVacancies = [], 
               <Plus aria-hidden className="size-4" /> Adicionar vaga
             </Button>
           </FormSection>
+          </details>
           {!project && (
             <details className="rounded-2xl border border-border p-4">
               <summary className="cursor-pointer text-sm font-medium">Prévia do cartão em Explorar</summary>
@@ -247,7 +263,7 @@ export function ProjectForm({ project, initialTags = [], initialVacancies = [], 
             </details>
           )}
 
-        <section aria-labelledby="project-publishing" className="space-y-4 border-t border-border px-1 pt-5">
+        <details id="project-publication" className="editor-section scroll-mt-24 rounded-2xl border border-border p-4"><summary className="cursor-pointer font-semibold">Publicação</summary><section aria-labelledby="project-publishing" className="mt-4 space-y-4">
           <h2 id="project-publishing" className="font-semibold">Configurações de publicação</h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field id="project-status" label="Status do projeto">
@@ -259,12 +275,12 @@ export function ProjectForm({ project, initialTags = [], initialVacancies = [], 
                 options={PROJECT_VISIBILITY_OPTIONS.map((value) => ({ value, label: PROJECT_VISIBILITY_LABEL[value] }))} />
             </Field>
           </div>
+        </section></details>
           {error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}
           <div className="flex flex-wrap justify-end gap-3">
             <Button asChild variant="outline"><Link href={cancelHref}>Cancelar</Link></Button>
             <Button type="submit" disabled={saving}>{saving ? 'Salvando…' : project ? 'Salvar alterações' : 'Criar projeto'}</Button>
           </div>
-        </section>
       </fieldset>
     </form>
   )

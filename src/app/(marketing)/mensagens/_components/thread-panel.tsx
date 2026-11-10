@@ -147,6 +147,7 @@ export function ThreadPanel({
           size="sm"
           className="h-9 shrink-0 gap-2 rounded-xl text-xs font-semibold"
           onClick={onOpenMembers}
+          aria-label="Ver membros da conversa" title="Ver membros da conversa"
         >
           <Users className="h-4 w-4" aria-hidden />
           <span className="hidden sm:inline">Membros</span>

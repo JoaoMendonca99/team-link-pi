@@ -1,5 +1,7 @@
 "use client"
 
+import {MotionConfig} from 'framer-motion'
+import {WorkspaceLoading} from '@/components/layout/workspace-loading'
 import {Suspense} from 'react'
 import {WorkspaceShell} from '@/app/(marketing)/meu-espaco/workspace-shell'
 import {isInternalWorkspace} from '@/lib/workspace-navigation'
@@ -27,22 +29,22 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
   const hideMarketingFooter = isMessagesPage || isWorkspace
 
   return (
-    <ThemeProvider>
+    <MotionConfig reducedMotion="user"><ThemeProvider>
       <FriendshipsProvider>
       <div style={{ '--site-header-height': isWorkspace ? '64px' : '72px' } as React.CSSProperties} className="flex min-h-dvh flex-col overflow-x-clip bg-background text-foreground">
         <SiteHeader workspace={isWorkspace} fullBleed={isMessagesPage || isWorkspace} />
         <div
           className={
-            isMessagesPage && !isWorkspace ? "flex h-[calc(100dvh-72px)] min-h-0 flex-col" : "min-w-0 flex-1"
+            isMessagesPage && !isWorkspace ? "flex h-[calc(100dvh-72px)] min-h-0 flex-col" : "chat-safe-content min-w-0 flex-1"
           }
         >
-          {isWorkspace?<Suspense fallback={<p role="status" className="p-8">Carregando ambiente de trabalho…</p>}><WorkspaceShell>{children}</WorkspaceShell></Suspense>:children}
+          {isWorkspace?<Suspense fallback={<WorkspaceLoading />}><WorkspaceShell>{children}</WorkspaceShell></Suspense>:children}
         </div>
         {hideMarketingFooter ? null : <SiteFooter />}
       </div>
       {isMessagesPage ? null : <ProjectChatWidget />}
       {pathname === '/meu-espaco/configuracoes' || pathname === '/perfil/notificacoes' ? null : <PushSettings automatic />}
       </FriendshipsProvider>
-    </ThemeProvider>
+    </ThemeProvider></MotionConfig>
   )
 }

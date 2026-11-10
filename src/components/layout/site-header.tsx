@@ -193,6 +193,7 @@ export function SiteHeader({ fullBleed = false, workspace = false }: { fullBleed
 
 
           {isAuthenticated&&!workspace&&<Button asChild size="sm" className="hidden rounded-xl font-semibold lg:inline-flex"><Link href="/meu-espaco" aria-current={pathname.startsWith('/meu-espaco')?'page':undefined}><LayoutDashboard className="size-4" aria-hidden/>Meu Espaço</Link></Button>}
+          <div id="chat-launcher-slot" className="flex shrink-0 items-center" />
           <NotificationBell />
 
           <div className={cn('items-center gap-2', workspace ? 'flex' : 'hidden lg:flex')}>
