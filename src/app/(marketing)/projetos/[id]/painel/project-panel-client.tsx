@@ -1,17 +1,13 @@
 'use client'
 
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import {
-  ArrowLeft,
   LayoutDashboard,
   Loader2,
 } from 'lucide-react'
 
 import { EmptyState } from '@/components/team-link/empty-state'
-import { PageHeader } from '@/components/team-link/page-header'
-import { ProjectStatusBadge } from '@/components/team-link/project-status-badge'
 import { Button } from '@/components/ui/button'
 import { Container } from '@/components/layout/container'
 import {
@@ -57,7 +53,7 @@ import { PanelGithubSection } from './_components/panel-github-section'
 import { PanelSupportSection } from './_components/panel-support-section'
 import { useProjectLeadership } from '@/hooks/use-project-leadership'
 import { ProjectTools, type WorkspaceModule } from './_components/project-tools'
-import {AcademicPeriodSummary} from '@/components/team-link/academic-period-summary'
+import {ProjectPanelHeader} from '@/components/team-link/project-panel-header'
 import { ActivityOverview, PanelTeam, usePanelSummary } from './_components/panel-overview'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -209,7 +205,6 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
   const projectManager = useProjectLeadership(project?.id, user?.id)
   const historical=project?.status==='completed'||project?.status==='archived'
   const isManager=projectManager&&!historical
-  const canEditProject = isManager
   const canViewSupport = projectManager || membership?.supportAccess === true
   const projectId = project?.id
   const overview = usePanelSummary(projectId, user?.id, hasPanelAccess && membershipLoaded)
@@ -502,33 +497,8 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
     <div className="bg-background pb-20">
       <div className="border-b border-border bg-gradient-to-b from-muted/50 to-transparent">
         <Container className="space-y-3 py-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <Button asChild variant="outline" size="sm" className="rounded-2xl font-semibold">
-              <Link href={`/projetos/${project.slug}`}>
-                <ArrowLeft className="mr-1.5 h-4 w-4" />
-                Página pública
-              </Link>
-            </Button>
-            {canEditProject ? (
-              <Button asChild variant="outline" size="sm" className="rounded-2xl font-semibold">
-                <Link href={`/projetos/${project.slug}/editar`}>Editar projeto</Link>
-              </Button>
-            ) : null}
-            {projectManager && <Button asChild variant="outline" size="sm" className="rounded-2xl">
-              <Link id="candidaturas" href={recruitmentHref}>Candidaturas{pending > 0 && <span className="rounded-full bg-primary/10 px-2 text-primary" aria-label={pending + ' pendentes'}>{pending}</span>}</Link>
-            </Button>}
-            <Button asChild variant="ghost" size="sm"><Link href={'/meu-espaco/mensagens?projeto='+project.id}>Mensagens da equipe</Link></Button>
-          </div>
+          <ProjectPanelHeader project={project} manager={projectManager} canManage={isManager} pending={pending}/>
 
-          {historical&&<p className="text-sm font-medium text-primary">Projeto finalizado — somente leitura</p>}
-          <PageHeader
-            compact
-            eyebrow="Área da equipe"
-            title={project.title}
-            className="border-0 pb-0"
-            actions={<ProjectStatusBadge status={project.status} />}
-          />
-          <AcademicPeriodSummary projectId={project.id}/>
         </Container>
       </div>
 

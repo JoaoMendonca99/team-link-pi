@@ -19,7 +19,7 @@ import {FirstSteps} from '@/components/profile/first-steps'
 const card='min-w-0 space-y-4 rounded-2xl border border-card-outline bg-card p-4 sm:p-5'
 const selectClass='rounded-xl border border-border bg-background p-2 text-sm text-foreground'
 const levels:Record<string,string>={owner:'Líder',manager:'Gestor',reviewer:'Revisor',member:'Membro'}
-const tools:Record<string,string>={activities:'Atividades',reports:'Relatórios',github:'GitHub',support:'SAC'}
+const tools:Record<string,string>={activities:'Atividades',reports:'Documentação com IA',github:'GitHub',support:'SAC'}
 function Pages({offset,total,size,name,onChange}:{offset:number;total:number;size:number;name:string;onChange:(offset:number)=>void}) {
  if(total<=size&&offset===0)return null
  return <nav aria-label={'Paginação de '+name} className="flex flex-wrap items-center justify-between gap-3 text-sm"><span>{total?Math.min(offset+1,total):0}–{Math.min(offset+size,total)} de {total}</span><div className="flex gap-2"><Button size="sm" variant="outline" disabled={offset===0} onClick={()=>onChange(Math.max(0,offset-size))}>Anterior</Button><Button size="sm" variant="outline" disabled={offset+size>=total} onClick={()=>onChange(offset+size)}>Próxima</Button></div></nav>

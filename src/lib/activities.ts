@@ -10,8 +10,8 @@ export type ChecklistItem = { id: string; task_id: string; label: string; done: 
 export type Person = { id: string; name: string | null; avatar: string | null; level: string }
 export type Workspace = { project: { id: string; title: string; slug: string }; projectReadOnly?:boolean; manager: boolean; periods: Period[]; selectedPeriod?: string; readOnly?: boolean; stages: Stage[]; tasks: Task[]; goals: Goal[]; checklist: ChecklistItem[]; members: Person[] }
 export type Details = {
-  comments: { id: string; author_id: string | null; name: string | null; avatar: string | null; body: string; created_at: string }[]
-  history: { id: number; name: string | null; action: string; details: { reason?: string; from?: string; to?: string; mode?: string }; created_at: string }[]
+  comments: { id: string; author_id: string | null; name: string | null; avatar: string | null; body: string; created_at: string;reply_to?:string|null;attachments?:import('./project-documents').Evidence[] }[]
+  history: { id: number; name: string | null; action: string; details: { reason?: string; from?: string; to?: string; mode?: string;to_kind?:string;to_label?:string }; created_at: string }[]
 }
 export const kinds: Record<Kind, string> = { todo: 'A fazer', doing: 'Em andamento', review: 'Em revisão', done: 'Concluído' }
 export const priorities: Record<Priority, string> = { low: 'Baixa', medium: 'Média', high: 'Alta', urgent: 'Urgente' }

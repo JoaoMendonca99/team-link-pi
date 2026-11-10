@@ -11,15 +11,17 @@ import {lockDialogScroll} from '@/lib/dialog-scroll-lock'
 import {activityDate,activityRpc,historyLabels,overdue,priorities} from '@/lib/activities'
 import {activityUuid,contextualStage,type ActivityContext} from '@/lib/activity-details'
 import {ActivityForm} from './activity-form'
+import {ActivityComposer} from './activity-attachments'
+import {ActivityDiscussionFeed} from './activity-discussion-feed'
 
 type Props={taskId:string;projectId?:string;slug?:string;userId:string;close:()=>void;onChanged:()=>void;historicalEdit?:boolean;requestTransfer?:()=>void}
 export function ActivityDetailsDialog({taskId,projectId,slug,userId,close,onChanged,historicalEdit=false,requestTransfer}:Props){
  const dialog=useRef<HTMLDialogElement>(null),messages=useRef<HTMLDivElement>(null),nearBottom=useRef(true),forceBottom=useRef(true),initial=useRef(true),operation=useRef(false),request=useRef(0)
  const [data,setData]=useState<ActivityContext>(),[loading,setLoading]=useState(true),[loadError,setLoadError]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false)
  const [tab,setTab]=useState<'details'|'discussion'>('details'),[editing,setEditing]=useState(false),[editDirty,setEditDirty]=useState(false),[historical,setHistorical]=useState(historicalEdit)
- const [comment,setComment]=useState(''),commentOperation=useRef<{body:string;id:string}|undefined>(undefined),[check,setCheck]=useState(''),[reason,setReason]=useState(''),[deleting,setDeleting]=useState(false),[discard,setDiscard]=useState<'close'|'edit'|'transfer'|null>(null),[newMessages,setNewMessages]=useState(false)
+ const [draftDirty,setDraftDirty]=useState(false),[reply,setReply]=useState<{id:string;body:string}>(),[check,setCheck]=useState(''),[reason,setReason]=useState(''),[deleting,setDeleting]=useState(false),[discard,setDiscard]=useState<'close'|'edit'|'transfer'|null>(null),[newMessages,setNewMessages]=useState(false)
  const [editingItem,setEditingItem]=useState<{id:string;label:string;version:number}|null>(null)
- const dirty=Boolean(comment.trim()||reason.trim()||check.trim()||editDirty||editingItem)
+ const dirty=Boolean(draftDirty||reason.trim()||check.trim()||editDirty||editingItem)
  const load=useCallback(async()=>{
   const version=++request.current
   try{
@@ -44,7 +46,7 @@ export function ActivityDetailsDialog({taskId,projectId,slug,userId,close,onChan
  },[load,actualProject,taskId])
  useEffect(()=>{const previous=document.activeElement as HTMLElement|null,element=dialog.current;element?.showModal();const unlock=lockDialogScroll();return()=>{element?.close();unlock();if(previous?.isConnected)previous.focus({preventScroll:true})}},[])
  useEffect(()=>{if(!dirty)return;const protect=(e:BeforeUnloadEvent)=>{e.preventDefault();e.returnValue=''};window.addEventListener('beforeunload',protect);return()=>window.removeEventListener('beforeunload',protect)},[dirty])
- const latest=data?.details.comments.at(-1)?.id
+ const latest=(data?.details.comments.at(-1)?.id??'')+':'+(data?.details.history.at(-1)?.id??'')
  useEffect(()=>{if(!latest)return;const element=messages.current;if(!element||!element.clientHeight)return;if(initial.current||forceBottom.current||nearBottom.current){element.scrollTop=element.scrollHeight;initial.current=false;forceBottom.current=false;setNewMessages(false)}else setNewMessages(true)},[latest,tab])
  const task=data?.tasks[0],stage=task&&data?.stages.find(s=>s.id===task.stage_id),period=data?.periods[0]
  const writable=Boolean(data&&!data.projectReadOnly&&(!data.readOnly||data.manager&&historical)),canMove=writable&&data?.permissions.move,canReview=writable&&data?.permissions.review,canCheck=writable&&data?.permissions.check,canPlan=writable&&data?.manager
@@ -68,17 +70,14 @@ export function ActivityDetailsDialog({taskId,projectId,slug,userId,close,onChan
    {error&&<p role="alert" className="shrink-0 border-b p-3 text-sm text-destructive">{error}</p>}
    {loading?<p role="status" className="p-6">Carregando atividade e mensagens…</p>:loadError?<div role="alert" className="space-y-3 p-6"><p>{loadError}</p><Button variant="outline" onClick={()=>void load()}>Tentar novamente</Button></div>:data&&task&&<>
     <div role="tablist" aria-label="Áreas da atividade" className="grid shrink-0 grid-cols-2 border-b lg:hidden" onKeyDown={event=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(event.key)){event.preventDefault();const target=event.key==='Home'?'details':event.key==='End'?'discussion':tab==='details'?'discussion':'details';setTab(target);dialog.current?.querySelector<HTMLButtonElement>('#activity-tab-'+target)?.focus()}}}>{(['details','discussion'] as const).map(name=><button key={name} type="button" role="tab" id={'activity-tab-'+name} aria-controls={'activity-pane-'+name} aria-selected={tab===name} tabIndex={tab===name?0:-1} className={'min-h-11 px-4 text-sm font-medium '+(tab===name?'border-b-2 border-primary text-primary':'text-muted-foreground')} onClick={()=>setTab(name)}>{name==='details'?'Detalhes':'Discussão'}</button>)}</div>
-    <div className="grid min-h-0 min-w-0 flex-1 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+    <div className="grid min-h-0 min-w-0 flex-1 lg:grid-cols-[minmax(0,11fr)_minmax(0,9fr)]">
      <section id="activity-pane-discussion" aria-label="Discussão da atividade" className={(tab==='discussion'?'flex':'hidden')+' min-h-0 min-w-0 flex-col lg:flex lg:border-r lg:border-border'}>
       <h3 className="hidden shrink-0 border-b px-4 py-3 font-semibold lg:block">Discussão</h3>
       <div ref={messages} onScroll={event=>{const e=event.currentTarget;nearBottom.current=e.scrollHeight-e.scrollTop-e.clientHeight<70;if(nearBottom.current)setNewMessages(false)}} role="log" aria-label="Mensagens da atividade" aria-live="polite" aria-relevant="additions" className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-4">
-       {!data.details.comments.length&&<p className="text-sm text-muted-foreground">Nenhuma mensagem. Use este espaço para conversar sobre a atividade.</p>}
-       {data.details.comments.map(entry=><article key={entry.id} className={'flex items-start gap-2 '+(entry.author_id===userId?'ml-4':'mr-4')}><UserAvatar name={entry.name||'Usuário indisponível'} imageUrl={entry.avatar??undefined} sizeClassName="size-7"/><div className={'min-w-0 flex-1 space-y-1 rounded-xl border p-3 '+(entry.author_id===userId?'border-primary/20 bg-primary/10':'border-border bg-muted/30')}><p className="break-words text-xs font-semibold">{entry.name||'Usuário indisponível'}</p><p className="whitespace-pre-wrap break-words text-sm [overflow-wrap:anywhere]">{entry.body}</p><time dateTime={entry.created_at} className="text-[11px] text-muted-foreground">{activityDate(entry.created_at)}</time></div></article>)}
+       <ActivityDiscussionFeed details={data.details} userId={userId} canReply={writable&&data.permissions.comment} onReply={entry=>setReply({id:entry.id,body:entry.body})}/>
       </div>
       {newMessages&&<Button variant="ghost" size="sm" onClick={()=>{if(messages.current)messages.current.scrollTop=messages.current.scrollHeight;setNewMessages(false)}}>Ver mensagens recentes</Button>}
-      <form className="shrink-0 space-y-2 border-t p-3" onSubmit={event=>{event.preventDefault();if(!comment.trim()||!writable||!data.permissions.comment)return;const body=comment.trim();if(commentOperation.current?.body!==body)commentOperation.current={body,id:crypto.randomUUID()};run('comment',{id:task.id,body,comment_id:commentOperation.current.id},()=>{setComment('');commentOperation.current=undefined;forceBottom.current=true})}}>
-       {writable&&data.permissions.comment?<><Textarea aria-label="Mensagem sobre a atividade" placeholder="Escreva uma mensagem sobre esta atividade..." maxLength={4000} rows={2} value={comment} disabled={busy} onChange={e=>setComment(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing){e.preventDefault();e.currentTarget.form?.requestSubmit()}}}/><div className="flex items-center justify-between gap-2"><p className="text-[11px] text-muted-foreground">Enter envia · Shift+Enter quebra linha</p><Button type="submit" size="sm" disabled={busy||!comment.trim()}>{busy?'Enviando…':'Enviar'}</Button></div></>:<p className="text-xs text-muted-foreground">Discussão disponível para consulta. Você não pode enviar mensagens nesta atividade.</p>}
-      </form>
+      {writable&&data.permissions.comment?<ActivityComposer taskId={task.id} replyTo={reply} historical={historical} onDirty={setDraftDirty} cancelReply={()=>setReply(undefined)} onSent={async()=>{forceBottom.current=true;await load();onChanged()}}/>:<p className="shrink-0 border-t p-3 text-xs text-muted-foreground">Discussão disponível para consulta. Você não pode enviar mensagens nesta atividade.</p>}
      </section>
      <section id="activity-pane-details" aria-label="Detalhes da atividade" className={(tab==='details'?'block':'hidden')+' min-h-0 min-w-0 space-y-5 overflow-y-auto overscroll-contain p-4 sm:p-6 lg:block'}>
       {data.readOnly&&<div className="rounded-xl border p-3 text-sm"><p>{data.projectReadOnly?'Projeto finalizado':'Período histórico'} · {writable?'Edição habilitada':'Somente consulta'}</p>{data.manager&&!data.projectReadOnly&&<label className="mt-2 flex items-center gap-2"><input type="checkbox" checked={historical} disabled={busy} onChange={e=>setHistorical(e.target.checked)}/>Habilitar edição do histórico</label>}</div>}

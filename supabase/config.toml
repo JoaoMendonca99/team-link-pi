@@ -75,3 +75,6 @@ verify_jwt = false
 
 [functions.support-disable-integration]
 verify_jwt = false
+
+[functions.project-documents]
+verify_jwt = false
