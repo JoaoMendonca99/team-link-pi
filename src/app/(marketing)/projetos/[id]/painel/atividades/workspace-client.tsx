@@ -5,10 +5,11 @@ import { useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {ActivityDetailsDialog} from '@/components/activities/activity-details-dialog'
 import {useActivityLink} from '@/components/activities/activity-link'
-import { Download } from 'lucide-react'
+import { ArrowLeft, ChevronDown, Download } from 'lucide-react'
 import { ActivityExport } from './workspace-export'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { UserAvatar } from '@/components/team-link/user-avatar'
 import { useSupabaseSession } from '@/hooks/use-supabase-session'
 import { getSupabaseClient } from '@/lib/supabase/client'
@@ -25,6 +26,8 @@ export function ActivitiesClient({ slug }: { slug: string }) {
 
 function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
   const activityLink=useActivityLink()
+  const managementAction = useRef<(() => void) | null>(null)
+  const managementButton = useRef<HTMLButtonElement>(null)
   const [mobileStage,setMobileStage]=useState('')
   const [exportOpen,setExportOpen]=useState(false)
   const [periodId,setPeriodId]=useState('')
@@ -173,16 +176,51 @@ function ActivityWorkspace({ userId, slug }: { userId: string; slug: string }) {
     </article>
   }
   return <div className="min-w-0 space-y-5 px-4 py-6 sm:px-6 lg:px-8">
-    <header className="flex flex-wrap items-center justify-between gap-3">
-      <div><Link href={'/projetos/' + slug + '/painel'} className="text-sm text-primary hover:underline">Voltar ao painel</Link>
-        <p className="mt-2 text-sm text-muted-foreground">{data.project.title}</p><h1 className="text-2xl font-bold">Controle de Atividades</h1></div>
-      {manager && <div className="flex flex-wrap gap-2"><Button disabled={readOnly} onClick={() => setTask('new')}>Nova atividade</Button>
-        <Button disabled={readOnly} variant="outline" onClick={() => setGoal('new')}>Nova meta</Button><Button variant="outline" onClick={() => setStagesOpen(true)}>Gerenciar etapas</Button><Button variant="outline" onClick={()=>setPeriodsOpen(true)}>Gerenciar períodos</Button><Button variant="outline" onClick={()=>setTransfer({})}>Organizar atividades por período</Button></div>}
+    <header className="flex flex-wrap items-start justify-between gap-4">
+      <div className="flex min-w-0 items-start gap-3">
+        <Button asChild size="icon" variant="outline">
+          <Link href={'/projetos/' + encodeURIComponent(slug) + '/painel'} aria-label="Voltar ao painel do projeto">
+            <ArrowLeft aria-hidden />
+          </Link>
+        </Button>
+        <div className="min-w-0">
+          <h1 className="break-words text-2xl font-bold">Controle de Atividades</h1>
+          <p className="break-words text-sm text-muted-foreground">{data.project.title}</p>
+        </div>
+      </div>
+      {manager && <div className="flex flex-wrap gap-2">
+        <Button disabled={readOnly} onClick={() => setTask('new')}>Nova atividade</Button>
+        <Button disabled={readOnly} variant="outline" onClick={() => setGoal('new')}>Nova meta</Button>
+        <DropdownMenu modal={false}>
+          <DropdownMenuTrigger asChild>
+            <Button ref={managementButton} variant="outline">Gerenciar <ChevronDown aria-hidden /></Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" onCloseAutoFocus={event => {
+            const action = managementAction.current
+            managementAction.current = null
+            if (!action) return
+            event.preventDefault()
+            managementButton.current?.focus()
+            action()
+          }}>
+            <DropdownMenuItem onSelect={() => { managementAction.current = () => setStagesOpen(true) }}>Gerenciar etapas</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => { managementAction.current = () => setPeriodsOpen(true) }}>Gerenciar períodos</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => { managementAction.current = () => setTransfer({}) }}>Organizar atividades por período</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>}
     </header>
 
     {data.projectReadOnly&&<p className="text-sm font-medium text-primary">Projeto finalizado — somente leitura</p>}
-    <section className="space-y-2 rounded-2xl border border-border bg-card p-3" aria-label="Períodos do projeto">
-      <label className="block text-sm font-medium">Período<select aria-label="Período do projeto" className="mt-1 w-full rounded-xl border bg-background p-2 sm:max-w-xl" value={period?.id??''} onChange={e=>selectPeriod(e.target.value)}>{data.periods.map(p=><option key={p.id} value={p.id}>{p.name}{p.is_active?' · Ativo':' · Histórico'}</option>)}</select></label>
+    <section className="space-y-2" aria-label="Períodos do projeto">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <label htmlFor="activity-period" className="text-sm font-medium">Período</label>
+        <select id="activity-period" aria-label="Período do projeto"
+          className="min-h-11 w-full min-w-0 max-w-full rounded-lg border bg-background px-3 text-sm sm:w-auto"
+          value={period?.id ?? ''} onChange={event => selectPeriod(event.target.value)}>
+          {data.periods.map(p => <option key={p.id} value={p.id}>{p.name}{p.is_active ? ' · Ativo' : ' · Histórico'}</option>)}
+        </select>
+      </div>
       {historical&&<div className="flex flex-wrap items-center gap-2"><p className="text-sm text-muted-foreground">Período histórico · {historyEditing?'Edição administrativa habilitada.':'Somente consulta.'}</p>{manager&&<Button size="sm" variant="outline" onClick={()=>setHistoryEditing(v=>!v)}>{historyEditing?'Voltar à consulta':'Habilitar edição deste histórico'}</Button>}</div>}
     </section>
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}

@@ -5,10 +5,12 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   LayoutDashboard,
   Loader2,
+  X,
 } from 'lucide-react'
 
 import { EmptyState } from '@/components/team-link/empty-state'
 import { Button } from '@/components/ui/button'
+import { AccessibleDialog } from '@/components/ui/accessible-dialog'
 import { Container } from '@/components/layout/container'
 import {
   syncProjectGithubRepository,
@@ -78,7 +80,8 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
   const [modules, setModules] = useState<WorkspaceModule[]>([])
   const [modulesLoading, setModulesLoading] = useState(true)
   const [modulesError, setModulesError] = useState<string | null>(null)
-  const [opened, setOpened] = useState<WorkspaceModule | null>(null)
+  const [githubVisible, setGithubVisible] = useState(false)
+  const [supportVisible, setSupportVisible] = useState(false)
   const [pending, setPending] = useState(0)
 
   const [repository, setRepository] = useState<GithubRepositoryLink | null>(null)
@@ -212,8 +215,8 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
   const projectId = project?.id
   const overview = usePanelSummary(projectId, user?.id, hasPanelAccess && membershipLoaded)
   const recruitmentHref = project ? '/projetos/' + project.slug + '/painel/candidaturas' : ''
-  const githubOpen = opened === 'github' && modules.includes('github')
-  const supportOpen = opened === 'support' && modules.includes('support') && canViewSupport
+  const githubOpen = githubVisible && modules.includes('github')
+  const supportOpen = supportVisible && modules.includes('support') && canViewSupport
 
   useEffect(() => {
     if (!hasPanelAccess || !projectId) return
@@ -232,7 +235,8 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
 
   useEffect(() => {
     const tool=new URLSearchParams(window.location.search).get('ferramenta')
-    if(tool==='github'||tool==='support')setOpened(tool)
+    setGithubVisible(tool === 'github')
+    setSupportVisible(tool === 'support')
   }, [slug])
 
   useEffect(() => {
@@ -258,7 +262,8 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
     const { error } = await getSupabaseClient().rpc('set_workspace_module', { p_project: projectId, p_module: module, p_active: active })
     if (error) throw error
     setModules((current) => active ? [...new Set([...current, module])] : current.filter((entry) => entry !== module))
-    if (!active) setOpened((current) => current === module ? null : current)
+    if (!active && module === 'github') setGithubVisible(false)
+    if (!active && module === 'support') setSupportVisible(false)
   }
 
   const refreshSupportIntegration = useCallback(async () => {
@@ -513,20 +518,43 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
           open={(module) => {
             if (module === 'activities') router.push('/projetos/' + project.slug + '/painel/atividades')
             else if (module === 'reports') router.push('/projetos/' + project.slug + '/painel/relatorios')
-            else setOpened(module)
+            else if (module === 'github') setGithubVisible(true)
+            else if (module === 'support') setSupportVisible(true)
           }} toggle={toggleModule} />
 
         {isManager&&user&&<ProjectRecommendationTools key={project.id+user.id} project={project.id} userId={user.id}/>}
 
-        {githubOpen && githubError ? (
-          <p className="rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            {githubError}
-          </p>
-        ) : null}
+        {supportOpen && <section className="space-y-3" aria-label="Ferramenta selecionada">
+          <Button type="button" variant="ghost" size="sm" onClick={() => setSupportVisible(false)}>Fechar ferramenta</Button>
+          <PanelSupportSection readOnly={historical}
+              className="h-fit min-w-0 self-start"
+              projectId={project.id}
+              isManager={isManager}
+              integration={supportIntegration}
+              integrationLoading={supportIntegrationLoading}
+              integrationError={supportIntegrationError}
+              onIntegrationChange={handleSupportIntegrationChange}
+              stats={supportStats}
+              statsLoading={supportStatsLoading}
+              canViewSupport={canViewSupport}
+              onRefreshStats={refreshSupportStats}
+            />
+        </section>}
+        </div>
+        <PanelTeam data={overview.data} error={overview.error} now={overview.now} />
+      </Container>
 
-        {(githubOpen || supportOpen) && <section className="space-y-3" aria-label="Ferramenta selecionada">
-          <Button type="button" variant="ghost" size="sm" onClick={() => setOpened(null)}>Fechar ferramenta</Button>
-          {githubOpen && <PanelGithubSection
+      <AccessibleDialog open={githubOpen} label="GitHub do projeto" busy={actionLoading}
+        onClose={() => setGithubVisible(false)} className="max-w-4xl">
+        <header className="sticky top-0 z-10 flex items-center justify-between gap-3 border-b bg-card px-4 py-3 sm:px-6">
+          <h2 className="text-lg font-semibold">GitHub do projeto</h2>
+          <Button type="button" variant="ghost" size="icon" aria-label="Fechar GitHub" disabled={actionLoading} onClick={() => setGithubVisible(false)}>
+            <X aria-hidden />
+          </Button>
+        </header>
+        {githubOpen && <div className="min-w-0 space-y-3 p-4 sm:p-6">
+          {githubError && <p role="alert" className="rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">{githubError}</p>}
+          <PanelGithubSection
             className="min-w-0"
             repository={repository}
             commits={commits}
@@ -543,26 +571,9 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
             onToggleVisibility={() => void handleToggleVisibility()}
             onChangeActivitySource={(source) => void handleChangeActivitySource(source)}
             onOpenCommit={setSelectedCommit}
-          />}
-          {supportOpen ? (
-            <PanelSupportSection readOnly={historical}
-              className="h-fit min-w-0 self-start"
-              projectId={project.id}
-              isManager={isManager}
-              integration={supportIntegration}
-              integrationLoading={supportIntegrationLoading}
-              integrationError={supportIntegrationError}
-              onIntegrationChange={handleSupportIntegrationChange}
-              stats={supportStats}
-              statsLoading={supportStatsLoading}
-              canViewSupport={canViewSupport}
-              onRefreshStats={refreshSupportStats}
-            />
-          ) : null}
-        </section>}
-        </div>
-        <PanelTeam data={overview.data} error={overview.error} now={overview.now} />
-      </Container>
+          />
+        </div>}
+      </AccessibleDialog>
 
       <ConnectGithubDialog
         open={linkOpen && githubOpen}

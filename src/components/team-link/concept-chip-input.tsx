@@ -1,16 +1,16 @@
 'use client'
 
-import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import { searchConcepts, type ConceptChoice, type ConceptHit } from '@/lib/concepts'
 
-type Props = { label: string; value: ConceptChoice[]; onChange: (next: ConceptChoice[]) => void; inputId?: string; optional?: boolean; maxItems?: number; maxLength?: number; disabled?: boolean; placeholder?: string; helperText?: string; className?: string; allowProposals?:boolean }
+type Props = { label: string; value: ConceptChoice[]; onChange: (next: ConceptChoice[]) => void; inputId?: string; optional?: boolean; maxItems?: number; maxLength?: number; disabled?: boolean; placeholder?: string; helperText?: string; className?: string; allowProposals?:boolean; renderChoiceControl?: (choice: ConceptChoice, index: number) => ReactNode }
 
 /** Explicit selection/proposal: blur never silently creates a concept or resolves an ambiguous legacy chip. */
-export function ConceptChipInput({ label, value, onChange, inputId, optional, maxItems=16, maxLength=40, disabled=false, placeholder='Pesquise um conceito', helperText, className, allowProposals=true }: Props) {
+export function ConceptChipInput({ label, value, onChange, inputId, optional, maxItems=16, maxLength=40, disabled=false, placeholder='Pesquise um conceito', helperText, className, allowProposals=true, renderChoiceControl }: Props) {
   const generated=useId(), id=inputId || 'concept-'+generated, listId=id+'-results'
   const root=useRef<HTMLDivElement>(null), input=useRef<HTMLInputElement>(null), popup=useRef<HTMLDivElement>(null)
   const cache=useRef(new Map<string,ConceptHit[]>())
@@ -55,7 +55,10 @@ export function ConceptChipInput({ label, value, onChange, inputId, optional, ma
   function select(choice:ConceptChoice){
     const others=value.filter((_,i)=>i!==replace)
     const duplicate=others.some(v=>choice.id?v.id===choice.id:!v.id&&v.label.toLocaleLowerCase()===choice.label.toLocaleLowerCase()&&v.domain===choice.domain)
-    if(!duplicate)onChange(replace===null?[...value,choice]:value.map((v,i)=>i===replace?choice:v))
+    if (!duplicate) {
+      onChange(replace === null ? [...value, choice] : value.map((v, i) =>
+        i === replace ? { ...choice, weight: v.weight, weightEdited: v.weightEdited } : v))
+    }
     setNotice(duplicate?'Esse conceito já está na lista. Use o X para remover o termo que deseja substituir.':'')
     setDraft('');setReplace(null);setOpen(false);setActive(-1);suppressOpen.current=true;input.current?.focus();suppressOpen.current=false
   }
@@ -75,11 +78,13 @@ export function ConceptChipInput({ label, value, onChange, inputId, optional, ma
         if(event.key==='Enter'){event.preventDefault();if(showResults&&active>=0)choose(active)}
         if(event.key==='Escape'){event.preventDefault();event.stopPropagation();setOpen(false);setReplace(null);setDraft('')}
       }} />
-    {value.length>0&&<ul className="flex flex-wrap gap-2" aria-label={label+' adicionados'}>{value.map((choice,index)=><li key={choice.id||index+'-'+choice.label}
-      className="inline-flex max-w-full items-center gap-1 rounded-2xl border border-primary/30 bg-primary/10 px-3 py-1 text-xs text-foreground">
-      <span className="min-w-0 break-words">{choice.label}{choice.domain&&<span className="text-muted-foreground"> · {choice.domain}</span>}{choice.status==='provisorio'&&<span className="ml-1 font-medium text-primary">· Provisório</span>}{choice.status==='inativo'&&<span className="ml-1 text-muted-foreground">· Inativo</span>}</span>
+    {value.length>0&&<ul className={renderChoiceControl ? "grid gap-2" : "flex flex-wrap gap-2"} aria-label={label+' adicionados'}>{value.map((choice,index)=><li key={choice.id||index+'-'+choice.label}
+      className={cn("inline-flex max-w-full items-center gap-1 rounded-2xl border border-primary/30 bg-primary/10 px-3 py-1 text-xs text-foreground",
+        renderChoiceControl && "flex-wrap gap-x-2 rounded-xl")}>
+      <span className={cn("min-w-0 break-words", renderChoiceControl && "flex-1 basis-28")}>{choice.label}{choice.domain&&<span className="text-muted-foreground"> · {choice.domain}</span>}{choice.status==='provisorio'&&<span className="ml-1 font-medium text-primary">· Provisório</span>}{choice.status==='inativo'&&<span className="ml-1 text-muted-foreground">· Inativo</span>}</span>
       {!choice.id&&!choice.proposal&&<button type="button" disabled={disabled} className="min-h-8 rounded px-1 font-semibold text-primary underline focus-visible:ring-2 focus-visible:ring-ring" aria-label={'Confirmar conceito '+choice.label}
         onClick={()=>{setReplace(index);setDraft(choice.label);setOpen(true);input.current?.focus()}}>Confirmar</button>}
+      {renderChoiceControl?.(choice,index)}
       <button type="button" disabled={disabled} aria-label={'Remover '+choice.label} className="inline-flex size-8 shrink-0 items-center justify-center rounded-full hover:bg-primary/20 focus-visible:ring-2 focus-visible:ring-ring"
         onClick={()=>{onChange(value.filter((_,at)=>at!==index));setReplace(null);input.current?.focus()}}><X className="size-3.5" aria-hidden /></button>
     </li>)}</ul>}

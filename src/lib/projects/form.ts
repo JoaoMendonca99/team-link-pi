@@ -70,9 +70,14 @@ export function projectStepErrors(step: ProjectStep, values: ProjectWizardValues
   }
   return Object.fromEntries(Object.entries(all).filter(([key]) => fields[step]?.includes(key)))
 }
+export function vacancyConceptPayload(choices: ConceptChoice[]) {
+  return choices.map(({ weight, weightEdited, ...concept }) =>
+    weightEdited ? { ...concept, weight } : concept)
+}
+
 export function projectFormPayload(values: ProjectFormValues, projectId: string | null = null) {
   const url = parseOptionalProjectUrl(values.url)
-  return { p_project_id: projectId, p_slug: values.slug, p_title: values.title, p_category: values.category, p_secondary_categories: values.secondary, p_project_url: url.ok ? url.value : null, p_short_description: values.summary, p_description: values.description, p_status: values.status, p_visibility: values.visibility, p_tags: values.tags, p_tag_choices: values.tagConcepts ?? legacyConcepts(values.tags), p_vacancies: values.vacancies.filter(v => v.changed).map(v => ({ id: v.id, title: v.title, description: v.description, skills: v.skills, concept_refs: v.skillConcepts ?? legacyConcepts(v.skills), positions: Number(v.positions), open: v.open })) }
+  return { p_project_id: projectId, p_slug: values.slug, p_title: values.title, p_category: values.category, p_secondary_categories: values.secondary, p_project_url: url.ok ? url.value : null, p_short_description: values.summary, p_description: values.description, p_status: values.status, p_visibility: values.visibility, p_tags: values.tags, p_tag_choices: values.tagConcepts ?? legacyConcepts(values.tags), p_vacancies: values.vacancies.filter(v => v.changed).map(v => ({ id: v.id, title: v.title, description: v.description, skills: v.skills, concept_refs: vacancyConceptPayload(v.skillConcepts ?? legacyConcepts(v.skills)), positions: Number(v.positions), open: v.open })) }
 }
 export function projectWizardPayload(values: ProjectWizardValues) {
   return { p_form: projectFormPayload({ ...values, vacancies: values.deferVacancies ? [] : values.vacancies.map(v => ({ ...v, id: null, occupied: 0, changed: true })) }), p_academic: values.context === 'academic' ? { context: values.context, defaults: values.defaults, period: periodPayload(values.period, values.defaults) } : { context: 'general', defaults: { ...emptyDefaults } } }
@@ -100,7 +105,7 @@ export function restoreProjectWizard(raw: string): ProjectWizardValues | null {
     for (const key of ['name', 'description', 'starts_on', 'ends_on', 'academic_year', 'academic_semester', 'discipline', 'advisor'] as const) if (typeof value.period?.[key] === 'string') result.period[key] = value.period[key]
     if (Array.isArray(value.vacancies)) result.vacancies = value.vacancies.filter((v: unknown) => v && typeof v === 'object').map((v: Record<string, unknown>, index: number) => ({ key: 'restored-vacancy-' + index, id: null, title: typeof v.title === 'string' ? v.title : '', description: typeof v.description === 'string' ? v.description : '', positions: typeof v.positions === 'string' ? v.positions : '1', skills: Array.isArray(v.skills) ? v.skills.filter((s: unknown): s is string => typeof s === 'string').slice(0, 30) : [], open: v.open !== false, occupied: 0, changed: true }))
     const restoredVacancies=Array.isArray(value.vacancies)?value.vacancies.filter((v:unknown)=>v&&typeof v==='object'):[]
-    result.vacancies=result.vacancies.map((vacancy,index)=>{const skillConcepts=restoreConcepts(restoredVacancies[index]?.skillConcepts,vacancy.skills,30);return {...vacancy,skills:conceptLabels(skillConcepts),skillConcepts}})
+    result.vacancies=result.vacancies.map((vacancy,index)=>{const skillConcepts=restoreConcepts(restoredVacancies[index]?.skillConcepts,vacancy.skills,30,true);return {...vacancy,skills:conceptLabels(skillConcepts),skillConcepts}})
     return result
   } catch { return null }
 }

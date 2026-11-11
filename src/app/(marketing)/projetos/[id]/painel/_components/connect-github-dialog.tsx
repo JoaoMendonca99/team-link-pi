@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { AlertCircle, Github, Loader2, X } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { AccessibleDialog } from '@/components/ui/accessible-dialog'
 import {
   GITHUB_LIST_AVAILABLE_USER_MESSAGE,
   GITHUB_START_USER_MESSAGE,
@@ -101,20 +102,6 @@ export function ConnectGithubDialog({
     void loadAvailable()
   }, [open, loadAvailable])
 
-  useEffect(() => {
-    if (!open) return
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape' && phase !== 'linking' && !redirecting) onClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => {
-      document.body.style.overflow = previousOverflow
-      window.removeEventListener('keydown', onKey)
-    }
-  }, [open, onClose, phase, redirecting])
-
   if (!open) return null
 
   const busy = phase === 'linking' || redirecting
@@ -173,21 +160,8 @@ export function ConnectGithubDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 sm:p-6">
-      <button
-        type="button"
-        aria-label="Fechar"
-        className="absolute inset-0 bg-background/70 backdrop-blur-sm"
-        onClick={() => {
-          if (!busy) onClose()
-        }}
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="connect-github-title"
-        className="relative z-[90] flex w-full max-w-lg max-h-[90vh] flex-col overflow-hidden rounded-[1.75rem] border border-card-outline bg-card p-6 shadow-2xl"
-      >
+    <AccessibleDialog open={open} label="Conectar repositório GitHub" busy={busy} onClose={onClose}
+      className="max-w-lg p-4 sm:p-6">
         <ConnectGithubDialogBody
           phase={phase}
           accountLabel={accountLabel}
@@ -208,8 +182,7 @@ export function ConnectGithubDialog({
           onLink={() => void handleLink()}
           onAuthorizeMore={() => void handleAuthorizeMore()}
         />
-      </div>
-    </div>
+    </AccessibleDialog>
   )
 }
 

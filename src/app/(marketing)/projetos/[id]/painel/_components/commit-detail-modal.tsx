@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect } from 'react'
 import { ExternalLink, X } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { AccessibleDialog } from '@/components/ui/accessible-dialog'
 import {
   authorLabel,
   formatCommitDate,
@@ -18,20 +18,6 @@ interface CommitDetailModalProps {
 }
 
 export function CommitDetailModal({ commit, onClose }: CommitDetailModalProps) {
-  useEffect(() => {
-    if (!commit) return
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    function onKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => {
-      document.body.style.overflow = previousOverflow
-      window.removeEventListener('keydown', onKey)
-    }
-  }, [commit, onClose])
-
   if (!commit) return null
 
   const files = listChangedFiles(commit.files)
@@ -39,19 +25,7 @@ export function CommitDetailModal({ commit, onClose }: CommitDetailModalProps) {
     commit.additions != null || commit.deletions != null || commit.changed_files != null
 
   return (
-    <>
-      <button
-        type="button"
-        aria-label="Fechar detalhes do commit"
-        className="fixed inset-0 z-[80] bg-background/70 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="commit-detail-title"
-        className="fixed inset-x-0 bottom-0 z-[90] max-h-[min(90vh,720px)] overflow-y-auto rounded-t-[1.75rem] border border-card-outline bg-card p-6 shadow-2xl sm:inset-x-auto sm:left-1/2 sm:top-1/2 sm:max-h-[85vh] sm:w-full sm:max-w-lg sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-[1.75rem]"
-      >
+    <AccessibleDialog open label="Detalhes do commit" onClose={onClose} className="max-w-lg p-4 sm:p-6">
         <div className="mb-4 flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -118,7 +92,6 @@ export function CommitDetailModal({ commit, onClose }: CommitDetailModalProps) {
             </a>
           </Button>
         ) : null}
-      </div>
-    </>
+    </AccessibleDialog>
   )
 }

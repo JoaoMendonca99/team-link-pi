@@ -8,6 +8,7 @@ import { Plus, X } from 'lucide-react'
 import { AcademicDefaultsFields, PeriodAcademicFields } from './academic-fields'
 import { emptyDefaults, periodDraft, periodPayload } from '@/lib/projects/academics'
 import { ConceptChipInput } from '@/components/team-link/concept-chip-input'
+import { VacancySkillsInput } from './vacancy-skills-input'
 import { conceptLabels, legacyConcepts, type ConceptChoice, type ProjectConcepts } from '@/lib/concepts'
 import { getSupabaseClient } from '@/lib/supabase/client'
 import { ProjectCard } from '@/components/team-link/project-card'
@@ -232,8 +233,8 @@ export function ProjectForm({ project, initialTags = [], initialVacancies = [], 
                   <Textarea id={vacancy.key + '-description'} rows={3} maxLength={4000} value={vacancy.description}
                     onChange={(e) => changeVacancy(vacancy.key, { description: e.target.value })} />
                 </Field>
-                <ConceptChipInput disabled={saving||!conceptsReady} label="Habilidades desejadas" optional maxItems={30} maxLength={120} value={vacancy.skillConcepts??legacyConcepts(vacancy.skills)}
-                  onChange={skillConcepts => changeVacancy(vacancy.key, { skills:conceptLabels(skillConcepts),skillConcepts })} />
+                {conceptsReady && <VacancySkillsInput disabled={saving} value={vacancy.skillConcepts??legacyConcepts(vacancy.skills)}
+                  onChange={skillConcepts => changeVacancy(vacancy.key, { skills:conceptLabels(skillConcepts),skillConcepts })} />}
                 <Field id={vacancy.key + '-state'} label="Estado da vaga">
                   <Choice id={vacancy.key + '-state'} value={vacancy.open ? 'open' : 'closed'}
                     options={[{ value: 'open', label: 'Aberta' }, { value: 'closed', label: 'Encerrada' }]}

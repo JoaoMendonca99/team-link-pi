@@ -35,7 +35,7 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
         <SiteHeader workspace={isWorkspace} fullBleed={isMessagesPage || isWorkspace} />
         <div
           className={
-            isMessagesPage && !isWorkspace ? "flex h-[calc(100dvh-72px)] min-h-0 flex-col" : "chat-safe-content min-w-0 flex-1"
+            isMessagesPage && !isWorkspace ? "flex h-[calc(100dvh-72px)] min-h-0 flex-col" : (isWorkspace ? "workspace-chat-safe " : "") + "chat-safe-content min-w-0 flex-1"
           }
         >
           {isWorkspace?<Suspense fallback={<WorkspaceLoading />}><WorkspaceShell>{children}</WorkspaceShell></Suspense>:children}

@@ -2,7 +2,6 @@
 import { graphClient, graphSnapshot, projectKey, readGraphSnapshot, accessDenied, RecommendationAccessError } from './repository.server';
 import { buildGraph, recommend } from './engine';
 import { inspect } from './demo';
-import type { Requirement } from './types';
 import { deservesVacancyBadge, presentPerson } from './presentation';
 import { opportunityFilters, type OpportunityPage, type OpportunityFilters } from '../vacancy-exploration';
 
@@ -60,30 +59,5 @@ export async function loadGraphDemo(token: string, project: string) {
     }
     catch {
         return { ok: false as const, message: 'Demonstração indisponível para este contexto.' };
-    }
-}
-export async function requirementWeights(token: string, project: string, changes?: {
-    key: string;
-    source: 'project' | 'vacancy';
-    weight: number;
-}[]) {
-    try {
-        if (changes && (!Array.isArray(changes) || changes.length > 60 || changes.some(r => !Number.isInteger(r.weight) || r.weight < 1 || r.weight > 5)))
-            throw Error('Invalid weights');
-        const client = await graphClient(token);
-        const { data, error } = await client.rpc('graph_requirement_weights', { p_project: projectKey(project), p_changes: changes ?? null });
-        if (error)
-            throw error;
-        return { ok: true as const, data: data as {
-                project: Requirement[];
-                vacancies: {
-                    id: string;
-                    title: string;
-                    requirements: Requirement[];
-                }[];
-            } };
-    }
-    catch {
-        return { ok: false as const, message: 'Não foi possível consultar ou salvar os pesos. Confira suas permissões e tente novamente.' };
     }
 }

@@ -3,8 +3,6 @@
 import { useCallback, useState } from 'react'
 import { useRecommendationRefresh } from '@/hooks/use-recommendation-refresh'
 import { getSupabaseClient } from '@/lib/supabase/client'
-import { notifyRecommendations } from '@/lib/graph/events'
-import { RequirementWeights } from './requirement-weights'
 import { GraphDemo } from './graph-demo'
 
 export function ProjectRecommendationTools({ project,userId }: {project:string;userId:string}) {
@@ -21,7 +19,7 @@ export function ProjectRecommendationTools({ project,userId }: {project:string;u
     {open&&<div className="mt-4 space-y-3">
       {busy&&!data&&<p role="status" className="text-sm text-muted-foreground">Verificando acesso…</p>}
       {error&&<p role="status" className="text-sm">{error}{!revoked&&<button className="ml-2 text-link hover:underline" onClick={refresh}>Tentar novamente</button>}</p>}
-      {data&&<><RequirementWeights project={project} onSaved={()=>notifyRecommendations()}/><GraphDemo project={project}/></>}
+      {data&&<GraphDemo project={project}/>}
     </div>}
   </details>
 }

@@ -10,7 +10,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { UserAvatar } from '@/components/team-link/user-avatar'
 import { notifyRecommendations, RECOMMENDATION_ACCESS_CHANGED, RECOMMENDATIONS_CHANGED } from '@/lib/graph/events'
 import { getSupabaseClient } from '@/lib/supabase/client'
-import { ConceptChipInput } from './concept-chip-input'
+import { VacancySkillsInput } from './vacancy-skills-input'
+import { vacancyConceptPayload } from '@/lib/projects/form'
 import { legacyConcepts, type ConceptChoice, type ProjectConcepts } from '@/lib/concepts'
 
 export type Vacancy = { id: string; title: string; description: string; skills: string[]; positions: number; available: number; open: boolean; legacy: boolean }
@@ -475,23 +476,23 @@ function VacancyEditor({ projectId, vacancy, close, reload }: { projectId: strin
     void getSupabaseClient().rpc('get_project_concept_refs',{p_project:projectId}).then(({data,error})=>{
       if(cancelled)return
       if(error||!data){setError('Não foi possível carregar os conceitos. Reabra a vaga para tentar novamente.');return}
-      setSkills((data as ProjectConcepts).vacancies.find(v=>v.id===vacancy.id)?.concepts??[]);setConceptsReady(true)
+      setSkills((data as ProjectConcepts).vacancies.find(v=>v.id===vacancy.id)?.concepts ?? legacyConcepts(vacancy.skills));setConceptsReady(true)
     })
     return()=>{cancelled=true}
-  },[projectId,vacancy?.id])
+  },[projectId,vacancy])
   return <Modal title={vacancy ? 'Editar vaga' : 'Criar vaga'} close={close}>
     <form className="space-y-3" onSubmit={async (e) => {
       e.preventDefault(); if(!conceptsReady||busy)return;setBusy(true); setError(null)
       try {
         await recruitmentRpc('save_vacancy_concepts', { p_project: projectId, p_vacancy: vacancy?.id ?? null, p_title: title,
-          p_description: description, p_choices: skills, p_positions: Number(positions), p_open: open })
+          p_description: description, p_choices: vacancyConceptPayload(skills), p_positions: Number(positions), p_open: open })
         await reload(); close()
       } catch (err) { setError(errorText(err)) }
       finally { setBusy(false) }
     }}>
       <label className="block text-sm">Função<Input required maxLength={120} value={title} onChange={(e) => setTitle(e.target.value)} /></label>
       <label className="block text-sm">Descrição<Textarea maxLength={4000} value={description} onChange={(e) => setDescription(e.target.value)} /></label>
-      <ConceptChipInput label="Habilidades desejadas" optional maxItems={30} maxLength={120} value={skills} onChange={setSkills} disabled={!conceptsReady||busy} />
+      {conceptsReady && <VacancySkillsInput value={skills} onChange={setSkills} disabled={busy} />}
       <label className="block text-sm">Posições<Input type="number" min={1} max={1000000} required value={positions} onChange={(e) => setPositions(e.target.value)} /></label>
       <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={open} onChange={(e) => setOpen(e.target.checked)} /> Vaga aberta</label>
       <Failure message={error} />

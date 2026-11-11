@@ -155,3 +155,11 @@ No painel de gestão do projeto, **Análise técnica do projeto** guarda os peso
 Verificação direcionada: oito testes de apresentação e filtros; SQL transacional em banco isolado para testar ranking entre páginas, filtros, modos explícitos, deduplicação, vagas fechadas/privadas e permissões.
 No navegador com banco sintético, a validação cobriu dashboard, vagas marcadas e comuns, ordenação explícita, pesquisa, modal, sugestões de amizade, atualização sem piscar, gravação e revogação da preferência, desktop e mobile (390 px). A gestão abriu a demonstração com Jaccard e DFS; um integrante sem gestão acessou o painel sem ver as ferramentas técnicas.
 Build final do Next.js aprovado. A migração 20261111023712 foi aplicada e alinhada ao histórico do Supabase. Em produção, a RPC continua acessível a autenticados e vedada a anônimos, sem SELECT direto na visão privada nem acesso ao e-mail por esse papel. RLS das preferências permanece ativo; o advisor não registrou novos apontamentos de segurança.
+
+## Prompt 46 — Importância das habilidades por vaga
+
+Os formulários de vaga no assistente, na edição de projeto e na gestão de candidaturas usam o mesmo seletor de importância. Cada habilidade nova começa em 3 (Média); o seletor vai de 1 (Muito baixa) a 5 (Essencial). A escolha mede a importância para a vaga. O painel técnico mantém a demonstração acadêmica com as permissões existentes.
+
+As RPCs de salvamento já usadas pelos formulários validam pesos inteiros de 1 a 5 e persistem requisitos, pesos e dados da vaga na mesma transação. O valor fica em `conceitos_vinculos.peso`, associado à vaga e ao conceito. Requisitos mantidos conservam seu ID e peso quando o campo é omitido; a interface envia o peso somente quando é alterado. O cache de rótulos continua sincronizado para as telas e clientes antigos. As permissões de escrita e a RLS permanecem as mesmas.
+
+O motor usa os pesos próprios de cada vaga. Sem requisitos da vaga, a compatibilidade técnica fica indisponível, ainda que o projeto tenha requisitos gerais. Tags e outros sinais existentes continuam disponíveis como contexto, e requisitos de peso 5 continuam sem crédito por semelhança semântica.

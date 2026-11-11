@@ -265,7 +265,18 @@ html {
 @media(prefers-reduced-motion:reduce){.chat-floating-panel{animation:none!important}}
 
 body:has(dialog[open], [role="dialog"][aria-modal="true"]:not(dialog)) [data-chat-launcher] { visibility:hidden; pointer-events:none; }
-@media (min-width:1024px) { body:has([data-chat-reservation]) .chat-safe-content { padding-right:5rem; padding-bottom:calc(5.5rem + env(safe-area-inset-bottom)); } }
+@media (min-width:1024px) {
+  body:has([data-chat-reservation]) .chat-safe-content {
+    --chat-bottom-space: calc(5.5rem + env(safe-area-inset-bottom));
+    padding-right: 5rem;
+    padding-bottom: var(--chat-bottom-space);
+  }
+  body:has([data-chat-reservation]) .workspace-chat-safe {
+    /* Keep the chat clearance inside the sidebar's sticky containing grid. */
+    --workspace-chat-reserve: var(--chat-bottom-space);
+    padding-bottom: 0;
+  }
+}
 :root { --link: #1d4ed8; }
 .dark { --link: #60a5fa; }
 .dark :is(a, button).text-primary, .dark :is(a, button).hover\:text-primary:hover { color: var(--link); }

@@ -34,3 +34,25 @@ test('a selected vacancy is ranked independently instead of disappearing behind 
  assert.equal(r.vacancies.length,2)
  assert.equal(recommend(d,'collaborators','p','not-in-project').items.length,0)
 })
+
+test('vacancy weights are independent and empty vacancies never inherit project requirements', () => {
+ const d = fixture()
+ d.projects[0].requirements = [{...requirement('React', 5), source:'project'}]
+ d.vacancies[0].requirements = [requirement('React',5),requirement('UI/UX',1)]
+ d.vacancies.push(
+  {...d.vacancies[0],id:'lower',requirements:[requirement('React',1),requirement('UI/UX',5)]},
+  {...d.vacancies[0],id:'empty',requirements:[]},
+ )
+ for (const [kind, project] of [['opportunities',undefined],['collaborators','p']]) {
+  const ranked = recommend(d,kind,project).items
+  const first = ranked.find(item=>item.vacancy==='v')
+  const second = ranked.find(item=>item.vacancy==='lower')
+  assert.equal(first.technical.exactPercent,83.33)
+  assert.equal(second.technical.exactPercent,16.67)
+  assert.ok(first.score > second.score)
+  const empty = ranked.find(item=>item.vacancy==='empty')
+  assert.ok(empty.score>0,'project context can still contribute')
+  assert.equal(empty.technical.percent,null)
+  assert.deepEqual(empty.technical.identified,[])
+ }
+})

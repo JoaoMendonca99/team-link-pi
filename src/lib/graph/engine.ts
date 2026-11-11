@@ -162,7 +162,7 @@ export function recommend(data: Snapshot, kind: 'collaborators' | 'opportunities
             const p = data.projects.find(p => p.id === v.project);
             if (!p || !p.open || !v.open || v.available <= 0 || p.joined || p.pending || !found.distance.has(node('vacancy', v.id)))
                 continue;
-            const t = technical(actor.skills, v.requirements.length ? v.requirements : p.requirements, data.relations);
+            const t = technical(actor.skills, v.requirements, data.relations);
             const interests = jaccard(ids(actor.interests), ids(p.tags)), tags = jaccard(ids(actor.skills), ids(p.tags));
             const team = data.people.filter(person => data.members.some(m => m.user === person.id && m.project === p.id));
             const category = Number(actor.interests.some(c => c.label.normalize('NFC').toLocaleLowerCase('pt-BR') === p.category?.normalize('NFC').toLocaleLowerCase('pt-BR')));
@@ -180,7 +180,7 @@ export function recommend(data: Snapshot, kind: 'collaborators' | 'opportunities
             for (const p of data.people) {
                 if (p.id === actor.id || p.excluded || data.members.some(m => m.project === project.id && m.user === p.id) || !found.distance.has(node('user', p.id)))
                     continue;
-                const t = technical(p.skills, v.requirements.length ? v.requirements : project.requirements, data.relations), affinity = jaccard(ids(p.interests), ids(project.tags)), s = academic({ ...actor, educations: [{ course: project.academicCourse ?? null, institution: project.academicInstitution ?? null, current: false, status: 'context', primary: true }] }, p, data);
+                const t = technical(p.skills, v.requirements, data.relations), affinity = jaccard(ids(p.interests), ids(project.tags)), s = academic({ ...actor, educations: [{ course: project.academicCourse ?? null, institution: project.academicInstitution ?? null, current: false, status: 'context', primary: true }] }, p, data);
                 const score = rounding((t.percent ?? 0) * MODEL.collaborator.technical + 100 * affinity * MODEL.collaborator.interest + 100 * Math.max(s.course, s.cine, s.institution) * MODEL.collaborator.academic);
                 if (!score)
                     continue;
