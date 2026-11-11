@@ -7,10 +7,10 @@ import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 import { searchConcepts, type ConceptChoice, type ConceptHit } from '@/lib/concepts'
 
-type Props = { label: string; value: ConceptChoice[]; onChange: (next: ConceptChoice[]) => void; inputId?: string; optional?: boolean; maxItems?: number; maxLength?: number; disabled?: boolean; placeholder?: string; helperText?: string; className?: string; allowProposals?:boolean; renderChoiceControl?: (choice: ConceptChoice, index: number) => ReactNode }
+type Props = { label: string; value: ConceptChoice[]; onChange: (next: ConceptChoice[]) => void; inputId?: string; optional?: boolean; maxItems?: number; maxLength?: number; disabled?: boolean; placeholder?: string; helperText?: string; className?: string; allowProposals?:boolean; proposalNoun?: 'tag' | 'conceito'; renderChoiceControl?: (choice: ConceptChoice, index: number) => ReactNode }
 
 /** Explicit selection/proposal: blur never silently creates a concept or resolves an ambiguous legacy chip. */
-export function ConceptChipInput({ label, value, onChange, inputId, optional, maxItems=16, maxLength=40, disabled=false, placeholder='Pesquise um conceito', helperText, className, allowProposals=true, renderChoiceControl }: Props) {
+export function ConceptChipInput({ label, value, onChange, inputId, optional, maxItems=16, maxLength=40, disabled=false, placeholder='Pesquise um conceito', helperText, className, allowProposals=true, proposalNoun='conceito', renderChoiceControl }: Props) {
   const generated=useId(), id=inputId || 'concept-'+generated, listId=id+'-results'
   const root=useRef<HTMLDivElement>(null), input=useRef<HTMLInputElement>(null), popup=useRef<HTMLDivElement>(null)
   const cache=useRef(new Map<string,ConceptHit[]>())
@@ -18,6 +18,7 @@ export function ConceptChipInput({ label, value, onChange, inputId, optional, ma
   const [draft,setDraft]=useState(''), [open,setOpen]=useState(false), [active,setActive]=useState(-1)
   const [rows,setRows]=useState<ConceptHit[]>([]), [loading,setLoading]=useState(false), [failed,setFailed]=useState(false)
   const [notice,setNotice]=useState('')
+  const [resolved,setResolved]=useState('')
   const [replace,setReplace]=useState<number|null>(null), [position,setPosition]=useState<CSSProperties>()
   const full=value.length>=maxItems && replace===null, query=draft.trim()
   useEffect(()=>{
@@ -38,7 +39,7 @@ export function ConceptChipInput({ label, value, onChange, inputId, optional, ma
     return()=>{window.removeEventListener('resize',place);window.removeEventListener('scroll',place,true)}
   },[open])
   useEffect(()=>{
-    setRows([]);setActive(-1);setFailed(false)
+    setRows([]);setActive(-1);setFailed(false);setResolved('')
     if(!open || !query || disabled || full){setLoading(false);return}
     const controller=new AbortController();setLoading(true)
     const timer=window.setTimeout(()=>{
@@ -46,25 +47,30 @@ export function ConceptChipInput({ label, value, onChange, inputId, optional, ma
       void (existing?Promise.resolve(existing):searchConcepts(query,controller.signal)).then(result=>{
         if(controller.signal.aborted)return
         if(cache.current.size>=40)cache.current.delete(cache.current.keys().next().value!)
-        cache.current.set(query,result);setRows(result);setLoading(false)
+        cache.current.set(query,result);setRows(result);setResolved(query);setLoading(false)
       }).catch(()=>{if(!controller.signal.aborted){setFailed(true);setLoading(false)}})
     },250)
     return()=>{window.clearTimeout(timer);controller.abort()}
   },[query,open,disabled,full])
   useEffect(()=>{if(active>=0)document.getElementById(listId+'-'+active)?.scrollIntoView({block:'nearest'})},[active,listId])
+  const normalized = (text: string) => text.normalize('NFD').replace(/\p{M}/gu, '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('pt-BR')
   function select(choice:ConceptChoice){
     const others=value.filter((_,i)=>i!==replace)
-    const duplicate=others.some(v=>choice.id?v.id===choice.id:!v.id&&v.label.toLocaleLowerCase()===choice.label.toLocaleLowerCase()&&v.domain===choice.domain)
+    const duplicate = others.some(v => choice.id ? v.id === choice.id : normalized(v.label) === normalized(choice.label))
     if (!duplicate) {
       onChange(replace === null ? [...value, choice] : value.map((v, i) =>
         i === replace ? { ...choice, weight: v.weight, weightEdited: v.weightEdited } : v))
     }
-    setNotice(duplicate?'Esse conceito já está na lista. Use o X para remover o termo que deseja substituir.':'')
+    setNotice(duplicate ? (proposalNoun === 'tag' ? 'Essa tag já foi adicionada.' : 'Esse conceito já foi adicionado.') : '')
     setDraft('');setReplace(null);setOpen(false);setActive(-1);suppressOpen.current=true;input.current?.focus();suppressOpen.current=false
   }
   const canPropose=Boolean(query && query.length<=maxLength && /[\p{L}\p{N}]/u.test(query) && !/[<>@\x00-\x1f]/.test(query) && !/https?:\/\/|www\./i.test(query))
   function choose(index:number){const row=rows[index];if(row)select({id:row.id,label:row.nome,domain:row.dominio,status:row.status})}
-  const showResults=open&&query&&!loading&&!failed, count=rows.length
+  const showResults = Boolean(open && query && !loading && !failed && resolved === query)
+  const count = showResults ? rows.length : 0
+  const exact = showResults && rows.some(row => [row.nome, row.alias].some(label => label && normalized(label) === normalized(query)))
+  const proposalAvailable = allowProposals && showResults && canPropose && !exact
+  const addProposal = () => select({id:null,label:query,status:'provisorio',proposal:true})
   return <div ref={root} className={cn('min-w-0 space-y-2',className)} onBlur={event=>{
     if(!event.currentTarget.contains(event.relatedTarget)&&!popup.current?.contains(event.relatedTarget))setOpen(false)
   }}>
@@ -75,7 +81,11 @@ export function ConceptChipInput({ label, value, onChange, inputId, optional, ma
       className="flex h-10 w-full min-w-0 rounded-2xl border border-input bg-background px-4 py-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/40 disabled:opacity-60"
       onFocus={()=>{if(!suppressOpen.current)setOpen(true)}} onChange={event=>{setDraft(event.target.value);setOpen(true)}} onKeyDown={event=>{
         if(event.key==='ArrowDown'||event.key==='ArrowUp'){event.preventDefault();setOpen(true);if(count)setActive(n=>event.key==='ArrowDown'?Math.min(n+1,count-1):Math.max(n-1,0))}
-        if(event.key==='Enter'){event.preventDefault();if(showResults&&active>=0)choose(active)}
+        if (event.key === 'Enter' && !event.nativeEvent.isComposing) {
+          event.preventDefault()
+          if (showResults && active >= 0 && active < count) choose(active)
+          else if (proposalAvailable) addProposal()
+        }
         if(event.key==='Escape'){event.preventDefault();event.stopPropagation();setOpen(false);setReplace(null);setDraft('')}
       }} />
     {value.length>0&&<ul className={renderChoiceControl ? "grid gap-2" : "flex flex-wrap gap-2"} aria-label={label+' adicionados'}>{value.map((choice,index)=><li key={choice.id||index+'-'+choice.label}
@@ -91,7 +101,7 @@ export function ConceptChipInput({ label, value, onChange, inputId, optional, ma
     <p id={id+'-help'} className="text-xs text-muted-foreground">{replace!==null?'Selecione a identidade correta para substituir o termo pendente.':helperText||'Selecione um resultado ou adicione uma sugestão provisória. Setas e Enter para escolher.'} ({value.length}/{maxItems})</p>
     {notice&&<p role="status" className="text-xs text-muted-foreground">{notice}</p>}
     {open&&!disabled&&!full&&position&&createPortal(<div ref={popup} style={position} className="fixed z-[90] overflow-y-auto overscroll-contain rounded-xl border bg-popover p-1 text-popover-foreground shadow-xl">
-      {!query?<p className="p-3 text-sm text-muted-foreground">Digite para pesquisar no catálogo.</p>:loading?<p role="status" className="p-3 text-sm">Pesquisando conceitos…</p>:failed?<p role="alert" className="p-3 text-sm text-destructive">Não foi possível pesquisar. Altere o texto para tentar novamente.</p>:<>
+      {!query?<p className="p-3 text-sm text-muted-foreground">Digite para pesquisar no catálogo.</p>:(!failed && (loading || resolved !== query))?<p role="status" className="p-3 text-sm">Pesquisando conceitos…</p>:failed?<p role="alert" className="p-3 text-sm text-destructive">Não foi possível pesquisar. Altere o texto para tentar novamente.</p>:<>
         {!rows.length&&<p role="status" className="p-3 text-sm text-muted-foreground">Nenhum conceito encontrado.</p>}
         <ul role="listbox" id={listId} aria-label={'Resultados para '+label}>
           {rows.map((row,index)=><li role="option" id={listId+'-'+index} key={row.id} aria-selected={active===index} onMouseDown={e=>e.preventDefault()} onMouseMove={()=>setActive(index)} onClick={()=>choose(index)}
@@ -100,8 +110,8 @@ export function ConceptChipInput({ label, value, onChange, inputId, optional, ma
             <span className="mt-1 block text-xs text-muted-foreground">{row.dominio}{row.alias!==row.nome?' · Alias: '+row.alias:''}{row.confirmacao?' · Confirme o contexto':''}{row.descricao?' · '+row.descricao:''}</span>
           </li>)}
         </ul>
-        {allowProposals&&canPropose&&<button type="button" className="mt-1 min-h-11 w-full rounded-lg border-t p-3 text-left text-xs text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          onMouseDown={e=>e.preventDefault()} onClick={()=>select({id:null,label:query,status:'provisorio',proposal:true})}>Não encontrou? Sugerir novo conceito<span className="mt-1 block break-words">“{query}” · provisório, enviado ao salvar.</span></button>}
+        {proposalAvailable&&<button type="button" className="mt-1 min-h-11 w-full rounded-lg border-t p-3 text-left text-xs text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          onMouseDown={e=>e.preventDefault()} onClick={addProposal}><span className="block break-words font-semibold text-foreground">Adicionar “{query}”</span><span className="mt-1 block">Sem selecionar um resultado, pressione Enter para adicionar {proposalNoun === 'tag' ? 'uma nova tag' : 'um novo conceito'}.</span></button>}
         {!canPropose&&query.length>maxLength&&<p className="p-3 text-xs text-muted-foreground">Sugestões novas: até {maxLength} caracteres. Conceitos do catálogo podem ter nomes maiores.</p>}
         <p className="border-t p-2 text-[11px] text-muted-foreground">Inclui dados <a href="https://esco.ec.europa.eu/en" target="_blank" rel="noreferrer" className="underline">ESCO / Comissão Europeia</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer" className="underline">CC BY 4.0</a>.</p>
       </>}

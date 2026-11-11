@@ -163,8 +163,5 @@ export function ProfileContent({ embedded=false }: { embedded?:boolean }) {
 
 function ProfileProject({ project, userId }: { project: ProjectDisplay; userId: string }) {
   const canEdit = useProjectLeadership(project.id, userId)
-  return <ProjectCard project={project} className="h-auto min-w-0 flex-1" footer={<>
-      <Button asChild size="sm" variant="outline"><Link href={'/projetos/' + project.slug}>Ver projeto</Link></Button>
-      {canEdit && <Button asChild size="sm" variant="ghost"><Link href={'/projetos/' + project.slug + '/editar'}>Editar</Link></Button>}
-  </>} />
+  return <ProjectCard project={project} className="h-auto min-w-0 flex-1" footer={canEdit ? <Button asChild size="sm" variant="ghost"><Link href={'/projetos/' + project.slug + '/editar'}>Editar</Link></Button> : undefined} />
 }

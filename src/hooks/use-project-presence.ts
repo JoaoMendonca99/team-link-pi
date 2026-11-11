@@ -1,13 +1,12 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useSupabaseSession } from '@/hooks/use-supabase-session'
+import { useProjectViewer } from '@/components/providers/project-viewer'
 import { getSupabaseClient } from '@/lib/supabase/client'
 
 const trackers = new Map<string, { users: number; stop: () => void }>()
 export function useProjectPresence(target: string | undefined) {
-  const { user } = useSupabaseSession()
-  const userId = user?.id
+  const { userId } = useProjectViewer()
   useEffect(() => {
     if (!target || !userId) return
     const key = userId + ':' + target

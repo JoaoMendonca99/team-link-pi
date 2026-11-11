@@ -75,7 +75,7 @@ export function FeaturedIdeas() {
         ) : (
           <MotionConfig reducedMotion="user"><div className={`grid gap-6 ${projects.length === 1 ? 'mx-auto max-w-xl' : projects.length === 2 ? 'mx-auto max-w-5xl md:grid-cols-2' : 'md:grid-cols-2 xl:grid-cols-3'} ${styles.communityCards}`}>
             {projects.map((project) => (
-              <div key={project.id} className="min-w-0">
+              <div key={project.id} className="h-full min-w-0">
                 <ProjectCard project={project} />
               </div>
             ))}

@@ -7,6 +7,7 @@ import {WorkspaceShell} from '@/app/(marketing)/meu-espaco/workspace-shell'
 import {isInternalWorkspace} from '@/lib/workspace-navigation'
 import { usePathname } from "next/navigation"
 
+import { ProjectViewerProvider } from '@/components/providers/project-viewer'
 import { ThemeProvider } from "@/components/providers/theme-provider"
 import { SiteFooter } from "@/components/layout/site-footer"
 import { SiteHeader } from "@/components/layout/site-header"
@@ -30,7 +31,7 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
 
   return (
     <MotionConfig reducedMotion="user"><ThemeProvider>
-      <FriendshipsProvider>
+      <FriendshipsProvider><ProjectViewerProvider>
       <div style={{ '--site-header-height': isWorkspace ? '64px' : '72px' } as React.CSSProperties} className="flex min-h-dvh flex-col overflow-x-clip bg-background text-foreground">
         <SiteHeader workspace={isWorkspace} fullBleed={isMessagesPage || isWorkspace} />
         <div
@@ -44,7 +45,7 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
       </div>
       {isMessagesPage ? null : <ProjectChatWidget />}
       {pathname === '/meu-espaco/configuracoes' || pathname === '/perfil/notificacoes' ? null : <PushSettings automatic />}
-      </FriendshipsProvider>
+      </ProjectViewerProvider></FriendshipsProvider>
     </ThemeProvider></MotionConfig>
   )
 }

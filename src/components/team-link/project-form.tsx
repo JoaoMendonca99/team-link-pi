@@ -25,7 +25,10 @@ import {
 } from '@/lib/projects/display'
 import { projectFormErrors, projectFormPayload, type VacancyDraft } from '@/lib/projects/form'
 import { notifyRecommendations, RECOMMENDATION_ACCESS_CHANGED } from '@/lib/graph/events'
-import { saveProjectForm } from '@/lib/projects/save-form'
+import { ProjectImageField } from './project-image-field'
+import type { ProjectImageDraft } from './project-logo'
+import { useProjectCardState } from '@/hooks/use-project-card-state'
+import { projectSaveError, saveProjectForm } from '@/lib/projects/save-form'
 import { slugify } from '@/lib/projects/slug'
 import type { ProjectRow, ProjectStatusValue, ProjectVisibility } from '@/types/database'
 
@@ -82,7 +85,10 @@ export function ProjectForm({ project, initialTags = [], initialVacancies = [], 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const initialSnapshot=useRef<string|null>(null),saved=useRef(false)
-  const snapshot=JSON.stringify({title,category,secondary,url,summary,description,tags,tagConcepts,status,visibility,vacancies,context,academicDefaults,firstPeriod})
+  const { row: media } = useProjectCardState(project?.id)
+  const [image, setImage] = useState<ProjectImageDraft>()
+  const [imageProcessing, setImageProcessing] = useState(false)
+  const snapshot=JSON.stringify({title,category,secondary,url,summary,description,tags,tagConcepts,status,visibility,vacancies,context,academicDefaults,firstPeriod,image: image?.mode})
   useEffect(()=>{if(conceptsReady&&initialSnapshot.current===null)initialSnapshot.current=snapshot},[conceptsReady,snapshot])
   const dirty=initialSnapshot.current!==null&&initialSnapshot.current!==snapshot
   useEffect(()=>{
@@ -119,7 +125,7 @@ export function ProjectForm({ project, initialTags = [], initialVacancies = [], 
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (saving || !conceptsReady) return
+    if (saving || imageProcessing || !conceptsReady) return
     setError('')
     const values = { title, slug, category, secondary, url, summary, description, tags, tagConcepts, status, visibility, vacancies }
     const validation = projectFormErrors(values)
@@ -127,11 +133,10 @@ export function ProjectForm({ project, initialTags = [], initialVacancies = [], 
 
     setSaving(true)
     try {
-      const { data, error: saveError } = await saveProjectForm(projectFormPayload(values, project?.id ?? null), !project&&context?{context,defaults:academicDefaults,period:periodPayload(firstPeriod,academicDefaults)}:null)
-      if (saveError) {
-        setError(saveError.code === '23505' ? 'Já existe um projeto com esse endereço.'
-          : saveError.code === '23514' ? 'Confira os campos do projeto, as datas do período e as vagas.'
-          : saveError.message)
+      const academic = !project && context ? { context, defaults: academicDefaults, period: periodPayload(firstPeriod, academicDefaults) } : null
+      const { data, error: saveError } = await saveProjectForm(projectFormPayload(values, project?.id ?? null), academic, image, media?.image_ref)
+      if (saveError || !data) {
+        setError(projectSaveError(saveError))
         setSaving(false)
         return
       }
@@ -139,7 +144,7 @@ export function ProjectForm({ project, initialTags = [], initialVacancies = [], 
       saved.current=true
       router.push('/projetos/' + data)
     } catch {
-      setError('Não foi possível salvar agora. Confira sua conexão e tente novamente.')
+      setError(projectSaveError())
       setSaving(false)
     }
   }
@@ -151,6 +156,8 @@ export function ProjectForm({ project, initialTags = [], initialVacancies = [], 
       <fieldset disabled={saving||!conceptsReady} className="min-w-0 space-y-6">
 
           <details id="project-information" open className="editor-section scroll-mt-24 rounded-2xl border border-border p-4"><summary className="cursor-pointer font-semibold">Informações do projeto</summary><FormSection className={cardClass} title="Informações principais" description="Apresente seu projeto e ajude outras pessoas a encontrá-lo.">
+            <ProjectImageField projectId={project?.id} title={title} current={media?.image_ref}
+              value={image} onChange={setImage} onProcessing={setImageProcessing} disabled={Boolean(project && !media) || saving} />
             <Field id="project-title" label="Título do projeto">
               <Input id="project-title" required maxLength={120} value={title} onChange={(e) => setTitle(e.target.value)} />
             </Field>
@@ -188,7 +195,7 @@ export function ProjectForm({ project, initialTags = [], initialVacancies = [], 
             <Field id="project-description" label="Descrição completa">
               <Textarea id="project-description" required rows={7} value={description} onChange={(e) => setDescription(e.target.value)} />
             </Field>
-            <ConceptChipInput disabled={saving||!conceptsReady} label="Tags gerais do projeto" value={tagConcepts} onChange={choices=>{setTagConcepts(choices);setTags(conceptLabels(choices))}}
+            <ConceptChipInput disabled={saving||!conceptsReady} label="Tags gerais do projeto" proposalNoun="tag" value={tagConcepts} onChange={choices=>{setTagConcepts(choices);setTags(conceptLabels(choices))}}
               helperText="Use assuntos e palavras-chave do projeto." maxItems={10} />
           </FormSection>
 
@@ -251,20 +258,18 @@ export function ProjectForm({ project, initialTags = [], initialVacancies = [], 
             </Button>
           </FormSection>
           </details>
-          {!project && (
             <details className="rounded-2xl border border-border p-4">
               <summary className="cursor-pointer text-sm font-medium">Prévia do cartão em Explorar</summary>
-              <ProjectCard disableLink className="mt-4 max-w-md" project={{
-                id: 'preview', slug, title: title.trim() || 'Seu projeto', shortDescription: summary,
+              <ProjectCard preview draft={image} className="mt-4 max-w-md" project={{
+                id: project?.id ?? 'preview', slug, title: title.trim() || 'Seu projeto', shortDescription: summary,
                 description, category, secondaryCategories: secondary, status, visibility,
                 openSpots: status === 'open' ? vacancies.reduce((total, vacancy) =>
                   total + (vacancy.open ? Math.max(0, Number(vacancy.positions) || 0) : 0), 0) : 0,
                 desiredProfile: null, projectUrl: null, createdAt: '', updatedAt: '',
-                ownerId: '', ownerName: previewOwner ?? 'Você', ownerAvatarUrl: null, ownerCourse: null,
+                ownerId: project?.owner_id ?? '', ownerName: previewOwner ?? (project ? 'Criador do projeto' : 'Você'), ownerAvatarUrl: null, ownerCourse: null,
                 tags, requiredSkills: [], likesCount: 0, commentsCount: 0, membersCount: 0,
               }} />
             </details>
-          )}
 
         <details id="project-publication" className="editor-section scroll-mt-24 rounded-2xl border border-border p-4"><summary className="cursor-pointer font-semibold">Publicação</summary><section aria-labelledby="project-publishing" className="mt-4 space-y-4">
           <h2 id="project-publishing" className="font-semibold">Configurações de publicação</h2>
@@ -282,7 +287,7 @@ export function ProjectForm({ project, initialTags = [], initialVacancies = [], 
           {error && <p role="alert" className="text-sm font-medium text-destructive">{error}</p>}
           <div className="flex flex-wrap justify-end gap-3">
             <Button asChild variant="outline"><Link href={cancelHref}>Cancelar</Link></Button>
-            <Button type="submit" disabled={saving}>{saving ? 'Salvando…' : project ? 'Salvar alterações' : 'Criar projeto'}</Button>
+            <Button type="submit" disabled={saving || imageProcessing}>{saving ? 'Salvando…' : project ? 'Salvar alterações' : 'Criar projeto'}</Button>
           </div>
       </fieldset>
     </form>

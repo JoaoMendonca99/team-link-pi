@@ -241,7 +241,7 @@ export function ExploreCatalog() {
             {filtered.length > 0 ? (
               <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                 {filtered.map((project) => (
-                  <div key={project.id} className="mx-auto w-full max-w-md md:mx-0 md:max-w-none">
+                  <div key={project.id} className="mx-auto h-full w-full max-w-md md:mx-0 md:max-w-none">
                     <ProjectCard project={project} />
                   </div>
                 ))}

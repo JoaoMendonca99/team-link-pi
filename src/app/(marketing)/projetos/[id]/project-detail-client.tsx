@@ -27,7 +27,9 @@ import type {
 import { useSupabaseSession } from '@/hooks/use-supabase-session'
 import { CommentsSection } from './_components/comments-section'
 import { ApplyButton, VacancySummary, useProjectApplications, useVacancies } from '@/components/team-link/recruitment'
-import { LikeButton } from './_components/like-button'
+import { LikeButton } from '@/components/team-link/project-like-button'
+import { ProjectLogo } from '@/components/team-link/project-logo'
+import { useProjectPresence } from '@/hooks/use-project-presence'
 import { MembersPreviewCard } from './_components/members-preview-card'
 import { ProjectDescription, ProjectSummary } from './_components/project-description'
 import { isValidBadgeColor } from './_components/member-badge'
@@ -51,7 +53,6 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [envMissing, setEnvMissing] = useState(false)
 
-  const [likesCount, setLikesCount] = useState(0)
   const [commentsCount, setCommentsCount] = useState(0)
   // Membership do usuário atual no projeto (para gating de UI).
   const [membership, setMembership] = useState<CurrentMembership | null>(null)
@@ -123,7 +124,6 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
 
       const display = mapPublicDetailToDisplay(detailRow)
       setProject(display)
-      setLikesCount(display.likesCount)
       setCommentsCount(display.commentsCount)
     } catch (error) {
       setFetchError(error instanceof Error ? error.message : 'Erro desconhecido ao carregar projeto.')
@@ -196,6 +196,8 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
   const isLoggedNonMember = isAuthenticated && !isMember && !sessionLoading &&
     checkedMembership === project?.id + ':' + user?.id
   const isVisitor = !isAuthenticated && !sessionLoading
+  const confirmedMember = Boolean(membership && checkedMembership === project?.id + ':' + user?.id)
+  useProjectPresence(confirmedMember ? project?.slug : undefined)
 
   // -------------------------------------------------------------------------
   // Helpers de UI
@@ -363,12 +365,15 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
         >
           <div className="flex min-w-0 flex-col gap-4">
             <div className="min-w-0 flex-1 space-y-2">
+              <div className="flex min-w-0 items-start gap-3">
+              <ProjectLogo projectId={project.id} title={project.title} />
               <h1
                 id="project-data-heading"
                 className="break-words text-balance text-3xl font-bold tracking-tight text-foreground sm:text-4xl"
               >
                 {project.title}
               </h1>
+              </div>
               {project.projectUrl ? (
                 <p className="text-sm text-muted-foreground">
                   <span className="font-semibold text-foreground">Link do projeto: </span>
@@ -418,8 +423,9 @@ export function ProjectDetailClient({ slug }: { slug: string }) {
               applications={applications} target={applicationTarget} setTarget={setApplicationTarget} />
             <LikeButton
               projectId={project.id}
-              initialCount={likesCount}
-              onCountChange={setLikesCount}
+              initialCount={project.likesCount}
+              href={'/projetos/' + project.slug}
+              enabled={project.visibility === 'public' && project.status !== 'archived'}
               className="w-full sm:w-auto"
             />
             <Button

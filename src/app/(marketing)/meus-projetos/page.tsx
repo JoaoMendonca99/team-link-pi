@@ -152,20 +152,15 @@ export default function MeusProjetosPage() {
             {projects.map((project) => (
               <div
                 key={project.id}
-                className="mx-auto w-full max-w-md space-y-4 md:mx-0 md:max-w-none"
+                className="mx-auto h-full w-full max-w-md md:mx-0 md:max-w-none"
               >
                 <ProjectCard
                   project={project}
                   href={`/projetos/${project.slug}/painel`}
-                />
-                <div className="flex flex-wrap gap-3">
-                  <Button asChild className="flex-1 rounded-2xl font-semibold">
-                    <Link href={`/projetos/${project.slug}/painel`}>Painel do projeto</Link>
-                  </Button>
-                  <Button asChild variant="outline" className="flex-1 rounded-2xl font-semibold">
+                  footer={<Button asChild variant="outline" size="sm">
                     <Link href={`/projetos/${project.slug}/editar`}>Editar</Link>
-                  </Button>
-                </div>
+                  </Button>}
+                />
               </div>
             ))}
           </div>

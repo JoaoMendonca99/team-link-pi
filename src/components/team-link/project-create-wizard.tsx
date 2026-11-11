@@ -17,7 +17,9 @@ import { projectCategories } from '@/data/mock-projects'
 import { PROJECT_STATUS_LABEL, PROJECT_STATUS_OPTIONS, PROJECT_VISIBILITY_LABEL, PROJECT_VISIBILITY_OPTIONS } from '@/lib/projects/display'
 import { slugify, isValidSlug } from '@/lib/projects/slug'
 import { changeFirstPeriod, changeProjectTitle, emptyProjectWizard, projectStepErrors, projectStepLabels, projectSteps, projectWizardPayload, restoreProjectWizard, type FieldErrors, type ProjectStep, type ProjectWizardValues, type VacancyDraft } from '@/lib/projects/form'
-import { checkProjectSlug, saveProjectForm } from '@/lib/projects/save-form'
+import { ProjectImageField } from './project-image-field'
+import type { ProjectImageDraft } from './project-logo'
+import { checkProjectSlug, projectSaveError, saveProjectForm } from '@/lib/projects/save-form'
 import type { ProfileRow, ProjectStatusValue, ProjectVisibility } from '@/types/database'
 
 const introduction: Record<ProjectStep, [string, string]> = {
@@ -62,7 +64,9 @@ export function ProjectCreateWizard({ userId, profile }: { userId: string; profi
   const key = 'team-link:create-project:v1:' + userId
   const steps = projectSteps(values.context)
   const index = steps.indexOf(step)
-  const dirty = JSON.stringify(values) !== emptyJSON
+  const [image, setImage] = useState<ProjectImageDraft>()
+  const [imageProcessing, setImageProcessing] = useState(false)
+  const dirty = JSON.stringify(values) !== emptyJSON || Boolean(image)
 
   useEffect(() => {
     try {
@@ -117,7 +121,7 @@ export function ProjectCreateWizard({ userId, profile }: { userId: string; profi
   function checkOnBlur() { void verifySlug(values.slug).catch(() => {}) }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (locked.current || success) return
+    if (imageProcessing || locked.current || success) return
     const candidate = step === 'team' ? { ...values, deferVacancies: false } : values
     if (step !== 'review') {
       const validation = projectStepErrors(step, candidate)
@@ -141,13 +145,13 @@ export function ProjectCreateWizard({ userId, profile }: { userId: string; profi
     locked.current = true; setPending('saving'); setError('')
     try {
       const payload = projectWizardPayload(values)
-      const { data, error: saveError } = await saveProjectForm(payload.p_form, payload.p_academic)
+      const { data, error: saveError } = await saveProjectForm(payload.p_form, payload.p_academic, image)
       if (saveError) {
         if (saveError.code === '23505') {
           slugCheck.current = { slug: values.slug, promise: Promise.resolve(false) }
           setAvailability({ slug: values.slug, state: 'used' })
           showErrors({ 'project-slug': 'Esse endereço já está em uso. Escolha outro para criar o projeto.' }, 'presentation')
-        } else setError(saveError.code === '23514' || saveError.code === '22007' || saveError.code === '22008' ? 'Confira os campos, as datas do período e as quantidades das vagas. Seus dados foram preservados.' : 'Não foi possível criar o projeto agora. Seus dados foram preservados; tente novamente.')
+        } else setError(projectSaveError(saveError))
         return
       }
       if (typeof data !== 'string' || !isValidSlug(data)) throw new Error('Invalid project response')
@@ -155,7 +159,7 @@ export function ProjectCreateWizard({ userId, profile }: { userId: string; profi
       try { sessionStorage.removeItem(key) } catch { /* Creation succeeded even if browser storage is unavailable. */ }
       setSuccess(true)
       router.push('/projetos/' + data + '/painel')
-    } catch { setError('Não foi possível concluir agora. Confira sua conexão. Seus dados permanecem neste formulário.') }
+    } catch { setError(projectSaveError()) }
     finally { if (!committed.current) { locked.current = false; setPending(null) } }
   }
   function resetDraft() {
@@ -177,7 +181,7 @@ export function ProjectCreateWizard({ userId, profile }: { userId: string; profi
       <p role="status" aria-live="polite" className="text-sm text-muted-foreground">Etapa {index + 1}{values.context ? ' de ' + steps.length : ''} · {projectStepLabels[step]}</p>
       <div role="progressbar" aria-label="Progresso da criação do projeto" aria-valuemin={0} aria-valuemax={steps.length} aria-valuenow={index + 1} aria-valuetext={`Etapa ${index + 1} de ${steps.length}`} className="h-2 w-full overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${((index + 1) / steps.length) * 100}%` }} /></div>
     </div>
-    {(restored || dirty) && <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground"><p>{storageError ? 'O navegador não conseguiu guardar o rascunho. Mantenha esta aba aberta.' : restored ? 'Rascunho recuperado. Os dados ficam salvos nesta aba para sua conta.' : 'Rascunho salvo nesta aba para sua conta.'}</p><Button type="button" variant="ghost" size="sm" disabled={Boolean(pending)} onClick={resetDraft}>Recomeçar</Button></div>}
+    {(restored || dirty) && <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground"><p>{storageError ? 'O navegador não conseguiu guardar o rascunho. Mantenha esta aba aberta.' : restored ? 'Rascunho recuperado. Os dados ficam salvos nesta aba para sua conta.' : 'Rascunho salvo nesta aba para sua conta.'}</p><Button type="button" variant="ghost" size="sm" disabled={Boolean(pending)} onClick={() => { resetDraft(); setImage(undefined) }}>Recomeçar</Button></div>}
     <fieldset disabled={Boolean(pending)} className="min-w-0 space-y-5">
       <section className="min-w-0 rounded-3xl border border-card-outline bg-card/80 p-5 shadow-lg sm:p-7" aria-labelledby="create-step-title">
         <h2 ref={heading} id="create-step-title" tabIndex={-1} className="scroll-mt-28 text-xl font-semibold outline-none sm:text-2xl">{title}</h2>
@@ -190,6 +194,7 @@ export function ProjectCreateWizard({ userId, profile }: { userId: string; profi
           </>}
 
           {step === 'presentation' && <>
+            <ProjectImageField title={values.title} value={image} onChange={setImage} onProcessing={setImageProcessing} disabled={Boolean(pending)} />
             <WizardField id="project-title" label="Título do projeto" hint="Escolha um nome que identifique claramente seu projeto." errors={errors}><Input id="project-title" required maxLength={120} value={values.title} {...fieldProps('project-title')} onBlur={checkOnBlur} onChange={e => { setValues(current => changeProjectTitle(current, e.target.value)); setErrors(current => ({ ...current, 'project-title': '', 'project-slug': '' })) }} /></WizardField>
             <WizardField id="project-slug" label="Endereço da página" hint="Use letras minúsculas, números e hífens. O endereço será reservado na criação." errors={errors}><div className="flex min-w-0 items-center gap-2"><span className="shrink-0 text-xs text-muted-foreground">/projetos/</span><Input id="project-slug" required value={values.slug} {...fieldProps('project-slug')} onBlur={checkOnBlur} onChange={e => update({ slug: e.target.value, slugEdited: true }, ['project-slug'])} /></div><Button type="button" variant="ghost" size="sm" onClick={() => update({ slug: slugify(values.title), slugEdited: false }, ['project-slug'])}>Gerar a partir do título</Button>{availability?.slug === values.slug && <p role="status" className={'text-xs ' + (availability.state === 'used' || availability.state === 'error' ? 'text-destructive' : 'text-muted-foreground')}>{({ checking: 'Verificando endereço…', available: 'Endereço disponível na verificação inicial.', used: 'Endereço já utilizado. Escolha outro.', error: 'Não foi possível verificar o endereço. Tente avançar novamente.' })[availability.state]}</p>}</WizardField>
             <WizardField id="project-summary" label="Descrição resumida" hint="Apresentação curta para os cards e resultados públicos." errors={errors}><Textarea id="project-summary" required rows={3} value={values.summary} {...fieldProps('project-summary')} onChange={e => update({ summary: e.target.value }, ['project-summary'])} /></WizardField>
@@ -199,7 +204,7 @@ export function ProjectCreateWizard({ userId, profile }: { userId: string; profi
           {step === 'classification' && <>
             <WizardField id="project-category" label="Categoria principal" hint="Escolha a área principal do projeto, independentemente do tipo acadêmico ou profissional." errors={errors}><Choice id="project-category" value={values.category} placeholder="Selecione a principal" invalid={Boolean(errors['project-category'])} describedBy={errors['project-category'] ? 'project-category-error' : undefined} options={projectCategories.map(value => ({ value, label: value }))} onChange={category => update({ category, secondary: values.secondary.filter(item => item !== category) }, ['project-category', 'project-secondary'])} /></WizardField>
             <WizardField id="project-secondary" label="Categorias secundárias (opcional)" hint="Escolha até duas categorias diferentes da principal." errors={errors}>{values.secondary.length < 2 && <Choice id="project-secondary" value="" placeholder="Adicionar categoria" options={projectCategories.filter(category => category !== values.category && !values.secondary.includes(category)).map(value => ({ value, label: value }))} onChange={category => update({ secondary: [...values.secondary, category] }, ['project-secondary'])} />}<div className="flex flex-wrap gap-2">{values.secondary.map(category => <Button key={category} type="button" variant="outline" className="h-auto min-h-11 whitespace-normal" aria-label={'Remover categoria ' + category} onClick={() => update({ secondary: values.secondary.filter(item => item !== category) }, ['project-secondary'])}>{category}<X aria-hidden className="size-3" /></Button>)}</div></WizardField>
-            <ConceptChipInput disabled={Boolean(pending)} inputId="project-tags" label="Tags gerais do projeto" maxItems={10} value={values.tagConcepts ?? legacyConcepts(values.tags)} onChange={tagConcepts => update({ tags: conceptLabels(tagConcepts), tagConcepts }, ['project-tags'])} helperText={errors['project-tags'] || 'Use ao menos um conceito do projeto. Habilidades específicas ficam nas vagas.'} />
+            <ConceptChipInput disabled={Boolean(pending)} inputId="project-tags" label="Tags gerais do projeto" proposalNoun="tag" maxItems={10} value={values.tagConcepts ?? legacyConcepts(values.tags)} onChange={tagConcepts => update({ tags: conceptLabels(tagConcepts), tagConcepts }, ['project-tags'])} helperText={errors['project-tags'] || 'Use ao menos um conceito do projeto. Habilidades específicas ficam nas vagas.'} />
             <WizardField id="project-url" label="Link externo do projeto (opcional)" errors={errors}><Input id="project-url" inputMode="url" placeholder="https://…" value={values.url} {...fieldProps('project-url')} onChange={e => update({ url: e.target.value }, ['project-url'])} /></WizardField>
             <div className="grid gap-4 sm:grid-cols-2"><Field id="project-status" label="Situação inicial"><Choice id="project-status" value={values.status} onChange={status => update({ status: status as ProjectStatusValue })} options={PROJECT_STATUS_OPTIONS.map(value => ({ value, label: PROJECT_STATUS_LABEL[value] }))} /></Field><Field id="project-visibility" label="Visibilidade"><Choice id="project-visibility" value={values.visibility} onChange={visibility => update({ visibility: visibility as ProjectVisibility })} options={PROJECT_VISIBILITY_OPTIONS.map(value => ({ value, label: PROJECT_VISIBILITY_LABEL[value] }))} /></Field></div>
           </>}
@@ -236,14 +241,14 @@ export function ProjectCreateWizard({ userId, profile }: { userId: string; profi
               <ReviewBlock title="Primeiro período acadêmico" editLabel="Editar primeiro período" onEdit={() => go('period', true)}><dl className="grid gap-4 sm:grid-cols-2"><ReviewValue label="Período ativo inicial">{period.name || 'Período inicial'}</ReviewValue><ReviewValue label="Ano e semestre">{[period.academic_year, period.academic_semester && (period.academic_semester === '1' ? 'Primeiro semestre' : 'Segundo semestre')].filter(Boolean).join(' · ')}</ReviewValue><ReviewValue label="Disciplina">{period.discipline}</ReviewValue><ReviewValue label="Professor orientador">{period.advisor}</ReviewValue><ReviewValue label="Data de início">{period.starts_on}</ReviewValue><ReviewValue label="Data de término">{period.ends_on}</ReviewValue><ReviewValue label="Observações">{period.description}</ReviewValue></dl></ReviewBlock>
             </>}
             <ReviewBlock title="Equipe e vagas" editLabel="Editar equipe e vagas" onEdit={() => go('team', true)}>{currentVacancies.length ? <ul className="space-y-4">{currentVacancies.map(v => <li key={v.key} className="space-y-1 break-words text-sm"><p className="font-semibold">{v.title} · {v.positions} posições · {v.open ? 'Aberta' : 'Encerrada'}</p><p className="whitespace-pre-wrap">{v.description || 'Sem descrição adicional.'}</p><p>Habilidades: {v.skills.join(', ') || 'Não informadas'}</p></li>)}</ul> : <p className="text-sm">Sem vagas iniciais. Você poderá configurá-las depois pelo gerenciamento do projeto.</p>}</ReviewBlock>
-            <details className="rounded-2xl border p-4"><summary className="cursor-pointer text-sm font-medium">Prévia do cartão em Projetos publicados</summary><ProjectCard disableLink className="mt-4 max-w-md" project={{ id: 'preview', slug: values.slug, title: values.title, shortDescription: values.summary, description: values.description, category: values.category, secondaryCategories: values.secondary, status: values.status, visibility: values.visibility, openSpots: values.status === 'open' ? currentVacancies.reduce((sum, v) => sum + (v.open ? Number(v.positions) : 0), 0) : 0, desiredProfile: null, projectUrl: null, createdAt: '', updatedAt: '', ownerId: '', ownerName: profile?.full_name || 'Você', ownerAvatarUrl: null, ownerCourse: null, tags: values.tags, requiredSkills: [], likesCount: 0, commentsCount: 0, membersCount: 0 }} /></details>
+            <details className="rounded-2xl border p-4"><summary className="cursor-pointer text-sm font-medium">Prévia do cartão em Projetos publicados</summary><ProjectCard preview draft={image} className="mt-4 max-w-md" project={{ id: 'preview', slug: values.slug, title: values.title, shortDescription: values.summary, description: values.description, category: values.category, secondaryCategories: values.secondary, status: values.status, visibility: values.visibility, openSpots: values.status === 'open' ? currentVacancies.reduce((sum, v) => sum + (v.open ? Number(v.positions) : 0), 0) : 0, desiredProfile: null, projectUrl: null, createdAt: '', updatedAt: '', ownerId: '', ownerName: profile?.full_name || 'Você', ownerAvatarUrl: null, ownerCourse: null, tags: values.tags, requiredSkills: [], likesCount: 0, commentsCount: 0, membersCount: 0 }} /></details>
           </>}
         </div>
       </section>
       {error && <p role="alert" className="rounded-xl border border-destructive/40 p-4 text-sm text-destructive">{error}</p>}
       <div className="flex flex-col gap-3 border-t pt-5 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div className="flex gap-3">{index > 0 ? <Button type="button" variant="outline" className="min-h-11 flex-1 sm:flex-none" onClick={() => go(steps[index - 1])}>Voltar</Button> : <Button asChild variant="outline" className="min-h-11"><Link href="/explorar">Cancelar</Link></Button>}</div>
-        <div className="flex flex-col gap-3 sm:flex-row">{step === 'team' && <Button type="button" variant="outline" className="min-h-11 whitespace-normal" onClick={() => { setValues(current => ({ ...current, deferVacancies: true })); go('review') }}>Configurar vagas depois</Button>}<Button type="submit" className="min-h-11">{pending === 'saving' ? 'Criando projeto…' : pending === 'checking' ? 'Verificando endereço…' : step === 'review' ? 'Criar projeto' : returnToReview ? 'Voltar à revisão' : 'Próximo passo'}</Button></div>
+        <div className="flex flex-col gap-3 sm:flex-row">{step === 'team' && <Button type="button" variant="outline" className="min-h-11 whitespace-normal" onClick={() => { setValues(current => ({ ...current, deferVacancies: true })); go('review') }}>Configurar vagas depois</Button>}<Button type="submit" className="min-h-11" disabled={imageProcessing}>{pending === 'saving' ? 'Criando projeto…' : pending === 'checking' ? 'Verificando endereço…' : step === 'review' ? 'Criar projeto' : returnToReview ? 'Voltar à revisão' : 'Próximo passo'}</Button></div>
       </div>
     </fieldset>
   </form>
