@@ -46,3 +46,6 @@ next-env.d.ts
 
 .env.github-secrets
 *.pem
+
+# Local browser verification artifacts
+.playwright-cli/

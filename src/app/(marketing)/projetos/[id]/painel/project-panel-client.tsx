@@ -53,6 +53,7 @@ import { PanelGithubSection } from './_components/panel-github-section'
 import { PanelSupportSection } from './_components/panel-support-section'
 import { useProjectLeadership } from '@/hooks/use-project-leadership'
 import { ProjectTools, type WorkspaceModule } from './_components/project-tools'
+import {Recommendations} from '@/components/recommendations/recommendations'
 import {ProjectPanelHeader} from '@/components/team-link/project-panel-header'
 import { ActivityOverview, PanelTeam, usePanelSummary } from './_components/panel-overview'
 
@@ -504,6 +505,7 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
 
       <Container className="grid items-start gap-5 py-5 sm:py-6 lg:grid-cols-[minmax(0,7fr)_minmax(0,3fr)]">
         <div className="min-w-0 space-y-5">
+        {isManager&&<Recommendations kind="collaborators" project={project.id}/>}
         <ActivityOverview data={overview.data} error={overview.error} slug={project.slug} />
         <ProjectTools active={modules} manager={isManager} loading={modulesLoading} error={modulesError}
           open={(module) => {
