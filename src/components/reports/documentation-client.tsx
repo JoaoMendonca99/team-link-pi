@@ -357,7 +357,6 @@ function Preparation({ userId, slug }: { userId: string; slug: string }) {
             documents={documents}
             selected={selected}
             onSelect={setSelected}
-            onUploaded={library}
             disabled={busy}
           />
 
