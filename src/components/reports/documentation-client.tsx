@@ -5,14 +5,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowLeft, X } from 'lucide-react'
 import { Container } from '@/components/layout/container'
 import { Button } from '@/components/ui/button'
-import { DocumentationLibrary } from './documentation-library'
+import { AvailableDocumentsSection } from './documentation-library'
 import { LegacyDocuments } from './legacy-documents'
 import { ProjectFilesSection } from './project-files-section'
 import { useSupabaseSession } from '@/hooks/use-supabase-session'
 import { getSupabaseClient } from '@/lib/supabase/client'
 import { buildAiPrompt, kindLabels, missingAcademic, type DocumentationData, type DocumentKind } from '@/lib/documentation'
 import {
-  formatFileSize,
   loadProjectFiles,
   saveBlob,
   setProjectFileSelected,
@@ -64,10 +63,9 @@ function Preparation({ userId, slug }: { userId: string; slug: string }) {
     try {
       const files = await loadProjectFiles(projectId)
       setProjectFiles(files)
-      // Mantém a seleção memorizada a partir do banco
       setSelectedProjectFileIds(files.filter((f) => f.selected_for_package).map((f) => f.id))
-    } catch {
-      // Falha não impeditiva no carregamento secundário
+    } catch (e) {
+      console.warn('Falha ao carregar arquivos do projeto:', e)
     }
   }, [])
 
@@ -82,11 +80,15 @@ function Preparation({ userId, slug }: { userId: string; slug: string }) {
     const first = !initialized.current
     initialized.current = true
     setDocuments(docs)
-    setSelected((ids) =>
-      first
-        ? docs.filter((d) => d.builtin).map((d) => d.id)
-        : ids.filter((id) => docs.some((d) => d.id === id && d.status !== 'rejected'))
-    )
+    setSelected((ids) => {
+      if (first) {
+        const builtinDoc = docs.find((d) => d.builtin)
+        return builtinDoc ? [builtinDoc.id] : ['builtin-abnt-guide']
+      }
+      return ids.filter(
+        (id) => id === 'builtin-abnt-guide' || docs.some((d) => d.id === id && d.status !== 'rejected')
+      )
+    })
   }, [])
 
   useEffect(() => {
@@ -142,7 +144,26 @@ function Preparation({ userId, slug }: { userId: string; slug: string }) {
     }
   }
 
-  const chosen = documents.filter((d) => selected.includes(d.id) && d.status !== 'rejected')
+  const abntDoc: ReferenceDocument = documents.find((d) => d.builtin) || {
+    id: 'builtin-abnt-guide',
+    name: 'Guia ABNT — Team Link.pdf',
+    description: 'Documento padrão do sistema',
+    document_type: 'Guia ABNT',
+    institution: '',
+    version: '2026.1',
+    status: 'published',
+    builtin: true,
+    filename: 'Guia_ABNT_TeamLink.pdf',
+    size: null,
+    created_at: new Date().toISOString(),
+    uploader_id: null,
+    review_note: '',
+  }
+
+  const isAbntSelected = selected.includes(abntDoc.id)
+  const otherReferences = documents.filter((d) => !d.builtin && d.status === 'published')
+  const chosenOtherReferences = otherReferences.filter((d) => selected.includes(d.id))
+  const chosenReferences = (isAbntSelected ? [abntDoc] : []).concat(chosenOtherReferences)
   const chosenProjectFiles = projectFiles.filter((f) => selectedProjectFileIds.includes(f.id))
 
   async function exportPackage(zip: boolean) {
@@ -151,7 +172,7 @@ function Preparation({ userId, slug }: { userId: string; slug: string }) {
       const exports = await import('@/lib/documentation-export')
       const font = await exports.loadDocumentationFont()
       const blob = zip
-        ? await exports.createDocumentationZip(next, kind, chosen, font, chosenProjectFiles)
+        ? await exports.createDocumentationZip(next, kind, chosenReferences, font, chosenProjectFiles)
         : exports.createDataPdf(next, kind, font).output('blob')
       saveBlob(blob, zip ? 'TeamLink_Documentacao_IA.zip' : '01_Dados_do_Projeto.pdf')
       setNotice(zip ? 'Pacote ZIP gerado no seu dispositivo.' : 'PDF de dados gerado no seu dispositivo.')
@@ -159,59 +180,65 @@ function Preparation({ userId, slug }: { userId: string; slug: string }) {
   }
 
   const currentMember = data?.members.find((m) => m.id === userId)
-  const isManager = Boolean(
-    currentMember && ['owner', 'manager', 'admin'].includes(currentMember.role)
-  )
-  const isReadOnly = Boolean(data && ['completed', 'archived'].includes(data.project.status))
+  const isManager = currentMember ? ['owner', 'manager', 'admin'].includes(currentMember.role) : false
+  const isReadOnly = data?.project.status === 'completed' || data?.project.status === 'archived'
 
   return (
     <Container className="space-y-6 py-6">
-      {/* 1. Novo cabeçalho unificado e responsivo */}
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-3">
-          <Button asChild size="icon" variant="outline">
-            <Link
-              href={'/projetos/' + encodeURIComponent(slug) + '/painel'}
-              aria-label="Voltar ao painel do projeto"
-            >
-              <ArrowLeft className="size-4" aria-hidden />
-            </Link>
-          </Button>
+      {/* Cabeçalho padronizado e compacto */}
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b pb-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <Link
+            href={`/projetos/${encodeURIComponent(slug)}/painel`}
+            className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            title="Voltar ao painel do projeto"
+            aria-label="Voltar ao painel do projeto"
+          >
+            <ArrowLeft className="size-4" aria-hidden />
+          </Link>
           <div className="min-w-0">
-            <h1 className="break-words text-2xl font-bold">Documentação com IA</h1>
-            <p className="break-words text-sm text-muted-foreground">{data?.project.title}</p>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight truncate">
+              Documentação com IA
+            </h1>
+            <p className="text-xs sm:text-sm text-muted-foreground truncate" title={data?.project.title}>
+              {data?.project.title || 'Carregando…'}
+            </p>
           </div>
         </div>
-        <div className="flex w-full justify-start sm:w-auto sm:justify-end">
-          <Button disabled={!data || busy} onClick={() => setOpened(true)}>
+
+        <div className="flex shrink-0">
+          <Button
+            type="button"
+            disabled={!data}
+            onClick={() => setOpened(true)}
+            className="w-full sm:w-auto"
+          >
             Preparar arquivos para IA
           </Button>
         </div>
       </header>
 
-      {/* 2. Resumo compacto */}
-      <div className="space-y-1.5">
+      {/* Apresentação inicial compacta */}
+      <section className="space-y-3">
         <p className="text-sm text-muted-foreground">
           Prepare um pacote com os dados do projeto e os documentos selecionados para utilizar na IA de sua preferência.
         </p>
         {data && (
-          <p className="text-xs text-muted-foreground">
-            {data.tasks.length} atividades do período · {data.members.length} integrantes · {data.goals.length} metas
-            {isReadOnly && (
-              <span className="ml-2 font-medium text-primary">· Projeto finalizado (somente consulta)</span>
-            )}
-          </p>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs text-muted-foreground">
+            <span className="rounded-md border bg-muted/30 px-2.5 py-1">
+              <strong className="text-foreground">{data.tasks.length}</strong> atividades no período
+            </span>
+            <span className="rounded-md border bg-muted/30 px-2.5 py-1">
+              <strong className="text-foreground">{data.members.length}</strong> integrantes
+            </span>
+            <span className="rounded-md border bg-muted/30 px-2.5 py-1">
+              <strong className="text-foreground">{data.goals.length}</strong> metas registradas
+            </span>
+          </div>
         )}
-      </div>
+      </section>
 
-      {error && !opened && (
-        <p role="alert" className="text-sm text-destructive">
-          {error}
-        </p>
-      )}
-      {!data && !error && <p role="status">Carregando dados autorizados…</p>}
-
-      {/* 3. Nova seção: Arquivos do projeto */}
+      {/* Seção principal: Arquivos do projeto (com Guia ABNT integrado como primeiro item) */}
       {data && (
         <ProjectFilesSection
           projectId={data.project.id}
@@ -224,40 +251,38 @@ function Preparation({ userId, slug }: { userId: string; slug: string }) {
         />
       )}
 
-      {/* 4. Relatórios anteriores (fluxo legado) */}
-      {data && <LegacyDocuments documents={legacy} />}
+      {/* Histórico de relatórios anteriores */}
+      {legacy.length > 0 && <LegacyDocuments documents={legacy} />}
 
-      {/* Diálogo Preparar arquivos para IA */}
+      {/* Modal / Diálogo unificado: Preparar pacote para IA */}
       <dialog
         ref={dialog}
-        aria-label="Preparar pacote para IA"
+        className="backdrop:bg-black/60 m-auto max-w-2xl rounded-2xl border bg-card p-6 text-card-foreground shadow-2xl"
         onCancel={(e) => {
           e.preventDefault()
-          if (!busy) setOpened(false)
+          setOpened(false)
         }}
-        className="report-dialog max-h-[92dvh] w-[calc(100%_-_1rem)] max-w-3xl overflow-y-auto"
       >
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-xl font-semibold">Preparar pacote para IA</h2>
-          <Button
-            type="button"
-            size="icon"
-            variant="ghost"
-            disabled={busy}
-            aria-label="Fechar preparação"
-            onClick={() => setOpened(false)}
-          >
-            <X className="size-4" />
-          </Button>
-        </div>
-        <p className="my-3 text-sm text-muted-foreground">
-          Escolha o documento, confira os dados e selecione referências da biblioteca compartilhada e arquivos permanentes do projeto. Depois, baixe o pacote ZIP completo, somente o PDF de dados ou copie o prompt. Nenhum texto manual é obrigatório.
-        </p>
         <div className="space-y-4">
+          <div className="flex items-center justify-between border-b pb-3">
+            <h2 className="text-base font-semibold">Preparar pacote para IA</h2>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              disabled={busy}
+              onClick={() => setOpened(false)}
+              aria-label="Fechar diálogo"
+            >
+              <X className="size-4" aria-hidden />
+            </Button>
+          </div>
+
+          {/* 1. Documento solicitado */}
           <label className="block text-sm">
-            Documento solicitado
+            Tipo de documento desejado
             <select
-              className="report-input"
+              className="report-input mt-1"
               disabled={busy}
               value={kind}
               onChange={(e) => setKind(e.target.value as DocumentKind)}
@@ -269,10 +294,12 @@ function Preparation({ userId, slug }: { userId: string; slug: string }) {
               ))}
             </select>
           </label>
+
+          {/* 2. Período dos dados */}
           <label className="block text-sm">
             Período dos dados
             <select
-              className="report-input"
+              className="report-input mt-1"
               value={period}
               disabled={busy}
               onChange={(e) => {
@@ -292,6 +319,8 @@ function Preparation({ userId, slug }: { userId: string; slug: string }) {
               ))}
             </select>
           </label>
+
+          {/* 3. Informações a confirmar */}
           {data && (
             <section className="rounded-xl border p-3 text-sm">
               <h3 className="font-medium">Informações a confirmar</h3>
@@ -304,73 +333,50 @@ function Preparation({ userId, slug }: { userId: string; slug: string }) {
             </section>
           )}
 
-          {/* Nova seção dentro do modal: Arquivos salvos no projeto */}
-          <section className="rounded-xl border p-3 text-sm space-y-2">
-            <div className="flex items-center justify-between">
-              <h3 className="font-medium">Arquivos salvos no projeto</h3>
-              <span className="text-xs text-muted-foreground">
-                {chosenProjectFiles.length} selecionado{chosenProjectFiles.length === 1 ? '' : 's'}
-              </span>
-            </div>
-            {projectFiles.length === 0 ? (
-              <p className="text-xs text-muted-foreground">
-                Nenhum arquivo permanente adicionado ao projeto ainda. Use a seção &ldquo;Arquivos do projeto&rdquo; na página principal para adicionar.
-              </p>
-            ) : (
-              <ul className="space-y-1.5 max-h-48 overflow-y-auto">
-                {projectFiles.map((file) => {
-                  const checked = selectedProjectFileIds.includes(file.id)
-                  return (
-                    <li key={file.id}>
-                      <label className="flex items-center gap-2 cursor-pointer hover:text-primary">
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          disabled={busy}
-                          className="rounded border-border accent-primary"
-                          onChange={async (e) => {
-                            const nextChecked = e.target.checked
-                            setSelectedProjectFileIds((ids) =>
-                              nextChecked ? [...ids, file.id] : ids.filter((id) => id !== file.id)
-                            )
-                            try {
-                              await setProjectFileSelected(file.id, nextChecked)
-                            } catch {
-                              // persistência silenciosa
-                            }
-                          }}
-                        />
-                        <span className="truncate">{file.name}</span>
-                        <span className="text-xs text-muted-foreground shrink-0">
-                          ({formatFileSize(file.size)})
-                        </span>
-                      </label>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
-          </section>
-
-          {/* Biblioteca compartilhada preservada */}
-          <DocumentationLibrary
-            documents={documents}
-            selected={selected}
-            onSelect={setSelected}
+          {/* 4. Arquivos disponíveis — Seção unificada de seleção */}
+          <AvailableDocumentsSection
+            abntDoc={abntDoc}
+            isAbntSelected={isAbntSelected}
+            onToggleAbnt={(checked) => {
+              setSelected((ids) =>
+                checked
+                  ? ids.includes(abntDoc.id)
+                    ? ids
+                    : [...ids, abntDoc.id]
+                  : ids.filter((id) => id !== abntDoc.id)
+              )
+            }}
+            projectFiles={projectFiles}
+            selectedProjectFileIds={selectedProjectFileIds}
+            onToggleProjectFile={async (fileId, checked) => {
+              setSelectedProjectFileIds((ids) =>
+                checked ? [...ids, fileId] : ids.filter((id) => id !== fileId)
+              )
+              try {
+                await setProjectFileSelected(fileId, checked)
+              } catch {
+                // persistência silenciosa
+              }
+            }}
+            otherDocuments={otherReferences}
+            selectedReferenceIds={selected}
+            onToggleReference={(docId, checked) => {
+              setSelected((ids) =>
+                checked ? (ids.includes(docId) ? ids : [...ids, docId]) : ids.filter((id) => id !== docId)
+              )}
+            }
             disabled={busy}
           />
 
-          {/* Estrutura do pacote com a nova pasta 05_Arquivos_do_Projeto */}
+          {/* 5. Resumo do pacote — Estrutura dos arquivos que entrarão no ZIP */}
           <section className="rounded-xl border p-3 text-sm">
             <h3 className="font-medium">Arquivos do pacote</h3>
             <ul className="mt-2 list-inside list-disc space-y-1 break-words">
               <li>01_Dados_do_Projeto.pdf</li>
-              {chosen.some((d) => d.builtin) && <li>02_Guia_ABNT.pdf</li>}
-              {chosen
-                .filter((d) => !d.builtin)
-                .map((d) => (
-                  <li key={d.id}>03_Documentos_de_Referencia/{d.filename || d.name}</li>
-                ))}
+              {isAbntSelected && <li>02_Guia_ABNT.pdf</li>}
+              {chosenOtherReferences.map((d) => (
+                <li key={d.id}>03_Documentos_de_Referencia/{d.filename || d.name}</li>
+              ))}
               <li>04_Prompt_IA.txt</li>
               {chosenProjectFiles.map((f) => (
                 <li key={f.id}>05_Arquivos_do_Projeto/{f.filename || f.name}</li>
@@ -395,6 +401,8 @@ function Preparation({ userId, slug }: { userId: string; slug: string }) {
               {notice}
             </p>
           )}
+
+          {/* 6. Botões de exportação */}
           <div className="flex flex-wrap gap-2">
             <Button disabled={busy || !data} onClick={() => void exportPackage(true)}>
               {busy ? 'Preparando…' : 'Baixar pacote ZIP'}
@@ -408,7 +416,7 @@ function Preparation({ userId, slug }: { userId: string; slug: string }) {
               onClick={() =>
                 void act(async () => {
                   const next = await refresh()
-                  await navigator.clipboard.writeText(buildAiPrompt(next, kind, chosen))
+                  await navigator.clipboard.writeText(buildAiPrompt(next, kind, chosenReferences))
                   setNotice('Prompt copiado.')
                 })
               }
