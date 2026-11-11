@@ -21,9 +21,8 @@ import { useSupabaseSession } from '@/hooks/use-supabase-session'
 
 export function ProfileContent({ embedded=false }: { embedded?:boolean }) {
   const params = useSearchParams()
-  const basePath = embedded ? '/meu-espaco/perfil' : '/perfil'
   const router = useRouter()
-  const tab = params.get('aba') === 'amigos' ? 'Amigos' : params.get('aba') === 'candidaturas' ? 'Candidaturas' : 'Projetos'
+  const tab = embedded ? 'Projetos' : params.get('aba') === 'amigos' ? 'Amigos' : params.get('aba') === 'candidaturas' ? 'Candidaturas' : 'Projetos'
   const { loading, isAuthenticated, profile, user } = useSupabaseSession()
 
   const social = useProfileSocial(user?.id, user?.id)
@@ -136,14 +135,15 @@ export function ProfileContent({ embedded=false }: { embedded?:boolean }) {
 
         {profile && <AcademicTags profile={profile} />}
 
-        <nav aria-label="Seções do perfil" className="flex flex-wrap gap-1 rounded-2xl border border-card-outline bg-card p-1">
+        {!embedded && <nav aria-label="Seções do perfil" className="flex flex-wrap gap-1 rounded-2xl border border-card-outline bg-card p-1">
           {(['Projetos', 'Amigos', 'Candidaturas'] as const).map((label) => <Button
             key={label} type="button" variant={tab === label ? 'default' : 'ghost'} size="sm"
-            aria-pressed={tab === label} onClick={() => router.replace(embedded && label === 'Amigos' ? '/meu-espaco/amigos' : embedded && label === 'Candidaturas' ? '/meu-espaco/candidaturas' : label === 'Projetos' ? basePath : basePath+'?aba=' + label.toLocaleLowerCase('pt-BR'), { scroll: false })}>{label}</Button>)}
-        </nav>
+            aria-pressed={tab === label} onClick={() => router.replace(label === 'Projetos' ? '/perfil' : '/perfil?aba=' + label.toLocaleLowerCase('pt-BR'), { scroll: false })}>{label}</Button>)}
+        </nav>}
 
         {tab === 'Projetos' && (
-          <div className="space-y-5">
+          <section aria-labelledby={embedded ? "profile-projects-title" : undefined} className="space-y-5">
+            {embedded && <h2 id="profile-projects-title" className="text-lg font-semibold">Projetos</h2>}
             {(fetchError || envMissing) && <div className="space-y-2">
               <p role="alert" className="text-sm text-destructive">Não foi possível carregar seus projetos.</p>
               <Button type="button" variant="outline" onClick={() => void loadData()}>Tentar novamente</Button>
@@ -151,8 +151,8 @@ export function ProfileContent({ embedded=false }: { embedded?:boolean }) {
             {projectsLoading && <p role="status" className="text-sm text-muted-foreground">Carregando projetos…</p>}
             {!projectsLoading && !fetchError && !envMissing && <ProfileProjects data={projects}
               renderProject={project => <ProfileProject project={project} userId={user.id} />}
-              action={<Button asChild variant="outline" size="sm"><Link href="/nova-ideia"><PlusCircle aria-hidden /> Nova ideia</Link></Button>} />}
-          </div>
+              action={!embedded && <Button asChild variant="outline" size="sm"><Link href="/nova-ideia"><PlusCircle aria-hidden /> Nova ideia</Link></Button>} />}
+          </section>
         )}
         {tab === 'Amigos' && <FriendsPanel key={user.id} initialSection={params.get('secao') === 'recebidas' ? 'received' : 'accepted'} />}
         {tab === 'Candidaturas' && <MyApplications key={user.id} userId={user.id} initialRequestId={params.get('candidatura')} />}

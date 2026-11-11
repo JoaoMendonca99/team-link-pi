@@ -78,11 +78,11 @@ export function CreateGroupModal({
       return
     }
     if (cleanTitle.length > GROUP_TITLE_MAX_LENGTH) {
-      setValidation(`O nome deve ter no mÃ¡ximo ${GROUP_TITLE_MAX_LENGTH} caracteres.`)
+      setValidation(`O nome deve ter no máximo ${GROUP_TITLE_MAX_LENGTH} caracteres.`)
       return
     }
     if (selectedOthers.length === 0) {
-      setValidation('Selecione pelo menos um membro alÃ©m de vocÃª.')
+      setValidation('Selecione pelo menos um membro além de você.')
       return
     }
     setValidation(null)
@@ -148,7 +148,7 @@ export function CreateGroupModal({
                   Membros do projeto
                 </p>
                 <p className="text-[11px] text-muted-foreground">
-                  VocÃª entra como administrador.
+                  Você entra como administrador.
                 </p>
               </div>
 
@@ -159,7 +159,7 @@ export function CreateGroupModal({
               ) : loadError ? (
                 <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-destructive/40 bg-destructive/10 py-6 text-center">
                   <p className="text-sm font-medium text-destructive">
-                    NÃ£o foi possÃ­vel carregar os membros.
+                    Não foi possível carregar os membros.
                   </p>
                   <Button
                     type="button"
@@ -177,7 +177,7 @@ export function CreateGroupModal({
                   <Users className="h-7 w-7 text-muted-foreground" aria-hidden />
                   <p className="text-sm font-semibold text-foreground">Sem outros membros</p>
                   <p className="text-xs text-muted-foreground">
-                    Convide alguÃ©m para o projeto antes de criar um grupo.
+                    Convide alguém para o projeto antes de criar um grupo.
                   </p>
                 </div>
               ) : (

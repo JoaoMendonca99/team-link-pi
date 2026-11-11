@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { Download, Pencil, Share2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { UserAvatar } from '@/components/team-link/user-avatar'
@@ -21,7 +21,6 @@ export function ProfileHeading({ profile, projects, projectCount, social, own, c
   own?: boolean
   children?: ReactNode
 }) {
-  const [bioExpanded,setBioExpanded]=useState(false)
   const [status, setStatus] = useState('')
   const [error, setError] = useState('')
   const [card, setCard] = useState('')
@@ -65,7 +64,7 @@ export function ProfileHeading({ profile, projects, projectCount, social, own, c
         <p className="text-xs font-semibold uppercase tracking-widest text-primary">{own ? 'Seu perfil' : 'Perfil acadêmico'}</p>
         <h1 className="break-words text-2xl font-bold sm:text-3xl">{name}</h1>
         {profile.educations?.length?<section className="space-y-2" aria-label="Formação acadêmica"><h2 className="text-sm font-semibold">Formação acadêmica</h2><ul className="grid gap-2 sm:grid-cols-2">{profile.educations.map(row=>{const names=educationLabels(row);return <li key={row.id} className="min-w-0 rounded-xl border bg-background/40 p-3 text-sm"><p className="break-words font-medium">{names.course}</p><p className="break-words text-muted-foreground">{names.institution}{names.acronym?' — '+names.acronym:''}</p><p className="mt-1 text-xs text-muted-foreground">{educationDateLabel(row)}</p><p className="mt-1 text-xs text-muted-foreground">{educationStatus(row.cursando_atualmente,row.situacao_final)}</p></li>})}</ul></section>:academic&&<p className="break-words text-sm text-muted-foreground">{academic}</p>}
-        {profile.bio && <div className="max-w-prose space-y-1"><p id="profile-bio" className={'whitespace-pre-line break-words text-sm leading-relaxed '+(!bioExpanded?'line-clamp-4':'')}>{profile.bio}</p>{(profile.bio.length>120||profile.bio.split('\n').length>4)&&<Button type="button" variant="link" size="sm" className="px-0" aria-expanded={bioExpanded} aria-controls="profile-bio" onClick={()=>setBioExpanded(v=>!v)}>{bioExpanded?'Recolher biografia':'Ler biografia completa'}</Button>}</div>}
+        {profile.bio && <ProfileBiography key={profile.bio} text={profile.bio} />}
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
           {social && <span><strong className="text-foreground">{social.count}</strong> {social.count === 1 ? 'amigo' : 'amigos'}</span>}
           <span><strong className="text-foreground">{projectCount ?? projects.length}</strong> {(projectCount ?? projects.length) === 1 ? 'projeto' : 'projetos'}</span>
@@ -98,6 +97,47 @@ export function ProfileHeading({ profile, projects, projectCount, social, own, c
       </div>
     </dialog>}
   </section>
+}
+
+function ProfileBiography({ text }: { text: string }) {
+  const id = useId()
+  const paragraph = useRef<HTMLParagraphElement>(null)
+  const [expanded, setExpanded] = useState(false)
+  const [truncated, setTruncated] = useState(false)
+
+  useLayoutEffect(() => {
+    const element = paragraph.current
+    if (!element) return
+    let active = true
+    const measure = () => {
+      if (!active) return
+      // Compare the full text height against the same four lines in both states.
+      const lineHeight = Number.parseFloat(getComputedStyle(element).lineHeight)
+      const clipped = element.scrollHeight > lineHeight * 4 + 1
+      setTruncated(clipped)
+      if (!clipped) setExpanded(false)
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(element)
+    void document.fonts.ready.then(measure)
+    return () => {
+      active = false
+      observer.disconnect()
+    }
+  }, [text])
+
+  return (
+    <div className="max-w-prose space-y-1">
+      <p ref={paragraph} id={id} className={`whitespace-pre-line break-words text-sm leading-relaxed ${expanded ? '' : 'line-clamp-4'}`}>{text}</p>
+      {truncated && (
+        <Button type="button" variant="link" size="sm" className="px-0" aria-expanded={expanded}
+          aria-controls={id} onClick={() => setExpanded(value => !value)}>
+          {expanded ? 'Recolher biografia' : 'Ler biografia completa'}
+        </Button>
+      )}
+    </div>
+  )
 }
 
 export function AcademicTags({ profile }: { profile: ProfileRow }) {
