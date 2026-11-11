@@ -49,3 +49,7 @@ next-env.d.ts
 
 # Local browser verification artifacts
 .playwright-cli/
+
+# Agent configurations
+.agents/
+skills-lock.json

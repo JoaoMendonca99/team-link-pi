@@ -1,7 +1,7 @@
 import {jsPDF} from 'jspdf'
 import {strToU8,zipSync} from 'fflate'
 import {abntGuideSections,academicFieldLabels,buildAiPrompt,kindLabels,type DocumentationData,type DocumentKind} from './documentation'
-import {readDocument,type ReferenceDocument} from './project-documents'
+import {readDocument,type ProjectFile,type ReferenceDocument} from './project-documents'
 import {safeFileName} from '../../supabase/functions/_shared/file-validation'
 
 function writer(title:string,font:string){
@@ -42,7 +42,7 @@ export function createDataPdf(data:DocumentationData,kind:DocumentKind,font:stri
  return out.finish()
 }
 export function createAbntGuide(font:string){const out=writer('GUIA ABNT — TEAM LINK',font);for(const [title,text] of abntGuideSections){out.text(title,13);out.text(text)}return out.finish()}
-export async function createDocumentationZip(data:DocumentationData,kind:DocumentKind,references:ReferenceDocument[],font:string){
+export async function createDocumentationZip(data:DocumentationData,kind:DocumentKind,references:ReferenceDocument[],font:string,projectFiles:ProjectFile[]=[]){
  const files:Record<string,Uint8Array>={'01_Dados_do_Projeto.pdf':new Uint8Array(createDataPdf(data,kind,font).output('arraybuffer'))}
  let total=files['01_Dados_do_Projeto.pdf'].length
  for(const [index,reference] of references.entries()){
@@ -50,5 +50,16 @@ export async function createDocumentationZip(data:DocumentationData,kind:Documen
   try{const blob=await readDocument('reference',reference.id);total+=blob.size;if(total>80*1024*1024)throw Error('O pacote excede 80 MB. Selecione menos documentos.');files['03_Documentos_de_Referencia/'+String(index+1).padStart(2,'0')+'_'+safeFileName(reference.filename||reference.name)]=new Uint8Array(await blob.arrayBuffer())}catch(e){throw Error('Não foi possível incluir “'+reference.name+'”. '+(e as Error).message)}
  }
  files['04_Prompt_IA.txt']=strToU8(buildAiPrompt(data,kind,references))
+ for(const [index,file] of projectFiles.entries()){
+  try{
+   const blob=await readDocument('project',file.id)
+   total+=blob.size
+   if(total>80*1024*1024)throw Error('O pacote excede 80 MB. Selecione menos documentos.')
+   const cleanName=safeFileName(file.filename||file.name)
+   files['05_Arquivos_do_Projeto/'+String(index+1).padStart(2,'0')+'_'+cleanName]=new Uint8Array(await blob.arrayBuffer())
+  }catch(e){
+   throw Error('Não foi possível incluir o arquivo do projeto “'+file.name+'”. '+(e as Error).message)
+  }
+ }
  const bytes=zipSync(files,{level:4});return new Blob([bytes as BlobPart],{type:'application/zip'})
 }

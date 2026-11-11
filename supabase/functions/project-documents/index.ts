@@ -30,12 +30,29 @@ Deno.serve(async request=>{
    const token=request.headers.get('authorization')?.match(/^Bearer (\S+)$/i)?.[1]
    if(!token)return reply(401,{error:'Entre na sua conta.'})
    const {data:{user},error}=await service.auth.getUser(token);if(error||!user)return reply(401,{error:'Sessão inválida.'})
-   if(args.action!=='download'||!id.test(args.id??'')||!['activity','reference'].includes(args.scope))return reply(400,{error:'Arquivo indisponível.'})
    const client=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_ANON_KEY')!,{global:{headers:{Authorization:'Bearer '+token}},auth:{persistSession:false,autoRefreshToken:false}})
-   const table=args.scope==='activity'?'activity_comment_attachments':'reference_documents'
-   const found=await client.from(table).select('*').eq('id',args.id).single()
-   if(found.error||!found.data||!found.data.path)return reply(404,{error:'Arquivo indisponível.'})
-   const signed=await service.storage.from(args.scope==='activity'?'activity-evidence':'academic-references').createSignedUrl(found.data.path,60,{download:found.data.filename})
+
+   if(args.action==='delete'&&args.scope==='project'){
+    if(!id.test(args.id??''))return reply(400,{error:'Arquivo indisponível.'})
+    const res=await client.rpc('delete_project_file',{p_file_id:args.id})
+    if(res.error)return reply(403,{error:res.error.message||'Exclusão não autorizada.'})
+    if(res.data?.path){await service.storage.from('project-files').remove([res.data.path])}
+    return reply(200,{ok:true})
+   }
+
+   if(args.action!=='download'||!id.test(args.id??'')||!['activity','reference','project'].includes(args.scope))return reply(400,{error:'Arquivo indisponível.'})
+   let path:string|undefined,filename:string|undefined,bucketName:string
+   if(args.scope==='project'){
+    const found=await client.from('project_files').select('path,filename').eq('id',args.id).single()
+    if(found.error||!found.data||!found.data.path)return reply(404,{error:'Arquivo indisponível.'})
+    path=found.data.path;filename=found.data.filename;bucketName='project-files'
+   }else{
+    const table=args.scope==='activity'?'activity_comment_attachments':'reference_documents'
+    const found=await client.from(table).select('*').eq('id',args.id).single()
+    if(found.error||!found.data||!found.data.path)return reply(404,{error:'Arquivo indisponível.'})
+    path=found.data.path;filename=found.data.filename;bucketName=args.scope==='activity'?'activity-evidence':'academic-references'
+   }
+   const signed=await service.storage.from(bucketName).createSignedUrl(path,60,{download:filename})
    if(signed.error)throw signed.error
    return reply(200,{url:signed.data.signedUrl})
   }
@@ -46,6 +63,45 @@ Deno.serve(async request=>{
   const blob=await boundedBody(request),form=await new Response(blob,{headers:{'Content-Type':request.headers.get('content-type')!}}).formData()
   const scope=String(form.get('scope')??''),client=String(form.get('client_id')??''),target=String(form.get('task_id')??''),body=String(form.get('body')??'').trim(),parent=String(form.get('reply_to')??'')
   const files=form.getAll('files')
+
+  if(scope==='project'){
+   const projectId=String(form.get('project_id')??'')
+   const replaceId=form.get('replace_id')?String(form.get('replace_id')):null
+   const customName=String(form.get('name')??'').trim()
+   if(!id.test(projectId)||(replaceId&&!id.test(replaceId)))return reply(400,{error:'Projeto ou arquivo inválido.'})
+   if(!files.length||files.length>1||!(files[0] instanceof File))return reply(400,{error:'Envie um único arquivo PDF ou DOCX.'})
+   const file=files[0] as File
+   const inspected=await inspectFile(file,true,unzipSync)
+
+   const userClient=createClient(Deno.env.get('SUPABASE_URL')!,Deno.env.get('SUPABASE_ANON_KEY')!,{global:{headers:{Authorization:'Bearer '+token}},auth:{persistSession:false,autoRefreshToken:false}})
+   const storagePath=`${projectId}/${crypto.randomUUID()}_${inspected.info.name}`
+   const bucket=service.storage.from('project-files')
+   const uploadRes=await bucket.upload(storagePath,inspected.bytes,{contentType:inspected.info.mime,upsert:false,cacheControl:'60'})
+   if(uploadRes.error)throw uploadRes.error
+
+   const saveRes=await userClient.rpc('save_project_file',{
+    p_project_id:projectId,
+    p_name:customName||inspected.info.name,
+    p_filename:inspected.info.name,
+    p_path:storagePath,
+    p_mime:inspected.info.mime,
+    p_size:inspected.info.size,
+    p_sha256:inspected.info.sha256,
+    p_replace_id:replaceId||null
+   })
+
+   if(saveRes.error){
+    await bucket.remove([storagePath])
+    return reply(403,{error:saveRes.error.message||'Envio não autorizado.'})
+   }
+
+   if(saveRes.data?.old_path){
+    await bucket.remove([saveRes.data.old_path])
+   }
+
+   return reply(200,{ok:true,file:saveRes.data?.file})
+  }
+
   if(!['activity','reference'].includes(scope)||!id.test(client)||scope==='activity'&&!id.test(target)||parent&&!id.test(parent)||body.length>4000||!files.length||files.length>(scope==='reference'?1:5)||files.some(f=>!(f instanceof File)))return reply(400,{error:'Envie até cinco arquivos válidos por mensagem.'})
   const inspected=[]
   for(const file of files)inspected.push(await inspectFile(file as File,scope==='reference',unzipSync))
