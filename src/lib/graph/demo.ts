@@ -1,4 +1,4 @@
-import { Graph, bfs, dfs, path, components, type Edge, type Vertex, type Traversal } from './graph';
+import { Graph, bfs, dfs, path, components, jaccard, type Edge, type Vertex, type Traversal } from './graph';
 import type { Snapshot } from './types';
 import { buildGraph } from './engine';
 export type Demo = {
@@ -9,6 +9,7 @@ export type Demo = {
     target: string;
     components: number;
     totalVertices: number;
+    requirementsJaccard: number;
     bfs: ReturnType<typeof serialize>;
     dfs: ReturnType<typeof serialize>;
 };
@@ -22,7 +23,9 @@ export function inspect(graph: Graph, start: string, target?: string, synthetic 
             small.addEdge(e);
     small.finalize();
     const end = target && allowed.has(target) ? target : subset.find(id => id !== start && id.startsWith('user:')) ?? subset.at(-1) ?? start;
-    return { synthetic, vertices: [...small.vertices.values()], edges: small.edges, start, target: end, components: components(small).length, totalVertices: graph.vertices.size, bfs: serialize(bfs(small, start, { trace: true }), end), dfs: serialize(dfs(small, start, { trace: true }), end) };
+    const skills = (small.adjacent.get(end) ?? []).filter(edge => edge.type==='skill').map(edge=>edge.to)
+    const requirements = small.edges.filter(edge=>edge.type==='requirement' && edge.to.startsWith('concept:')).map(edge=>edge.to)
+    return { requirementsJaccard:jaccard(skills,requirements), synthetic, vertices: [...small.vertices.values()], edges: small.edges, start, target: end, components: components(small).length, totalVertices: graph.vertices.size, bfs: serialize(bfs(small, start, { trace: true }), end), dfs: serialize(dfs(small, start, { trace: true }), end) };
 }
 export function syntheticDemo(): Demo {
     const c = (id: string, label: string) => ({ id, label }), r = (id: string, label: string, weight: number) => ({ key: id, concept: id, label, weight, source: 'vacancy' as const });

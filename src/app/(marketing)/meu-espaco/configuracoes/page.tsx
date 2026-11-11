@@ -10,7 +10,9 @@ import { PresenceControl, usePresencePreference } from '@/components/profile/pre
 import { useSupabaseSession } from '@/hooks/use-supabase-session'
 import { FirstStepsPreference } from '@/components/profile/first-steps-preference'
 
-function PrivacySettings() {
+import { RecommendationPrivacy } from '@/components/recommendations/recommendation-privacy'
+
+function PrivacySettings({ userId }: { userId:string }) {
   const {visibility,setVisibility,presenceError,saveVisibility} = usePresencePreference()
   const [busy,setBusy] = useState(false),[error,setError] = useState(''),[status,setStatus] = useState('')
   return <section id="privacidade" className="scroll-mt-24 space-y-4 rounded-2xl border border-border bg-card p-4">
@@ -18,6 +20,7 @@ function PrivacySettings() {
     <PresenceControl value={visibility} onChange={value=>{setVisibility(value);setStatus('')}} disabled={busy} error={presenceError}/>
     <Button disabled={busy||visibility===null} variant="outline" onClick={async()=>{setBusy(true);setError('');setStatus('');try{await saveVisibility();setStatus('Preferência de privacidade salva.')}catch{setError('Não foi possível salvar a preferência. Tente novamente.')}finally{setBusy(false)}}}>{busy?'Salvando…':'Salvar privacidade'}</Button>
     {status&&<p role="status" className="text-sm text-primary">{status}</p>}{error&&<p role="alert" className="text-sm text-destructive">{error}</p>}
+    <RecommendationPrivacy userId={userId}/>
   </section>
 }
 
@@ -27,7 +30,7 @@ export default function Page() {
     <section className="space-y-4 rounded-2xl border border-border bg-card p-4"><h2 className="text-lg font-semibold">Aparência</h2><fieldset className="flex flex-wrap gap-3"><legend className="sr-only">Tema do Team Link</legend>{[{value:'dark',label:'Escuro',icon:Moon},{value:'light',label:'Claro',icon:Sun}].map(item=><label key={item.value} className={'flex cursor-pointer items-center gap-3 rounded-xl border px-4 py-3 text-sm '+((darkMode?'dark':'light')===item.value?'border-primary bg-primary/10':'border-border')}><input type="radio" name="workspace-theme" value={item.value} checked={(darkMode?'dark':'light')===item.value} onChange={()=>setTheme(item.value as 'dark'|'light')}/><item.icon className="size-4" aria-hidden/>{item.label}</label>)}</fieldset><p className="text-xs text-muted-foreground">Sua escolha é aplicada imediatamente e fica salva neste navegador. O padrão é escuro.</p></section>
     {user&&<FirstStepsPreference key={user.id} userId={user.id}/>}
     <PushSettings/>
-    {user&&<PrivacySettings key={user.id}/>}
+    {user&&<PrivacySettings key={user.id} userId={user.id}/>}
     <section className="space-y-4 rounded-2xl border border-border bg-card p-4"><h2 className="text-lg font-semibold">Conta</h2><div className="flex flex-wrap gap-2"><Button asChild variant="outline"><Link href="/meu-espaco/perfil/editar">Editar informações pessoais</Link></Button><Button asChild variant="outline"><Link href="/login?recuperar=1">Recuperar ou redefinir senha</Link></Button></div></section>
   </div>
 }

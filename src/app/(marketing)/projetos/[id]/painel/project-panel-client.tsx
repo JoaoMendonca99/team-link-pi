@@ -53,6 +53,8 @@ import { PanelGithubSection } from './_components/panel-github-section'
 import { PanelSupportSection } from './_components/panel-support-section'
 import { useProjectLeadership } from '@/hooks/use-project-leadership'
 import { ProjectTools, type WorkspaceModule } from './_components/project-tools'
+import {ProjectRecommendationTools} from '@/components/recommendations/project-recommendation-tools'
+import {RECOMMENDATIONS_CHANGED} from '@/lib/graph/events'
 import {Recommendations} from '@/components/recommendations/recommendations'
 import {ProjectPanelHeader} from '@/components/team-link/project-panel-header'
 import { ActivityOverview, PanelTeam, usePanelSummary } from './_components/panel-overview'
@@ -245,7 +247,7 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
     void refresh()
     const channel = client.channel('workspace-count:' + projectId + ':' + crypto.randomUUID())
     for (const event of ['INSERT', 'UPDATE'] as const) {
-      channel.on('postgres_changes', { event, schema: 'public', table: 'recruitment_updates', filter: 'project_id=eq.' + projectId }, refresh)
+      channel.on('postgres_changes', { event, schema: 'public', table: 'recruitment_updates', filter: 'project_id=eq.' + projectId }, () => { void refresh(); window.dispatchEvent(new Event(RECOMMENDATIONS_CHANGED)) })
     }
     channel.subscribe((status) => { if (status === 'SUBSCRIBED') void refresh() })
     return () => { current = false; void client.removeChannel(channel) }
@@ -513,6 +515,8 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
             else if (module === 'reports') router.push('/projetos/' + project.slug + '/painel/relatorios')
             else setOpened(module)
           }} toggle={toggleModule} />
+
+        {isManager&&user&&<ProjectRecommendationTools key={project.id+user.id} project={project.id} userId={user.id}/>}
 
         {githubOpen && githubError ? (
           <p className="rounded-2xl border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">

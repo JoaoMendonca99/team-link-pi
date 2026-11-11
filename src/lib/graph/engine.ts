@@ -135,7 +135,7 @@ function social(graph: Graph, a: Person, b: Person, data: Snapshot) {
     const score = rounding(100 * Object.entries(MODEL.social).reduce((sum, [key, w]) => sum + values[key as keyof typeof values] * w, 0));
     return { score, coverage: Math.min(1, coverage), academic: acad.reasons, reasons: [...(skills ? [`${sharedNeighbors(graph, node('user', a.id), node('user', b.id), 'skill').length} habilidade(s) declarada(s) em comum`] : []), ...(interests ? ['Interesses declarados em comum'] : []), ...(friends.length ? [`${friends.length} conexão(ões) de amizade compartilhada(s) e autorizada(s)`] : []), ...(commonProjects.length ? ['Participação em projeto acessível em comum'] : []), ...acad.reasons] };
 }
-export function recommend(data: Snapshot, kind: 'collaborators' | 'opportunities' | 'friends', projectId?: string, vacancyId?: string): RecommendationResult {
+export function recommend(data: Snapshot, kind: 'collaborators' | 'opportunities' | 'friends', projectId?: string, vacancyId?: string, limit = 12): RecommendationResult {
     const graph = buildGraph(data), actor = data.people.find(p => p.id === data.actor);
     const root = kind === 'collaborators' ? node('project', projectId ?? '') : node('user', data.actor);
     // Candidate discovery is an actual FIFO traversal. Academic offers are excluded:
@@ -187,6 +187,6 @@ export function recommend(data: Snapshot, kind: 'collaborators' | 'opportunities
                 result.items.push({ id: p.id + ':' + v.id, name: p.name, avatar: p.avatar, project: project.id, vacancy: v.id, vacancyTitle: v.title, technical: t, score, coverage: t.evidenceCoverage * 0.9 + Number(p.interests.length > 0 && project.tags.length > 0) * 0.05 + s.coverage / 2 * 0.05, reasons: [...(t.identified.length ? ['Cobertura ponderada de requisitos cadastrados'] : []), ...(affinity ? ['Interesses declarados relacionados ao projeto'] : []), ...s.reasons], tags: p.skills.map(c => c.label).slice(0, 4), academic: s.reasons, path: path(found, node('user', p.id)) });
             }
     result.items.sort((a, b) => kind === 'friends' ? b.score - a.score || a.name.localeCompare(b.name, 'pt-BR') || a.id.localeCompare(b.id) : ((b.technical?.exactPercent ?? 0) - (a.technical?.exactPercent ?? 0)) || b.score - a.score || (b.technical?.jaccard ?? 0) - (a.technical?.jaccard ?? 0) || a.name.localeCompare(b.name, 'pt-BR') || a.id.localeCompare(b.id));
-    result.items = result.items.slice(0, 12);
+    result.items = result.items.slice(0, limit);
     return result;
 }

@@ -1,0 +1,25 @@
+const {test}=require('node:test'),assert=require('node:assert/strict'),fs=require('node:fs'),Module=require('node:module'),ts=require('typescript')
+Module._extensions['.ts']=(m,file)=>m._compile(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,file)
+const {deservesVacancyBadge,presentPerson}=require('../src/lib/graph/presentation.ts')
+const {technical}=require('../src/lib/graph/engine.ts')
+const {syntheticDemo}=require('../src/lib/graph/demo.ts')
+const req=(concept,weight)=>({key:concept,concept,label:concept,weight,source:'vacancy'})
+const skill=(id)=>({id,label:id})
+test('badge needs evidence: scores at either threshold, weak matching and academic-only inputs',()=>{
+ assert.ok(deservesVacancyBadge({score:12,technical:{exactPercent:20},tags:[]}))
+ assert.ok(deservesVacancyBadge({score:15,tags:['React']}))
+ for(const item of [{score:11.99,technical:{exactPercent:25},tags:[]},{score:19,technical:{exactPercent:0},tags:[]},{score:14.99,tags:['React']},{score:5,tags:[]}])assert.equal(deservesVacancyBadge(item),false)
+})
+test('weighted examples: 80% exact remains strong, relation credit cannot satisfy a weight-five requirement',()=>{
+ const direct=technical([skill('React'),skill('Supabase')],[req('React',5),req('Supabase',3),req('UI/UX',2)],[])
+ assert.equal(direct.exactPercent,80);assert.ok(deservesVacancyBadge({score:48,technical:direct,tags:[]}))
+ const related=technical([skill('React')],[req('Frontend',5),req('UI',4)],[{from:'React',to:'Frontend',type:'mais_especifico_que'},{from:'React',to:'UI',type:'relacionado_a'}])
+ assert.equal(related.exactPercent,0);assert.equal(related.percent,15.56);assert.equal(deservesVacancyBadge({score:9.34,technical:related,tags:[]}),false)
+})
+test('person DTO does not expose scores, paths, social ties or technical terms',()=>{
+ const person=presentPerson({id:'a:v',name:'Ana',avatar:null,vacancyTitle:'Dev',score:90,path:['private'],technical:{identified:[{label:'React',factor:.35}]},reasons:['1 conexão(ões) de amizade compartilhada(s) e autorizada(s)','Mesmo curso canônico informado']})
+ assert.deepEqual(person,{id:'a:v',userId:'a',name:'Ana',avatar:null,vacancyTitle:'Dev',reasons:['Habilidades relacionadas à vaga','Mesmo curso']})
+})
+test('academic demo uses measured Jaccard for two declared skills out of three requirements',()=>{
+ assert.equal(syntheticDemo().requirementsJaccard,2/3)
+})

@@ -23,6 +23,7 @@ import {
   PROJECT_STATUS_LABEL, PROJECT_STATUS_OPTIONS, PROJECT_VISIBILITY_LABEL, PROJECT_VISIBILITY_OPTIONS,
 } from '@/lib/projects/display'
 import { projectFormErrors, projectFormPayload, type VacancyDraft } from '@/lib/projects/form'
+import { notifyRecommendations, RECOMMENDATION_ACCESS_CHANGED } from '@/lib/graph/events'
 import { saveProjectForm } from '@/lib/projects/save-form'
 import { slugify } from '@/lib/projects/slug'
 import type { ProjectRow, ProjectStatusValue, ProjectVisibility } from '@/types/database'
@@ -133,6 +134,7 @@ export function ProjectForm({ project, initialTags = [], initialVacancies = [], 
         setSaving(false)
         return
       }
+      notifyRecommendations(project && (project.visibility!==visibility || project.status!==status) ? RECOMMENDATION_ACCESS_CHANGED : undefined)
       saved.current=true
       router.push('/projetos/' + data)
     } catch {

@@ -8,7 +8,7 @@ test('shareable URL round-trips search, category, UUID skill, stable order and p
  assert.equal(p.has('access_token'),false)
 })
 test('untrusted URL input cannot introduce arbitrary sort, invalid UUID or unbounded page',()=>{
- assert.deepEqual(V.opportunityFilters(new URLSearchParams('sort=drop+table&skill=forged&page=-42')),{search:'',category:'',skill:'',skill_name:'',sort:'recent',page:0})
+ assert.deepEqual(V.opportunityFilters(new URLSearchParams('sort=drop+table&skill=forged&page=-42')),{search:'',category:'',skill:'',skill_name:'',sort:'recommended',page:0})
  assert.equal(V.opportunityFilters(new URLSearchParams('page=1000000')).page,10000)
  assert.equal(V.opportunityFilters(new URLSearchParams('page=NaN')).page,0)
  assert.equal(V.opportunityFilters(new URLSearchParams('q='+('x'.repeat(121)))).search.length,120)
@@ -18,4 +18,10 @@ test('closed and filled vacancies never present a valid apply action',()=>{
  assert.equal(V.opportunityAvailable({open:true,available:1}),true)
  for(const v of [{open:false,available:3},{open:true,available:0},{open:true,available:-1}])assert.equal(V.opportunityAvailable(v),false)
  assert.equal(V.availablePositions(1),'1 posição disponível');assert.equal(V.availablePositions(2),'2 posições disponíveis')
+})
+
+test('explicit newest order round-trips independently from recommended default',()=>{
+ const f=V.opportunityFilters(new URLSearchParams('sort=recent'))
+ assert.equal(f.sort,'recent');assert.equal(V.opportunityParams(f).get('sort'),'recent')
+ assert.equal(V.opportunityParams(V.opportunityFilters(new URLSearchParams())).has('sort'),false)
 })

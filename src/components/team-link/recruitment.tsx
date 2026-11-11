@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { MessageTextarea } from '@/components/chat/message-textarea'
 import { Textarea } from '@/components/ui/textarea'
 import { UserAvatar } from '@/components/team-link/user-avatar'
+import { notifyRecommendations, RECOMMENDATION_ACCESS_CHANGED, RECOMMENDATIONS_CHANGED } from '@/lib/graph/events'
 import { getSupabaseClient } from '@/lib/supabase/client'
 import { ConceptChipInput } from './concept-chip-input'
 import { legacyConcepts, type ConceptChoice, type ProjectConcepts } from '@/lib/concepts'
@@ -28,6 +29,8 @@ const errorText = (error: unknown) => error instanceof Error ? error.message : '
 export async function recruitmentRpc<T>(name: string, args: Record<string, unknown>): Promise<T> {
   const { data, error } = await getSupabaseClient().rpc(name, args)
   if (error) throw new Error(error.code === 'P0001' ? error.message : 'Não foi possível concluir a operação.')
+  if (['recruitment_set_access','recruitment_move_member','remove_project_member'].includes(name)) notifyRecommendations(RECOMMENDATION_ACCESS_CHANGED)
+  if (['save_vacancy_concepts','recruitment_save_vacancy','recruitment_decide','recruitment_send_application'].includes(name)) notifyRecommendations()
   return data as T
 }
 
@@ -159,6 +162,7 @@ function useApplications(project: string | null, enabled: boolean, viewer?: stri
       const id = row.request_id
       setUpdates((current) => ({ ...current, [id]: (current[id] ?? 0) + 1 }))
       refresh()
+      window.dispatchEvent(new Event(RECOMMENDATIONS_CHANGED))
     })
     channel.subscribe((status) => {
       if (status !== 'SUBSCRIBED') return
