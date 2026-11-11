@@ -55,7 +55,6 @@ import { PanelGithubSection } from './_components/panel-github-section'
 import { PanelSupportSection } from './_components/panel-support-section'
 import { useProjectLeadership } from '@/hooks/use-project-leadership'
 import { ProjectTools, type WorkspaceModule } from './_components/project-tools'
-import {ProjectRecommendationTools} from '@/components/recommendations/project-recommendation-tools'
 import {RECOMMENDATIONS_CHANGED} from '@/lib/graph/events'
 import {Recommendations} from '@/components/recommendations/recommendations'
 import {ProjectPanelHeader} from '@/components/team-link/project-panel-header'
@@ -521,8 +520,6 @@ export function ProjectPanelClient({ slug }: { slug: string }) {
             else if (module === 'github') setGithubVisible(true)
             else if (module === 'support') setSupportVisible(true)
           }} toggle={toggleModule} />
-
-        {isManager&&user&&<ProjectRecommendationTools key={project.id+user.id} project={project.id} userId={user.id}/>}
 
         {supportOpen && <section className="space-y-3" aria-label="Ferramenta selecionada">
           <Button type="button" variant="ghost" size="sm" onClick={() => setSupportVisible(false)}>Fechar ferramenta</Button>
